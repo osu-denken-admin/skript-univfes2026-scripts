@@ -1,1 +1,7 @@
-aaa
+on death of zombie:
+    attacker is a player
+    add 1 to {zombie_kills::%uuid of attacker%}
+
+every 1 second:
+    loop all players:
+        send action bar "&aゾンビ討伐数: &e%{zombie_kills::%uuid of loop-player%}%" to loop-player
