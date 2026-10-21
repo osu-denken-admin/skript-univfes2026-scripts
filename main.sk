@@ -21,4 +21,4 @@ every 1 second:
         if {_score} is not set:
             set {_score} to 0
 
-        send action bar "&e&lスコア: &6&l%{_score}%" to loop-player
+        send action bar "&e&lスコア: &6%{_score}%" to loop-player
