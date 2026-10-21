@@ -1,7 +1,24 @@
-on death of zombie:
+on death of monster:
     attacker is a player
-    add 1 to {zombie_kills::%uuid of attacker%}
+
+    add 1 to {score::%uuid of attacker%}
+
+    set {_score} to {score::%uuid of attacker%}
+
+    if {_score} is 10:
+        broadcast "&6&l[EVENT] &e%attacker% &6が &e&lスコア10 &6を達成しました！"
+
+    if {_score} is 50:
+        broadcast "&6&l[EVENT] &e%attacker% &6が &e&lスコア50 &6を達成しました！"
+
+    if {_score} is 100:
+        broadcast "&6&l[EVENT] &e%attacker% &6が &e&lスコア100 &6を達成しました！"
 
 every 1 second:
     loop all players:
-        send action bar "&aゾンビ討伐数: &e%{zombie_kills::%uuid of loop-player%}%" to loop-player
+        set {_score} to {score::%uuid of loop-player%}
+
+        if {_score} is not set:
+            set {_score} to 0
+
+        send action bar "&e&lスコア: &6&l%{_score}%" to loop-player
