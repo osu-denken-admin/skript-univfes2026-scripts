@@ -1,0 +1,115 @@
+# ============================================================
+# uf_02_economy.sk : ポイント確認・生産物の売却
+#   通常の食料や建築ブロックは「売る」ことはできるが「買う」ことはできない。
+#   特殊アイテムや名前付きアイテムは売却できない。
+# ============================================================
+
+command /points:
+    description: 所持ポイント・チップ・回収待ちポイントを表示する
+    aliases: /pt
+    executable by: players
+    trigger:
+        uf_msg(player, "ポイント: &e%uf_pt(player)%&f  チップ: &e%uf_chip(player)%")
+        set {_u} to uuid of player
+        loop {uf::recidx::%{_u}%::*}:
+            set {_i} to loop-value
+            set {_l} to {uf::rec::%{_u}%::%{_i}%::loc}
+            set {_a} to {uf::rec::%{_u}%::%{_i}%::amt}
+            uf_msg(player, "&7回収待ち: &e%{_a}%pt &7@ %uf_fmtloc({_l})%")
+
+# 1 個あたりの売値（売れないものは 0）
+function uf_sellunit(p: player, i: item) :: number:
+    if uf_id({_i}) is not "":
+        return 0
+    if name of {_i} is set:
+        return 0
+    set {_k} to "%type of {_i}%"
+    set {_v} to {uf::sell::%{_k}%}
+    if {_v} is not set:
+        return 0
+    set {_mult} to 1
+    if uf_on("rpg") is true:
+        set {_mult} to 1 + 0.03 * uf_skill({_p}, "gather")
+    return {_v} * {_mult}
+
+# 1 日あたりの売却上限（0 は無制限）。超える場合は false
+function uf_sellcap(p: player, total: number) :: boolean:
+    set {_cap} to {uf::cfg::sell_daily_cap}
+    if {_cap} <= 0:
+        return true
+    set {_u} to uuid of {_p}
+    set {_d} to now formatted as "yyyy-MM-dd"
+    if {uf::sellday::%{_u}%} is not {_d}:
+        set {uf::sellday::%{_u}%} to {_d}
+        set {uf::selltoday::%{_u}%} to 0
+    if {uf::selltoday::%{_u}%} + {_total} > {_cap}:
+        return false
+    add {_total} to {uf::selltoday::%{_u}%}
+    return true
+
+# 売却後の共通処理（統計・クエスト）
+function uf_aftersell(p: player, k: text, amt: number):
+    add {_amt} to {uf::stat::%uuid of {_p}%::sold}
+    set {_cat} to {uf::sellcat::%{_k}%}
+    if {_cat} is "crop":
+        uf_questadd({_p}, "crop", {_amt})
+    else if {_cat} is "fish":
+        uf_questadd({_p}, "fish", {_amt})
+    uf_achcheck({_p})
+
+command /sell [<text>]:
+    description: 手に持ったアイテム（all で全部）を売却する
+    executable by: players
+    trigger:
+        if uf_on("economy") is false:
+            uf_msg(player, "&c売却は現在停止中です")
+            stop
+        if arg-1 is "list":
+            uf_msg(player, "&e売却価格一覧（1個あたり）")
+            loop {uf::sell::*}:
+                send "&7- %loop-index%: &e%loop-value%pt" to player
+            stop
+        if arg-1 is "all":
+            # 種類ごとに個数を数えてから、まとめて取り除く
+            set {_total} to 0
+            loop items in player's inventory:
+                set {_unit} to uf_sellunit(player, loop-value)
+                if {_unit} > 0:
+                    set {_k} to "%type of loop-value%"
+                    set {_n} to item amount of loop-value
+                    add {_unit} * {_n} to {_total}
+                    add {_n} to {_amt::%{_k}%}
+                    set {_ty::%{_k}%} to type of loop-value
+            set {_total} to floor({_total})
+            if {_total} <= 0:
+                uf_msg(player, "&c売却できるアイテムがありません")
+                stop
+            if uf_sellcap(player, {_total}) is false:
+                uf_msg(player, "&c本日の売却上限に達するため売却できません")
+                stop
+            loop {_amt::*}:
+                set {_k} to loop-index
+                set {_n} to loop-value
+                remove {_n} of {_ty::%{_k}%} from player's inventory
+                uf_aftersell(player, {_k}, {_n})
+            uf_addpt(player, {_total}, "sell:all")
+            uf_msg(player, "&a売却しました: &e+%{_total}%pt &7(所持 %uf_pt(player)%pt)")
+            stop
+        set {_i} to player's tool
+        set {_unit} to uf_sellunit(player, {_i})
+        if {_unit} <= 0:
+            uf_msg(player, "&cこのアイテムは売却できません（/sell list で一覧）")
+            stop
+        set {_amt} to item amount of {_i}
+        set {_k} to "%type of {_i}%"
+        set {_total} to floor({_unit} * {_amt})
+        if {_total} <= 0:
+            uf_msg(player, "&c売却額が 0 のため売却できません")
+            stop
+        if uf_sellcap(player, {_total}) is false:
+            uf_msg(player, "&c本日の売却上限に達するため売却できません")
+            stop
+        set player's tool to air
+        uf_addpt(player, {_total}, "sell:%{_k}%")
+        uf_aftersell(player, {_k}, {_amt})
+        uf_msg(player, "&a%{_amt}%個 売却しました: &e+%{_total}%pt &7(所持 %uf_pt(player)%pt)")

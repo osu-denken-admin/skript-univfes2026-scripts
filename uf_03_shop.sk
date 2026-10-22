@@ -1,0 +1,156 @@
+# ============================================================
+# uf_03_shop.sk : ショップ（購入 GUI と管理者用の商品管理 GUI）
+#   商品は uf_00_core.sk の uf_shopdef で事前に定義したものだけ。
+#   管理者が変えられるのは「販売状態・価格・解放条件」だけ。
+# ============================================================
+
+command /shop:
+    description: ショップを開く
+    executable by: players
+    trigger:
+        if uf_on("shop") is false:
+            uf_msg(player, "&cショップは現在停止中です")
+            stop
+        if uf_inarea(player, "shop") is false:
+            uf_msg(player, "&cショップは15号館1階で利用できます")
+            stop
+        uf_shopgui(player)
+
+function uf_shopname(id: text) :: text:
+    if {_id} is "supply":
+        return "&aお試し用物資"
+    if {_id} is "ammo_pack":
+        return "&7弾薬パック（32発）"
+    return name of uf_item({_id})
+
+function uf_shopicon(id: text) :: item:
+    if {_id} is "supply":
+        return bread
+    if {_id} is "ammo_pack":
+        return uf_item("ammo")
+    return uf_item({_id})
+
+function uf_shopunlocked(p: player, id: text) :: boolean:
+    set {_req} to {uf::shop::%{_id}%::req}
+    if {_req} is not set:
+        return true
+    if {_req} < 2:
+        return true
+    if {uf::clear::%uuid of {_p}%::%{_req}%} is true:
+        return true
+    return false
+
+function uf_shopgui(p: player):
+    set {_g} to chest inventory with 6 rows named "&8ショップ（所持 %uf_pt({_p})%pt）"
+    uf_guiclear({_p})
+    set {_slot} to 0
+    loop {uf::shopids::*}:
+        set {_id} to loop-value
+        if {uf::shop::%{_id}%::enabled} is true:
+            if {_slot} < 54:
+                delete {_lore::*}
+                set {_price} to {uf::shop::%{_id}%::price}
+                add "&7価格: &e%{_price}%pt" to {_lore::*}
+                if uf_shopunlocked({_p}, {_id}) is true:
+                    set {_icon} to uf_shopicon({_id})
+                    add "&aクリックで購入" to {_lore::*}
+                else:
+                    set {_icon} to barrier
+                    add "&c%{uf::shop::%{_id}%::req}%階をクリアすると解放" to {_lore::*}
+                set slot {_slot} of {_g} to ({_icon} named uf_shopname({_id})) with lore {_lore::*}
+                set {-uf::guictx::%uuid of {_p}%::%{_slot}%} to {_id}
+                add 1 to {_slot}
+    uf_gui({_p}, "shop", {_g})
+
+# 購入処理：販売中・解放済み・残高・空き容量を確認してから、残高を減らして渡す
+function uf_shopbuy(p: player, id: text):
+    if {uf::shop::%{_id}%::enabled} is not true:
+        uf_msg({_p}, "&cこの商品は現在販売していません")
+        stop
+    if uf_shopunlocked({_p}, {_id}) is false:
+        uf_msg({_p}, "&cまだ解放されていません")
+        stop
+    set {_price} to {uf::shop::%{_id}%::price}
+    if {_price} is not set:
+        stop
+    if uf_pt({_p}) < {_price}:
+        uf_msg({_p}, "&cポイントが足りません（必要 %{_price}%pt / 所持 %uf_pt({_p})%pt）")
+        stop
+    if {_id} is "supply":
+        add 8 of bread to {_items::*}
+        add 16 of torch to {_items::*}
+    else if {_id} is "ammo_pack":
+        add 32 of uf_item("ammo") to {_items::*}
+    else:
+        set {_it} to uf_item({_id})
+        if {_it} is not set:
+            uf_msg({_p}, "&cこの商品は準備中です")
+            stop
+        add {_it} to {_items::*}
+    loop {_items::*}:
+        if {_p} cannot hold loop-value:
+            uf_msg({_p}, "&cインベントリに空きがありません")
+            stop
+    if uf_takept({_p}, {_price}, "shop:%{_id}%") is false:
+        uf_msg({_p}, "&cポイントが足りません")
+        stop
+    loop {_items::*}:
+        give loop-value to {_p}
+    uf_msg({_p}, "&a購入しました: %uf_shopname({_id})% &7(-%{_price}%pt / 残り %uf_pt({_p})%pt)")
+    uf_log("shop", "buy %{_p}% (%uuid of {_p}%) %{_id}% price=%{_price}%")
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "shop"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_id} to {-uf::guictx::%uuid of player%::%index of event-slot%}
+    {_id} is set
+    uf_shopbuy(player, {_id})
+    wait 1 tick
+    if player is online:
+        uf_shopgui(player)
+
+# ------------------------------------------------------------
+# 管理者用：商品管理 GUI（クリックで販売状態を切り替え）
+#   価格     : /ufadmin shopprice <id> <価格>
+#   解放条件 : /ufadmin shopreq <id> <階 0-9>
+# ------------------------------------------------------------
+function uf_shopadmingui(p: player):
+    set {_g} to chest inventory with 6 rows named "&4ショップ管理（クリックで販売切替）"
+    uf_guiclear({_p})
+    set {_slot} to 0
+    loop {uf::shopids::*}:
+        set {_id} to loop-value
+        if {_slot} < 54:
+            delete {_lore::*}
+            add "&7ID: &f%{_id}%" to {_lore::*}
+            if {uf::shop::%{_id}%::enabled} is true:
+                add "&a販売中" to {_lore::*}
+            else:
+                add "&c販売停止" to {_lore::*}
+            add "&7価格: &e%{uf::shop::%{_id}%::price}%pt" to {_lore::*}
+            add "&7解放条件: &e%{uf::shop::%{_id}%::req}%階クリア（0=なし）" to {_lore::*}
+            add "&eクリックで販売状態を切り替え" to {_lore::*}
+            set {_icon} to uf_shopicon({_id})
+            if {_icon} is not set:
+                set {_icon} to paper
+            set slot {_slot} of {_g} to ({_icon} named uf_shopname({_id})) with lore {_lore::*}
+            set {-uf::guictx::%uuid of {_p}%::%{_slot}%} to {_id}
+            add 1 to {_slot}
+    uf_gui({_p}, "shopadmin", {_g})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "shopadmin"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    uf_admin(player) is true
+    set {_id} to {-uf::guictx::%uuid of player%::%index of event-slot%}
+    {_id} is set
+    if {uf::shop::%{_id}%::enabled} is true:
+        set {uf::shop::%{_id}%::enabled} to false
+    else:
+        set {uf::shop::%{_id}%::enabled} to true
+    uf_adminlog(player, "shop %{_id}% enabled=%{uf::shop::%{_id}%::enabled}%")
+    wait 1 tick
+    if player is online:
+        uf_shopadmingui(player)

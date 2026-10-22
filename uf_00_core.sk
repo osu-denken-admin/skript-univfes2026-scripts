@@ -1,0 +1,417 @@
+# ============================================================
+# uf_00_core.sk : 共通基盤
+#   設定の初期値 / モジュールの有効・無効 / ポイント・チップ / ログ /
+#   特殊アイテムの識別 / GUI 管理 / 区域判定
+#
+# 変数の約束
+#   {uf::...}  : 保存される（プレイヤーデータ・設定）
+#   {-uf::...} : メモリのみ（再起動で消える。セッション・クールダウンなど）
+#
+# 安全のため、すべてのモジュールは既定で「無効」。
+#   /ufadmin module <名前> on で 1 つずつ有効化してテストする。
+# 既存の main.sk（{score::*}）には一切触れない。
+# ============================================================
+
+on load:
+    uf_defaults()
+
+# クールダウン計測用の tick カウンタ（再起動で 0 に戻る）
+every 1 tick:
+    add 1 to {-uf::tick}
+
+# ------------------------------------------------------------
+# 設定の初期値（未設定のものだけ入れる。管理者が変えた値は上書きしない）
+# ------------------------------------------------------------
+function uf_setdef(key: text, v: object):
+    if {uf::cfg::%{_key}%} is not set:
+        set {uf::cfg::%{_key}%} to {_v}
+
+function uf_defaults():
+    loop "economy", "shop", "party", "dungeon", "death", "rpg", "tools", "weapons", "casino", "progress" and "guide":
+        if {uf::mod::%loop-value%} is not set:
+            set {uf::mod::%loop-value%} to false
+
+    # 経済
+    uf_setdef("chip_rate", 1)
+    uf_setdef("sell_daily_cap", 0)
+
+    # 死亡・回収・蘇生
+    uf_setdef("death_loss_rate", 0.5)
+    uf_setdef("death_loss_scope", "dungeon")
+    uf_setdef("revive_seconds", 5)
+    uf_setdef("revive_range", 2)
+    uf_setdef("soul_seconds", 60)
+
+    # ダンジョン：討伐報酬
+    uf_setdef("reward::normal", 10)
+    uf_setdef("reward::strong", 25)
+    uf_setdef("reward::elite", 60)
+    uf_setdef("reward::mid", 150)
+    uf_setdef("reward::boss", 300)
+
+    # ダンジョン：初回クリア報酬
+    uf_setdef("clear_pt::2", 200)
+    uf_setdef("clear_pt::3", 300)
+    uf_setdef("clear_pt::4", 400)
+    uf_setdef("clear_pt::5", 500)
+    uf_setdef("clear_pt::6", 600)
+    uf_setdef("clear_pt::7", 700)
+    uf_setdef("clear_pt::8", 800)
+    uf_setdef("clear_pt::9", 1500)
+    uf_setdef("repeat_rate", 0.2)
+    uf_setdef("session_minutes", 20)
+    uf_setdef("party_max", 4)
+
+    # ダンジョン：宝箱
+    uf_setdef("chest::min", 1)
+    uf_setdef("chest::max", 3)
+    uf_setdef("chest::shift", 1)
+    uf_setdef("rarity::normal", 55)
+    uf_setdef("rarity::rare", 28)
+    uf_setdef("rarity::epic", 13)
+    uf_setdef("rarity::legendary", 4)
+
+    # 特殊道具
+    uf_setdef("tree::max", 64)
+    uf_setdef("tree::height", 16)
+    uf_setdef("tree::radius", 3)
+    uf_setdef("ore::radius", 8)
+    uf_setdef("ore::seconds", 30)
+    uf_setdef("hook::range", 30)
+    uf_setdef("hook::cooldown", 40)
+
+    # 特殊武器（cd は tick 単位）
+    uf_setdef("gun_scope", "dungeon")
+    uf_setdef("gun::gun_handgun::dmg", 6)
+    uf_setdef("gun::gun_handgun::cd", 8)
+    uf_setdef("gun::gun_handgun::ammo", 1)
+    uf_setdef("gun::gun_handgun::pellets", 1)
+    uf_setdef("gun::gun_handgun::speed", 3)
+    uf_setdef("gun::gun_rifle::dmg", 4)
+    uf_setdef("gun::gun_rifle::cd", 3)
+    uf_setdef("gun::gun_rifle::ammo", 1)
+    uf_setdef("gun::gun_rifle::pellets", 1)
+    uf_setdef("gun::gun_rifle::speed", 3.5)
+    uf_setdef("gun::gun_shotgun::dmg", 3)
+    uf_setdef("gun::gun_shotgun::cd", 20)
+    uf_setdef("gun::gun_shotgun::ammo", 1)
+    uf_setdef("gun::gun_shotgun::pellets", 5)
+    uf_setdef("gun::gun_shotgun::speed", 2.5)
+    uf_setdef("gun::gun_energy::dmg", 12)
+    uf_setdef("gun::gun_energy::cd", 30)
+    uf_setdef("gun::gun_energy::ammo", 0)
+    uf_setdef("gun::gun_energy::pellets", 1)
+    uf_setdef("gun::gun_energy::speed", 4)
+    uf_setdef("melee::melee_basic", 1.2)
+    uf_setdef("melee::melee_adv", 1.4)
+
+    # RPG
+    uf_setdef("level::max", 50)
+    uf_setdef("level::base", 100)
+    uf_setdef("level::step", 50)
+    uf_setdef("skill::max", 5)
+    uf_setdef("skill_reset_cost", 500)
+
+    # カジノ（prob は ％、mult は払い戻し倍率）
+    uf_setdef("casino::slot::enabled", true)
+    uf_setdef("casino::slot::prob", 20)
+    uf_setdef("casino::slot::mult", 4)
+    uf_setdef("casino::slot::min", 10)
+    uf_setdef("casino::slot::max", 1000)
+    uf_setdef("casino::roulette::enabled", true)
+    uf_setdef("casino::roulette::prob", 47.5)
+    uf_setdef("casino::roulette::mult", 2)
+    uf_setdef("casino::roulette::min", 10)
+    uf_setdef("casino::roulette::max", 1000)
+    uf_setdef("casino::reaction::enabled", true)
+    uf_setdef("casino::reaction::window", 8)
+    uf_setdef("casino::reaction::mult", 1.8)
+    uf_setdef("casino::reaction::min", 10)
+    uf_setdef("casino::reaction::max", 500)
+
+    # ショップ（id, 価格, 解放に必要なクリア階層 0=なし, 初期の販売状態）
+    uf_shopdef("heal_kit", 40, 0, true)
+    uf_shopdef("supply", 80, 0, true)
+    uf_shopdef("mat_upgrade", 100, 0, true)
+    uf_shopdef("melee_basic", 250, 0, true)
+    uf_shopdef("gun_handgun", 350, 2, true)
+    uf_shopdef("ammo_pack", 50, 2, true)
+    uf_shopdef("acc_basic", 400, 3, true)
+    uf_shopdef("hook", 1200, 3, true)
+    uf_shopdef("melee_adv", 800, 4, true)
+    uf_shopdef("gun_rifle", 1000, 4, true)
+    uf_shopdef("armor_special", 1500, 5, true)
+    uf_shopdef("gun_shotgun", 1400, 6, true)
+    uf_shopdef("bike_key", 2500, 6, false)
+    uf_shopdef("bike_kit", 1000, 7, false)
+    uf_shopdef("gun_energy", 2000, 8, true)
+    uf_shopdef("mat_final", 3000, 9, true)
+    uf_shopdef("tool_pick3", 1500, 0, false)
+    uf_shopdef("tool_shovel3", 800, 0, false)
+    uf_shopdef("tool_axe", 1200, 0, false)
+    uf_shopdef("ore_potion", 300, 0, false)
+
+    # 売却価格（キーは "%type of item%" の文字列。/ufadmin sellprice で手持ちアイテムから登録し直せる）
+    uf_selldef("wheat", 2, "crop")
+    uf_selldef("carrot", 1, "crop")
+    uf_selldef("potato", 1, "crop")
+    uf_selldef("beetroot", 1, "crop")
+    uf_selldef("melon slice", 1, "crop")
+    uf_selldef("pumpkin", 4, "crop")
+    uf_selldef("sugar cane", 1, "crop")
+    uf_selldef("sweet berries", 1, "crop")
+    uf_selldef("bread", 6, "crop")
+    uf_selldef("oak log", 2, "wood")
+    uf_selldef("spruce log", 2, "wood")
+    uf_selldef("birch log", 2, "wood")
+    uf_selldef("jungle log", 2, "wood")
+    uf_selldef("acacia log", 2, "wood")
+    uf_selldef("dark oak log", 2, "wood")
+    uf_selldef("mangrove log", 2, "wood")
+    uf_selldef("cherry log", 2, "wood")
+    uf_selldef("coal", 3, "ore")
+    uf_selldef("raw iron", 6, "ore")
+    uf_selldef("raw copper", 2, "ore")
+    uf_selldef("raw gold", 8, "ore")
+    uf_selldef("redstone", 1, "ore")
+    uf_selldef("lapis lazuli", 2, "ore")
+    uf_selldef("diamond", 40, "ore")
+    uf_selldef("emerald", 30, "ore")
+    uf_selldef("cod", 5, "fish")
+    uf_selldef("salmon", 6, "fish")
+    uf_selldef("tropical fish", 10, "fish")
+    uf_selldef("pufferfish", 8, "fish")
+
+function uf_shopdef(id: text, price: number, req: number, enabled: boolean):
+    if {uf::shop::%{_id}%::price} is not set:
+        set {uf::shop::%{_id}%::price} to {_price}
+        set {uf::shop::%{_id}%::req} to {_req}
+        set {uf::shop::%{_id}%::enabled} to {_enabled}
+    if {uf::shoporder::%{_id}%} is not set:
+        add 1 to {uf::shopcount}
+        set {uf::shoporder::%{_id}%} to {uf::shopcount}
+        set {uf::shopids::%{uf::shopcount}%} to {_id}
+
+function uf_selldef(k: text, v: number, cat: text):
+    if {uf::selldone::%{_k}%} is not set:
+        set {uf::selldone::%{_k}%} to true
+        set {uf::sell::%{_k}%} to {_v}
+        set {uf::sellcat::%{_k}%} to {_cat}
+
+# ------------------------------------------------------------
+# モジュール・権限・メッセージ
+# ------------------------------------------------------------
+function uf_on(m: text) :: boolean:
+    if {uf::mod::%{_m}%} is true:
+        return true
+    return false
+
+function uf_admin(p: player) :: boolean:
+    if {_p} has permission "univfes.admin":
+        return true
+    return false
+
+function uf_msg(p: player, t: text):
+    send "&6[電研]&r %colored {_t}%" to {_p}
+
+function uf_fmtloc(l: location) :: text:
+    return "%world of {_l}% %floor(x-coordinate of {_l})%, %floor(y-coordinate of {_l})%, %floor(z-coordinate of {_l})%"
+
+# ------------------------------------------------------------
+# ログ（plugins/Skript/logs/univfes_<分類>.log に出力）
+# ------------------------------------------------------------
+function uf_log(cat: text, msg: text):
+    log "%{_msg}%" to "univfes_%{_cat}%"
+
+# 管理者操作の履歴（ファイル＋直近 50 件を変数に保持）
+function uf_adminlog(p: player, msg: text):
+    add 1 to {uf::adminlog::n}
+    set {_i} to mod({uf::adminlog::n}, 50)
+    set {uf::adminlog::e::%{_i}%} to "%now% %{_p}%: %{_msg}%"
+    uf_log("admin", "%{_p}% (%uuid of {_p}%): %{_msg}%")
+
+# ------------------------------------------------------------
+# ポイント（通常経済）
+#   reason が admin / recover / chip で始まる加算は「累計獲得」に含めない
+# ------------------------------------------------------------
+function uf_pt(p: player) :: number:
+    set {_v} to {uf::pt::%uuid of {_p}%}
+    if {_v} is not set:
+        return 0
+    return {_v}
+
+function uf_addpt(p: player, n: number, reason: text):
+    set {_n} to floor({_n})
+    if {_n} <= 0:
+        stop
+    add {_n} to {uf::pt::%uuid of {_p}%}
+    set {_earn} to true
+    if {_reason} starts with "admin":
+        set {_earn} to false
+    if {_reason} starts with "recover":
+        set {_earn} to false
+    if {_reason} starts with "chip":
+        set {_earn} to false
+    if {_earn} is true:
+        add {_n} to {uf::stat::%uuid of {_p}%::earned}
+    uf_log("economy", "+%{_n}% pt %{_p}% (%uuid of {_p}%) reason=%{_reason}% bal=%uf_pt({_p})%")
+
+# 残高が足りなければ何もせず false を返す
+function uf_takept(p: player, n: number, reason: text) :: boolean:
+    set {_n} to floor({_n})
+    if {_n} < 0:
+        return false
+    if uf_pt({_p}) < {_n}:
+        return false
+    if {_n} is 0:
+        return true
+    remove {_n} from {uf::pt::%uuid of {_p}%}
+    uf_log("economy", "-%{_n}% pt %{_p}% (%uuid of {_p}%) reason=%{_reason}% bal=%uf_pt({_p})%")
+    return true
+
+# ------------------------------------------------------------
+# カジノチップ（ポイントとは別残高）
+# ------------------------------------------------------------
+function uf_chip(p: player) :: number:
+    set {_v} to {uf::chip::%uuid of {_p}%}
+    if {_v} is not set:
+        return 0
+    return {_v}
+
+function uf_addchip(p: player, n: number, reason: text):
+    set {_n} to floor({_n})
+    if {_n} <= 0:
+        stop
+    add {_n} to {uf::chip::%uuid of {_p}%}
+    uf_log("casino", "+%{_n}% chip %{_p}% (%uuid of {_p}%) reason=%{_reason}% bal=%uf_chip({_p})%")
+
+function uf_takechip(p: player, n: number, reason: text) :: boolean:
+    set {_n} to floor({_n})
+    if {_n} < 0:
+        return false
+    if uf_chip({_p}) < {_n}:
+        return false
+    if {_n} is 0:
+        return true
+    remove {_n} from {uf::chip::%uuid of {_p}%}
+    uf_log("casino", "-%{_n}% chip %{_p}% (%uuid of {_p}%) reason=%{_reason}% bal=%uf_chip({_p})%")
+    return true
+
+# ------------------------------------------------------------
+# 特殊アイテムの識別
+#   説明文（lore）に "uf:<id>" の行を入れて判定する。名前だけでは判定しない。
+#   サバイバルでは説明文を書き換えられないため、通常アイテムで偽装できない。
+#   （クリエイティブの管理者は複製できる点に注意）
+# ------------------------------------------------------------
+function uf_id(i: item) :: text:
+    if {_i} is not set:
+        return ""
+    loop lore of {_i}:
+        set {_s} to uncolored loop-value
+        replace all "&8" with "" in {_s}
+        if {_s} starts with "uf:":
+            return last (length of {_s} - 3) characters of {_s}
+    return ""
+
+function uf_lv(i: item) :: number:
+    if {_i} is not set:
+        return 0
+    loop lore of {_i}:
+        set {_s} to uncolored loop-value
+        replace all "&8" with "" in {_s}
+        if {_s} starts with "uflv:":
+            set {_n} to (last (length of {_s} - 5) characters of {_s}) parsed as number
+            if {_n} is set:
+                return {_n}
+    return 0
+
+# インベントリに入らない分は足元に落とす
+function uf_give(p: player, i: item, n: number = 1):
+    set {_x} to {_n} of {_i}
+    if {_p} can hold {_x}:
+        give {_x} to {_p}
+    else:
+        drop {_x} at {_p}
+        uf_msg({_p}, "&eインベントリが満杯のため、足元に落としました")
+
+# ------------------------------------------------------------
+# GUI 管理
+#   開く前に種類と Inventory を記録し、閉じたときに消す。
+#   各モジュールは {-uf::gui::<uuid>} の種類を見てクリックを処理する。
+# ------------------------------------------------------------
+function uf_gui(p: player, kind: text, inv: inventory):
+    set {-uf::gui::%uuid of {_p}%} to {_kind}
+    set {-uf::guiinv::%uuid of {_p}%} to {_inv}
+    open {_inv} to {_p}
+
+function uf_guiclear(p: player):
+    delete {-uf::guictx::%uuid of {_p}%::*}
+
+# GUI へのドラッグでアイテムが消えないようにする
+on inventory drag:
+    {-uf::gui::%uuid of player%} is set
+    cancel event
+
+on inventory close:
+    if event-inventory is {-uf::guiinv::%uuid of player%}:
+        delete {-uf::gui::%uuid of player%}
+        delete {-uf::guiinv::%uuid of player%}
+
+on quit:
+    delete {-uf::gui::%uuid of player%}
+    delete {-uf::guiinv::%uuid of player%}
+    delete {-uf::guictx::%uuid of player%::*}
+
+# ------------------------------------------------------------
+# 区域・ワールド判定
+# ------------------------------------------------------------
+function uf_lockey(l: location) :: text:
+    return "%world of {_l}%_%floor(x-coordinate of {_l})%_%floor(y-coordinate of {_l})%_%floor(z-coordinate of {_l})%"
+
+# a と b を対角とする直方体の中に l があるか
+function uf_inbox(l: location, a: location, b: location) :: boolean:
+    if "%world of {_l}%" is not "%world of {_a}%":
+        return false
+    set {_x} to x-coordinate of {_l}
+    set {_y} to y-coordinate of {_l}
+    set {_z} to z-coordinate of {_l}
+    if {_x} < min(x-coordinate of {_a}, x-coordinate of {_b}):
+        return false
+    if {_x} > max(x-coordinate of {_a}, x-coordinate of {_b}) + 1:
+        return false
+    if {_y} < min(y-coordinate of {_a}, y-coordinate of {_b}):
+        return false
+    if {_y} > max(y-coordinate of {_a}, y-coordinate of {_b}) + 1:
+        return false
+    if {_z} < min(z-coordinate of {_a}, z-coordinate of {_b}):
+        return false
+    if {_z} > max(z-coordinate of {_a}, z-coordinate of {_b}) + 1:
+        return false
+    return true
+
+# kind: survival / dungeon / event（/ufadmin world <kind> で登録）
+function uf_inworld(l: location, kind: text) :: boolean:
+    if {uf::cfg::world::%{_kind}%} is not set:
+        return false
+    if "%world of {_l}%" is {uf::cfg::world::%{_kind}%}:
+        return true
+    return false
+
+# 名前付き区域（shop / casino など）。未設定なら「どこでも可」として true
+function uf_inarea(p: player, name: text) :: boolean:
+    if {uf::area::%{_name}%::a} is not set:
+        return true
+    if {uf::area::%{_name}%::b} is not set:
+        return true
+    return uf_inbox(location of {_p}, {uf::area::%{_name}%::a}, {uf::area::%{_name}%::b})
+
+# 特殊道具・乗り物から守る保護区域
+function uf_protected(l: location) :: boolean:
+    loop {uf::protlist::*}:
+        set {_a} to {uf::prot::%loop-value%::a}
+        set {_b} to {uf::prot::%loop-value%::b}
+        if {_a} is set:
+            if {_b} is set:
+                if uf_inbox({_l}, {_a}, {_b}) is true:
+                    return true
+    return false

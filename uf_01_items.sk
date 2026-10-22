@@ -1,0 +1,187 @@
+# ============================================================
+# uf_01_items.sk : 特殊アイテムの定義と使用処理
+#   uf_item(id, 強化レベル) で特殊アイテムを作る。
+#   武器だけ "uflv:<数値>" の行を持ち、/upgrade で強化できる。
+# ============================================================
+
+function uf_item(id: text, lv: number = 0) :: item:
+    set {_lv} to max(0, floor({_lv}))
+    set {_w} to false
+    if {_id} is "heal_kit":
+        set {_b} to honey bottle
+        set {_n} to "&c回復キット"
+        add "&7飲むと体力を大きく回復する" to {_d::*}
+    else if {_id} is "mat_upgrade":
+        set {_b} to amethyst shard
+        set {_n} to "&d武器強化素材"
+        add "&7武器を手に持って /upgrade で強化する" to {_d::*}
+    else if {_id} is "mat_special":
+        set {_b} to prismarine crystals
+        set {_n} to "&b特殊素材"
+        add "&7エピック宝箱から手に入る素材" to {_d::*}
+    else if {_id} is "mat_part":
+        set {_b} to netherite scrap
+        set {_n} to "&6武器パーツ"
+        add "&7レジェンダリー宝箱から手に入る素材" to {_d::*}
+    else if {_id} is "mat_final":
+        set {_b} to nether star
+        set {_n} to "&e最終強化パーツ"
+        add "&7強化レベル5の武器を、レベル10まで一気に強化する" to {_d::*}
+    else if {_id} is "melee_basic":
+        set {_b} to iron sword
+        set {_n} to "&f電研ブレード"
+        add "&7基本の近接武器" to {_d::*}
+        set {_w} to true
+    else if {_id} is "melee_adv":
+        set {_b} to diamond sword
+        set {_n} to "&b蒼刃"
+        add "&7高威力の近接武器" to {_d::*}
+        set {_w} to true
+    else if {_id} is "gun_handgun":
+        set {_b} to carrot on a stick
+        set {_n} to "&7ハンドガン"
+        add "&7右クリックで射撃（弾薬1発）" to {_d::*}
+        set {_w} to true
+    else if {_id} is "gun_rifle":
+        set {_b} to carrot on a stick
+        set {_n} to "&7アサルトライフル"
+        add "&7右クリックで連射（弾薬1発）" to {_d::*}
+        set {_w} to true
+    else if {_id} is "gun_shotgun":
+        set {_b} to carrot on a stick
+        set {_n} to "&7ショットガン"
+        add "&7近距離に散弾（弾薬1発）" to {_d::*}
+        set {_w} to true
+    else if {_id} is "gun_energy":
+        set {_b} to warped fungus on a stick
+        set {_n} to "&dエネルギー銃"
+        add "&7弾薬不要。発射間隔が長い" to {_d::*}
+        set {_w} to true
+    else if {_id} is "ammo":
+        set {_b} to iron nugget
+        set {_n} to "&7弾薬"
+        add "&7銃で使う弾薬" to {_d::*}
+    else if {_id} is "acc_basic":
+        set {_b} to feather
+        set {_n} to "&a俊足のお守り"
+        add "&7オフハンドに持つと移動速度が上がる" to {_d::*}
+    else if {_id} is "acc_rare":
+        set {_b} to nautilus shell
+        set {_n} to "&5守護のお守り"
+        add "&7オフハンドに持つと受けるダメージが減る" to {_d::*}
+    else if {_id} is "hook":
+        set {_b} to fishing rod
+        set {_n} to "&eグラップリングフック"
+        add "&7見ているブロックへ飛びつく（右クリック）" to {_d::*}
+    else if {_id} is "armor_special":
+        set {_b} to iron chestplate of protection 3
+        set {_n} to "&9特殊防具"
+        add "&7ダンジョン攻略用の防具" to {_d::*}
+    else if {_id} is "bike_key":
+        set {_b} to saddle
+        set {_n} to "&6バイクのキー"
+        add "&7右クリックでバイクを呼び出す（試験中）" to {_d::*}
+    else if {_id} is "bike_kit":
+        set {_b} to piston
+        set {_n} to "&6バイク強化キット"
+        add "&7バイクの速度を上げる（試験中）" to {_d::*}
+    else if {_id} is "ore_potion":
+        set {_b} to water bottle
+        set {_n} to "&3鉱石探知ポーション"
+        add "&7飲むと一定時間、近くの鉱石の方向を表示する" to {_d::*}
+    else if {_id} is "map":
+        set {_b} to compass
+        set {_n} to "&eフロアマップ"
+        add "&7右クリックで15号館のフロア選択を開く" to {_d::*}
+    else if {_id} is "tool_pick3":
+        set {_b} to diamond pickaxe
+        set {_n} to "&b3×3ピッケル"
+        add "&7石や鉱石を3×3でまとめて掘る" to {_d::*}
+        add "&7しゃがんでいる間は1ブロックだけ掘る" to {_d::*}
+    else if {_id} is "tool_shovel3":
+        set {_b} to diamond shovel
+        set {_n} to "&b3×3シャベル"
+        add "&7土や砂を3×3でまとめて掘る" to {_d::*}
+        add "&7しゃがんでいる間は1ブロックだけ掘る" to {_d::*}
+    else if {_id} is "tool_axe":
+        set {_b} to diamond axe
+        set {_n} to "&b木こり斧"
+        add "&7自然の木を1本まとめて切り倒す" to {_d::*}
+        add "&7しゃがんでいる間は1ブロックだけ切る" to {_d::*}
+    if {_b} is not set:
+        return {_none}
+    add "&8uf:%{_id}%" to {_d::*}
+    if {_w} is true:
+        add "&7強化レベル: &e%{_lv}%" to {_d::*}
+        add "&8uflv:%{_lv}%" to {_d::*}
+    return ({_b} named {_n}) with lore {_d::*}
+
+# ------------------------------------------------------------
+# 消費アイテム（飲む操作は統合版でも確実に届くため、右クリックではなく消費で判定）
+# ------------------------------------------------------------
+on consume:
+    set {_id} to uf_id(player's tool)
+    if {_id} is "":
+        set {_id} to uf_id(offhand tool of player)
+    if {_id} is "heal_kit":
+        heal player by 8
+        apply regeneration 2 to player for 5 seconds
+        uf_msg(player, "&a回復キットを使った")
+    else if {_id} is "ore_potion":
+        uf_oredetect(player)
+
+# ------------------------------------------------------------
+# アクセサリー（オフハンドに持っている間だけ効果）
+# ------------------------------------------------------------
+every 2 seconds:
+    if uf_on("weapons") is false:
+        stop
+    loop all players:
+        set {_id} to uf_id(offhand tool of loop-player)
+        if {_id} is "acc_basic":
+            apply speed 1 to loop-player for 3 seconds
+        else if {_id} is "acc_rare":
+            apply resistance 1 to loop-player for 3 seconds
+
+# ------------------------------------------------------------
+# 武器強化
+#   Lv0→5 : 武器強化素材を1個ずつ消費
+#   Lv5→10: 最終強化パーツを1個消費（仮仕様）
+# ------------------------------------------------------------
+command /upgrade:
+    description: 手に持った特殊武器を強化する
+    executable by: players
+    trigger:
+        if uf_on("weapons") is false:
+            uf_msg(player, "&c武器強化は現在停止中です")
+            stop
+        set {_id} to uf_id(player's tool)
+        set {_ok} to false
+        if {_id} starts with "melee_":
+            set {_ok} to true
+        if {_id} starts with "gun_":
+            set {_ok} to true
+        if {_ok} is false:
+            uf_msg(player, "&c強化できる特殊武器を手に持ってください")
+            stop
+        set {_lv} to uf_lv(player's tool)
+        if {_lv} >= 10:
+            uf_msg(player, "&eこの武器はすでに最大レベルです")
+            stop
+        if {_lv} < 5:
+            set {_mat} to uf_item("mat_upgrade")
+            if player doesn't have 1 of {_mat}:
+                uf_msg(player, "&c武器強化素材が必要です")
+                stop
+            remove 1 of {_mat} from player's inventory
+            set {_new} to {_lv} + 1
+        else:
+            set {_fin} to uf_item("mat_final")
+            if player doesn't have 1 of {_fin}:
+                uf_msg(player, "&cレベル5以上の強化には最終強化パーツが必要です")
+                stop
+            remove 1 of {_fin} from player's inventory
+            set {_new} to 10
+        set player's tool to uf_item({_id}, {_new})
+        uf_msg(player, "&a強化成功！ 強化レベル &e%{_lv}% → %{_new}%")
+        uf_log("item", "upgrade %player% %{_id}% %{_lv}%->%{_new}%")

@@ -1,0 +1,212 @@
+# ============================================================
+# uf_07_rpg.sk : レベル・経験値・スキル（すべて仮仕様。数値は /ufadmin cfg で変更可）
+#   必要経験値 = level::base + level::step × (現在レベル - 1)
+#   レベルアップごとにスキルポイント 1
+#   スキル（各 skill::max 段階まで）
+#     hp     : 最大体力 +1 ハート / 段階
+#     atk    : 与ダメージ +4％ / 段階
+#     def    : 被ダメージ -4％ / 段階
+#     gather : 売却価格 +3％ / 段階
+#   振り直し: skill_reset_cost ポイントでスキルポイントを全額返す
+# ============================================================
+
+function uf_lvof(p: player) :: number:
+    set {_v} to {uf::lv::%uuid of {_p}%}
+    if {_v} is not set:
+        return 1
+    return {_v}
+
+function uf_need(lv: number) :: number:
+    return {uf::cfg::level::base} + {uf::cfg::level::step} * ({_lv} - 1)
+
+function uf_skill(p: player, s: text) :: number:
+    set {_v} to {uf::skill::%uuid of {_p}%::%{_s}%}
+    if {_v} is not set:
+        return 0
+    return {_v}
+
+function uf_addxp(p: player, n: number):
+    if uf_on("rpg") is false:
+        stop
+    set {_n} to floor({_n})
+    if {_n} <= 0:
+        stop
+    set {_u} to uuid of {_p}
+    set {_lv} to uf_lvof({_p})
+    if {_lv} >= {uf::cfg::level::max}:
+        stop
+    add {_n} to {uf::xp::%{_u}%}
+    while {uf::xp::%{_u}%} >= uf_need({_lv}):
+        remove uf_need({_lv}) from {uf::xp::%{_u}%}
+        add 1 to {_lv}
+        set {uf::lv::%{_u}%} to {_lv}
+        add 1 to {uf::sp::%{_u}%}
+        send title "&6LEVEL UP!" with subtitle "&eLv.%{_lv}%（スキルポイント +1）" to {_p} for 2 seconds
+        uf_log("rpg", "levelup %{_p}% (%{_u}%) lv=%{_lv}%")
+        if {_lv} >= {uf::cfg::level::max}:
+            set {uf::xp::%{_u}%} to 0
+            exit loop
+    uf_achcheck({_p})
+
+function uf_applyhp(p: player):
+    if uf_on("rpg") is false:
+        stop
+    set max health of {_p} to 10 + uf_skill({_p}, "hp")
+
+on join:
+    wait 1 tick
+    if player is online:
+        uf_applyhp(player)
+
+on respawn:
+    wait 1 tick
+    if player is online:
+        uf_applyhp(player)
+
+on damage:
+    uf_on("rpg") is true
+    set {_a} to attacker
+    if {_a} is a player:
+        set {_r} to uf_skill({_a}, "atk")
+        if {_r} > 0:
+            set damage to damage * (1 + 0.04 * {_r})
+    set {_v} to victim
+    if {_v} is a player:
+        set {_r} to uf_skill({_v}, "def")
+        if {_r} > 0:
+            set damage to damage * max(0.2, 1 - 0.04 * {_r})
+
+# ------------------------------------------------------------
+# スキル GUI
+# ------------------------------------------------------------
+function uf_skillname(s: text) :: text:
+    if {_s} is "hp":
+        return "&c体力強化"
+    if {_s} is "atk":
+        return "&6攻撃強化"
+    if {_s} is "def":
+        return "&9守り"
+    return "&a採集の達人"
+
+function uf_skilldesc(s: text) :: text:
+    if {_s} is "hp":
+        return "&7最大体力 +1ハート / 段階"
+    if {_s} is "atk":
+        return "&7与えるダメージ +4％ / 段階"
+    if {_s} is "def":
+        return "&7受けるダメージ -4％ / 段階"
+    return "&7売却価格 +3％ / 段階"
+
+command /skill [<text>]:
+    description: レベルとスキルツリー
+    aliases: /level, /lv
+    executable by: players
+    trigger:
+        if uf_on("rpg") is false:
+            uf_msg(player, "&cスキルは現在停止中です")
+            stop
+        uf_skillgui(player)
+
+function uf_skillgui(p: player):
+    set {_u} to uuid of {_p}
+    set {_g} to chest inventory with 3 rows named "&8スキルツリー"
+    uf_guiclear({_p})
+    set {_lv} to uf_lvof({_p})
+    set {_xp} to {uf::xp::%{_u}%}
+    if {_xp} is not set:
+        set {_xp} to 0
+    set {_sp} to {uf::sp::%{_u}%}
+    if {_sp} is not set:
+        set {_sp} to 0
+    set slot 4 of {_g} to book named "&eLv.%{_lv}%" with lore "&7経験値: %{_xp}% / %uf_need({_lv})%" and "&7スキルポイント: &a%{_sp}%"
+    set {_slots::hp} to 10
+    set {_slots::atk} to 12
+    set {_slots::def} to 14
+    set {_slots::gather} to 16
+    loop "hp", "atk", "def" and "gather":
+        set {_s} to loop-value
+        set {_r} to uf_skill({_p}, {_s})
+        if {_s} is "hp":
+            set {_icon} to golden apple
+        else if {_s} is "atk":
+            set {_icon} to iron sword
+        else if {_s} is "def":
+            set {_icon} to shield
+        else:
+            set {_icon} to golden hoe
+        delete {_lore::*}
+        add uf_skilldesc({_s}) to {_lore::*}
+        add "&7段階: &e%{_r}% / %{uf::cfg::skill::max}%" to {_lore::*}
+        add "&eクリックで習得（スキルポイント 1）" to {_lore::*}
+        set slot {_slots::%{_s}%} of {_g} to ({_icon} named uf_skillname({_s})) with lore {_lore::*}
+        set {-uf::guictx::%{_u}%::%{_slots::%{_s}%}%} to {_s}
+    set slot 22 of {_g} to barrier named "&cスキルの振り直し" with lore "&7%{uf::cfg::skill_reset_cost}%pt でスキルポイントを全額返す"
+    uf_gui({_p}, "skill", {_g})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "skill"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_u} to uuid of player
+    set {_slot} to index of event-slot
+    if {_slot} is 22:
+        wait 1 tick
+        if player is online:
+            uf_skillresetgui(player)
+        stop
+    set {_s} to {-uf::guictx::%{_u}%::%{_slot}%}
+    {_s} is set
+    if {uf::sp::%{_u}%} is not set:
+        set {uf::sp::%{_u}%} to 0
+    if {uf::sp::%{_u}%} < 1:
+        uf_msg(player, "&cスキルポイントが足りません")
+        stop
+    if uf_skill(player, {_s}) >= {uf::cfg::skill::max}:
+        uf_msg(player, "&eこのスキルは最大段階です")
+        stop
+    remove 1 from {uf::sp::%{_u}%}
+    add 1 to {uf::skill::%{_u}%::%{_s}%}
+    uf_applyhp(player)
+    uf_msg(player, "&a%uf_skillname({_s})% &aを習得した（段階 %uf_skill(player, {_s})%）")
+    uf_log("rpg", "skill %player% (%{_u}%) %{_s}%=%uf_skill(player, {_s})%")
+    wait 1 tick
+    if player is online:
+        uf_skillgui(player)
+
+# 振り直しの確認画面
+function uf_skillresetgui(p: player):
+    set {_g} to chest inventory with 3 rows named "&4本当に振り直しますか？"
+    uf_guiclear({_p})
+    set slot 11 of {_g} to lime wool named "&a振り直す（%{uf::cfg::skill_reset_cost}%pt）"
+    set slot 15 of {_g} to red wool named "&cやめる"
+    uf_gui({_p}, "skillreset", {_g})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "skillreset"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_slot} to index of event-slot
+    if {_slot} is 15:
+        wait 1 tick
+        if player is online:
+            uf_skillgui(player)
+        stop
+    {_slot} is 11
+    set {_u} to uuid of player
+    set {_sum} to 0
+    loop "hp", "atk", "def" and "gather":
+        add uf_skill(player, loop-value) to {_sum}
+    if {_sum} <= 0:
+        uf_msg(player, "&7習得済みのスキルがありません")
+        stop
+    if uf_takept(player, {uf::cfg::skill_reset_cost}, "skillreset") is false:
+        uf_msg(player, "&cポイントが足りません")
+        stop
+    delete {uf::skill::%{_u}%::*}
+    add {_sum} to {uf::sp::%{_u}%}
+    uf_applyhp(player)
+    uf_msg(player, "&aスキルを振り直した（スキルポイント %{_sum}% を返却）")
+    uf_log("rpg", "reset %player% (%{_u}%) sp=%{_sum}%")
+    wait 1 tick
+    if player is online:
+        uf_skillgui(player)

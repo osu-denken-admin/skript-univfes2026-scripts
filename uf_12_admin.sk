@@ -1,0 +1,487 @@
+# ============================================================
+# uf_12_admin.sk : 管理者向け機能（権限 univfes.admin。OP は自動で持つ）
+#   /ufadmin                         管理 GUI
+#   /ufadmin module <名前|list> [on|off]
+#   /ufadmin world <survival|dungeon|event>   今いるワールドを登録
+#   /ufadmin area <shop|casino> <pos1|pos2|del>
+#   /ufadmin prot <名前> <pos1|pos2|del> / prot list
+#   /ufadmin points|chips <プレイヤー> <give|take|set> <数>
+#   /ufadmin info <プレイヤー>
+#   /ufadmin unlock <プレイヤー> <階>
+#   /ufadmin shop / shopprice <id> <価格> / shopreq <id> <階>
+#   /ufadmin sellprice <価格> / sellcat <crop|fish|ore|wood|none>   手に持ったアイテム
+#   /ufadmin casino [<ゲーム> <項目> <値>]
+#   /ufadmin cfg <キー> [値]
+#   /ufadmin event <start|stop|reset>
+#   /ufadmin maint <on|off>
+#   /ufadmin log / give <id> [強化Lv] / defaults
+# 重要な変更（イベントリセット・メンテナンス）は確認画面を通す。
+# 操作はすべて uf_adminlog で記録する。
+# ============================================================
+
+command /ufadmin [<text>] [<text>] [<text>] [<text>]:
+    description: 電研サーバー管理
+    permission: univfes.admin
+    executable by: players
+    trigger:
+        set {_a} to arg-1
+        if {_a} is not set:
+            uf_admingui(player)
+            stop
+
+        if {_a} is "module":
+            if arg-2 is not set:
+                set {_a2} to "list"
+            else:
+                set {_a2} to arg-2
+            if {_a2} is "list":
+                loop "economy", "shop", "party", "dungeon", "death", "rpg", "tools", "weapons", "casino", "progress" and "guide":
+                    if {uf::mod::%loop-value%} is true:
+                        send "&a● %loop-value%" to player
+                    else:
+                        send "&c○ %loop-value%" to player
+                stop
+            if {uf::mod::%{_a2}%} is not set:
+                uf_msg(player, "&c不明なモジュールです（/ufadmin module list）")
+                stop
+            if arg-3 is "on":
+                set {uf::mod::%{_a2}%} to true
+            else if arg-3 is "off":
+                set {uf::mod::%{_a2}%} to false
+            else:
+                uf_msg(player, "&con か off を指定してください")
+                stop
+            uf_msg(player, "&aモジュール %{_a2}% を %arg-3% にしました")
+            uf_adminlog(player, "module %{_a2}% %arg-3%")
+
+        else if {_a} is "world":
+            if arg-2 is not "survival", "dungeon" or "event":
+                uf_msg(player, "&c種類は survival / dungeon / event です")
+                stop
+            set {uf::cfg::world::%arg-2%} to "%world of player%"
+            uf_msg(player, "&a%arg-2% ワールドを %world of player% に設定しました")
+            uf_adminlog(player, "world %arg-2% = %world of player%")
+
+        else if {_a} is "area":
+            if arg-2 is not "shop" or "casino":
+                uf_msg(player, "&c区域は shop / casino です")
+                stop
+            if arg-3 is "pos1":
+                set {uf::area::%arg-2%::a} to location of player
+            else if arg-3 is "pos2":
+                set {uf::area::%arg-2%::b} to location of player
+            else if arg-3 is "del":
+                delete {uf::area::%arg-2%::*}
+            else:
+                uf_msg(player, "&cpos1 / pos2 / del を指定してください")
+                stop
+            uf_msg(player, "&a区域 %arg-2% の %arg-3% を設定しました（未設定ならどこでも利用可）")
+            uf_adminlog(player, "area %arg-2% %arg-3% %uf_fmtloc(location of player)%")
+
+        else if {_a} is "prot":
+            if arg-2 is "list":
+                loop {uf::protlist::*}:
+                    send "&7- %loop-value%" to player
+                stop
+            if arg-2 is not set:
+                uf_msg(player, "&c/ufadmin prot <名前> <pos1|pos2|del>")
+                stop
+            if arg-3 is "pos1":
+                set {uf::prot::%arg-2%::a} to location of player
+                set {uf::protlist::%arg-2%} to arg-2
+            else if arg-3 is "pos2":
+                set {uf::prot::%arg-2%::b} to location of player
+                set {uf::protlist::%arg-2%} to arg-2
+            else if arg-3 is "del":
+                delete {uf::prot::%arg-2%::*}
+                delete {uf::protlist::%arg-2%}
+            else:
+                uf_msg(player, "&cpos1 / pos2 / del を指定してください")
+                stop
+            uf_msg(player, "&a保護区域 %arg-2% の %arg-3% を設定しました")
+            uf_adminlog(player, "prot %arg-2% %arg-3% %uf_fmtloc(location of player)%")
+
+        else if {_a} is "points" or "chips":
+            set {_t} to arg-2 parsed as player
+            if {_t} is not set:
+                uf_msg(player, "&cオンラインのプレイヤー名を指定してください")
+                stop
+            set {_n} to arg-4 parsed as number
+            if {_n} is not set:
+                uf_msg(player, "&c数値を指定してください")
+                stop
+            set {_n} to floor({_n})
+            if {_n} < 0:
+                uf_msg(player, "&c0 以上の数値を指定してください")
+                stop
+            if {_n} > 10000000:
+                uf_msg(player, "&c値が大きすぎます")
+                stop
+            if {_a} is "points":
+                set {_before} to uf_pt({_t})
+                if arg-3 is "give":
+                    uf_addpt({_t}, {_n}, "admin:%player%")
+                else if arg-3 is "take":
+                    if uf_takept({_t}, {_n}, "admin:%player%") is false:
+                        uf_msg(player, "&c残高が足りません（%{_before}%）")
+                        stop
+                else if arg-3 is "set":
+                    set {uf::pt::%uuid of {_t}%} to {_n}
+                    uf_log("economy", "set %{_n}% pt %{_t}% (%uuid of {_t}%) reason=admin:%player%")
+                else:
+                    uf_msg(player, "&cgive / take / set を指定してください")
+                    stop
+                uf_msg(player, "&a%{_t}% のポイント: %{_before}% → %uf_pt({_t})%")
+                uf_adminlog(player, "points %{_t}% %arg-3% %{_n}% (%{_before}% -> %uf_pt({_t})%)")
+            else:
+                set {_before} to uf_chip({_t})
+                if arg-3 is "give":
+                    uf_addchip({_t}, {_n}, "admin:%player%")
+                else if arg-3 is "take":
+                    if uf_takechip({_t}, {_n}, "admin:%player%") is false:
+                        uf_msg(player, "&c残高が足りません（%{_before}%）")
+                        stop
+                else if arg-3 is "set":
+                    set {uf::chip::%uuid of {_t}%} to {_n}
+                    uf_log("casino", "set %{_n}% chip %{_t}% (%uuid of {_t}%) reason=admin:%player%")
+                else:
+                    uf_msg(player, "&cgive / take / set を指定してください")
+                    stop
+                uf_msg(player, "&a%{_t}% のチップ: %{_before}% → %uf_chip({_t})%")
+                uf_adminlog(player, "chips %{_t}% %arg-3% %{_n}% (%{_before}% -> %uf_chip({_t})%)")
+
+        else if {_a} is "info":
+            set {_t} to arg-2 parsed as player
+            if {_t} is not set:
+                uf_msg(player, "&cオンラインのプレイヤー名を指定してください")
+                stop
+            set {_u} to uuid of {_t}
+            uf_msg(player, "&e%{_t}% (%{_u}%)")
+            send "&7pt %uf_pt({_t})% / chip %uf_chip({_t})% / Lv %uf_lvof({_t})% / 最上階 %uf_unlock({_t})%" to player
+            send "&7挑戦中の階: %{-uf::insess::%{_u}%}% / パーティー: %{-uf::party::%{_u}%}%" to player
+            send "&7回収待ち: %size of {uf::recidx::%{_u}%::*}% 件" to player
+            set {_sk} to uf_stat({_u}, "dkills")
+            set {_se} to uf_stat({_u}, "earned")
+            set {_ss} to uf_stat({_u}, "sold")
+            set {_sm} to uf_stat({_u}, "minutes")
+            send "&7討伐 %{_sk}% / 累計獲得 %{_se}% / 売却 %{_ss}% / プレイ %{_sm}%分" to player
+
+        else if {_a} is "unlock":
+            set {_t} to arg-2 parsed as player
+            set {_f} to arg-3 parsed as number
+            if {_t} is not set:
+                uf_msg(player, "&cオンラインのプレイヤー名を指定してください")
+                stop
+            if {_f} is not set:
+                uf_msg(player, "&c階（2〜9）を指定してください")
+                stop
+            if {_f} is not between 2 and 9:
+                uf_msg(player, "&c階は 2〜9 です")
+                stop
+            set {uf::unlock::%uuid of {_t}%} to floor({_f})
+            uf_msg(player, "&a%{_t}% の最上階を %floor({_f})%階 にしました")
+            uf_adminlog(player, "unlock %{_t}% %floor({_f})%")
+
+        else if {_a} is "shop":
+            uf_shopadmingui(player)
+
+        else if {_a} is "shopprice" or "shopreq":
+            set {_id} to arg-2
+            if {uf::shop::%{_id}%::price} is not set:
+                uf_msg(player, "&c不明な商品 ID です（/ufadmin shop で確認）")
+                stop
+            set {_n} to arg-3 parsed as number
+            if {_n} is not set:
+                uf_msg(player, "&c数値を指定してください")
+                stop
+            set {_n} to floor({_n})
+            if {_a} is "shopprice":
+                if {_n} is not between 0 and 1000000:
+                    uf_msg(player, "&c価格は 0〜1,000,000 です")
+                    stop
+                set {_old} to {uf::shop::%{_id}%::price}
+                set {uf::shop::%{_id}%::price} to {_n}
+            else:
+                if {_n} is not between 0 and 9:
+                    uf_msg(player, "&c解放条件は 0〜9 です（0=なし）")
+                    stop
+                set {_old} to {uf::shop::%{_id}%::req}
+                set {uf::shop::%{_id}%::req} to {_n}
+            uf_msg(player, "&a%{_id}% の %{_a}% を %{_old}% → %{_n}% にしました")
+            uf_adminlog(player, "%{_a}% %{_id}% %{_old}% -> %{_n}%")
+
+        else if {_a} is "sellprice":
+            set {_i} to player's tool
+            if {_i} is air:
+                uf_msg(player, "&c価格を決めたいアイテムを手に持ってください")
+                stop
+            set {_k} to "%type of {_i}%"
+            set {_n} to arg-2 parsed as number
+            if {_n} is not set:
+                uf_msg(player, "&c価格（0 で売却不可）を指定してください")
+                stop
+            if {_n} is not between 0 and 100000:
+                uf_msg(player, "&c価格は 0〜100,000 です")
+                stop
+            if {_n} is 0:
+                delete {uf::sell::%{_k}%}
+            else:
+                set {uf::sell::%{_k}%} to {_n}
+            set {uf::selldone::%{_k}%} to true
+            uf_msg(player, "&a売却価格: %{_k}% = %{_n}%pt")
+            uf_adminlog(player, "sellprice %{_k}% %{_n}%")
+
+        else if {_a} is "sellcat":
+            set {_k} to "%type of player's tool%"
+            if arg-2 is not "crop", "fish", "ore", "wood" or "none":
+                uf_msg(player, "&c分類は crop / fish / ore / wood / none です")
+                stop
+            set {uf::sellcat::%{_k}%} to arg-2
+            uf_msg(player, "&a%{_k}% の分類を %arg-2% にしました")
+            uf_adminlog(player, "sellcat %{_k}% %arg-2%")
+
+        else if {_a} is "casino":
+            if arg-2 is not set:
+                uf_casinoadmingui(player)
+                stop
+            set {_g} to arg-2
+            set {_k} to arg-3
+            if {_g} is not "slot", "roulette" or "reaction":
+                uf_msg(player, "&cゲームは slot / roulette / reaction です")
+                stop
+            if {_k} is not "prob", "mult", "min", "max" or "window":
+                uf_msg(player, "&c項目は prob / mult / min / max / window です")
+                stop
+            set {_n} to arg-4 parsed as number
+            if {_n} is not set:
+                uf_msg(player, "&c数値を指定してください")
+                stop
+            if {_k} is "prob":
+                if {_n} is not between 0 and 100:
+                    uf_msg(player, "&c確率は 0〜100（％）です")
+                    stop
+            if {_k} is "mult":
+                if {_n} is not between 0 and 1000:
+                    uf_msg(player, "&c倍率は 0〜1000 です")
+                    stop
+            if {_k} is "min" or "max":
+                set {_n} to floor({_n})
+                if {_n} < 1:
+                    uf_msg(player, "&c賭け金は 1 以上です")
+                    stop
+            if {_k} is "min":
+                if {_n} > {uf::cfg::casino::%{_g}%::max}:
+                    uf_msg(player, "&c最低額が最高額を超えています")
+                    stop
+            if {_k} is "max":
+                if {_n} < {uf::cfg::casino::%{_g}%::min}:
+                    uf_msg(player, "&c最高額が最低額を下回っています")
+                    stop
+            if {_k} is "window":
+                if {_n} is not between 2 and 40:
+                    uf_msg(player, "&c制限時間は 2〜40 tick です")
+                    stop
+            set {_old} to {uf::cfg::casino::%{_g}%::%{_k}%}
+            set {uf::cfg::casino::%{_g}%::%{_k}%} to {_n}
+            uf_msg(player, "&a%{_g}% の %{_k}% を %{_old}% → %{_n}% にしました（次のゲームから反映）")
+            if {_g} is not "reaction":
+                set {_rtp} to {uf::cfg::casino::%{_g}%::prob} * {uf::cfg::casino::%{_g}%::mult}
+                uf_msg(player, "&7理論還元率: %{_rtp}%％")
+                if {_rtp} > 100:
+                    uf_msg(player, "&c注意: 理論還元率が100％を超えています（プレイヤーが得をする設定）")
+            uf_adminlog(player, "casino %{_g}% %{_k}% %{_old}% -> %{_n}%")
+
+        else if {_a} is "cfg":
+            set {_k} to arg-2
+            if {_k} is not set:
+                uf_msg(player, "&c/ufadmin cfg <キー> [値]（例: reward::boss 300）")
+                stop
+            if {uf::cfg::%{_k}%} is not set:
+                uf_msg(player, "&c存在しない設定キーです")
+                stop
+            if arg-3 is not set:
+                uf_msg(player, "&7%{_k}% = %{uf::cfg::%{_k}%}%")
+                stop
+            set {_old} to {uf::cfg::%{_k}%}
+            set {_n} to arg-3 parsed as number
+            if {_n} is set:
+                if {_n} < 0:
+                    uf_msg(player, "&c0 以上の数値を指定してください")
+                    stop
+                set {uf::cfg::%{_k}%} to {_n}
+            else if {_k} is "death_loss_scope":
+                if arg-3 is not "dungeon", "all" or "none":
+                    uf_msg(player, "&cdungeon / all / none のいずれかです")
+                    stop
+                set {uf::cfg::%{_k}%} to arg-3
+            else if {_k} is "gun_scope":
+                if arg-3 is not "dungeon" or "all":
+                    uf_msg(player, "&cdungeon / all のいずれかです")
+                    stop
+                set {uf::cfg::%{_k}%} to arg-3
+            else:
+                uf_msg(player, "&cこの設定には数値を指定してください")
+                stop
+            uf_msg(player, "&a%{_k}%: %{_old}% → %{uf::cfg::%{_k}%}%")
+            uf_adminlog(player, "cfg %{_k}% %{_old}% -> %{uf::cfg::%{_k}%}%")
+
+        else if {_a} is "event":
+            if arg-2 is "start":
+                uf_confirm(player, "event_start", "大学祭イベントを開始する")
+            else if arg-2 is "stop":
+                uf_confirm(player, "event_stop", "大学祭イベントを終了する")
+            else if arg-2 is "reset":
+                uf_confirm(player, "event_reset", "イベントスコアをリセットする（退避してから消去）")
+            else:
+                uf_msg(player, "&cstart / stop / reset を指定してください")
+
+        else if {_a} is "maint":
+            if arg-2 is "on":
+                uf_confirm(player, "maint_on", "メンテナンスモードにする（管理者以外をキック）")
+            else if arg-2 is "off":
+                uf_doaction(player, "maint_off")
+            else:
+                uf_msg(player, "&con / off を指定してください")
+
+        else if {_a} is "log":
+            set {_n} to {uf::adminlog::n}
+            if {_n} is not set:
+                uf_msg(player, "&7記録はありません")
+                stop
+            uf_msg(player, "&e管理操作（新しい順・最大10件）")
+            loop 10 times:
+                set {_i} to {_n} - loop-value + 1
+                if {_i} >= 1:
+                    send "&7%{uf::adminlog::e::%mod({_i}, 50)%}%" to player
+
+        else if {_a} is "give":
+            set {_lv} to 0
+            if arg-3 is set:
+                set {_lv} to arg-3 parsed as number
+            if {_lv} is not set:
+                set {_lv} to 0
+            set {_it} to uf_item(arg-2, {_lv})
+            if {_it} is not set:
+                uf_msg(player, "&c不明なアイテム ID です")
+                stop
+            uf_give(player, {_it})
+            uf_adminlog(player, "give self %arg-2% lv=%{_lv}%")
+
+        else if {_a} is "defaults":
+            uf_defaults()
+            uf_msg(player, "&a未設定の項目に初期値を入れました（既存の値は変わりません）")
+            uf_adminlog(player, "defaults")
+
+        else:
+            uf_msg(player, "&c不明なサブコマンドです")
+
+# ------------------------------------------------------------
+# 管理 GUI と確認画面
+# ------------------------------------------------------------
+function uf_admingui(p: player):
+    set {_g} to chest inventory with 3 rows named "&4電研サーバー管理"
+    uf_guiclear({_p})
+    set slot 10 of {_g} to emerald named "&aショップ管理"
+    set slot 11 of {_g} to gold ingot named "&eカジノ管理"
+    if {uf::event::active} is true:
+        set slot 13 of {_g} to firework rocket named "&6イベント: &a開催中" with lore "&eクリックで終了"
+    else:
+        set slot 13 of {_g} to firework rocket named "&6イベント: &7停止中" with lore "&eクリックで開始"
+    if {uf::maint} is true:
+        set slot 14 of {_g} to iron door named "&cメンテナンス: ON" with lore "&eクリックで解除"
+    else:
+        set slot 14 of {_g} to iron door named "&7メンテナンス: OFF" with lore "&eクリックで開始"
+    set slot 15 of {_g} to book named "&f操作履歴" with lore "&7/ufadmin log と同じ"
+    set slot 16 of {_g} to comparator named "&fモジュール一覧" with lore "&7/ufadmin module list と同じ"
+    uf_gui({_p}, "admin", {_g})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "admin"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    uf_admin(player) is true
+    set {_s} to index of event-slot
+    wait 1 tick
+    player is online
+    if {_s} is 10:
+        uf_shopadmingui(player)
+    else if {_s} is 11:
+        uf_casinoadmingui(player)
+    else if {_s} is 13:
+        if {uf::event::active} is true:
+            uf_confirm(player, "event_stop", "大学祭イベントを終了する")
+        else:
+            uf_confirm(player, "event_start", "大学祭イベントを開始する")
+    else if {_s} is 14:
+        if {uf::maint} is true:
+            close inventory of player
+            uf_doaction(player, "maint_off")
+        else:
+            uf_confirm(player, "maint_on", "メンテナンスモードにする（管理者以外をキック）")
+    else if {_s} is 15:
+        close inventory of player
+        make player execute command "/ufadmin log"
+    else if {_s} is 16:
+        close inventory of player
+        make player execute command "/ufadmin module list"
+
+function uf_confirm(p: player, action: text, label: text):
+    set {_g} to chest inventory with 3 rows named "&4確認: %{_label}%"
+    uf_guiclear({_p})
+    set slot 11 of {_g} to lime wool named "&a実行する" with lore colored {_label}
+    set slot 15 of {_g} to red wool named "&cやめる"
+    set {-uf::guictx::%uuid of {_p}%::action} to {_action}
+    uf_gui({_p}, "confirm", {_g})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "confirm"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    uf_admin(player) is true
+    set {_s} to index of event-slot
+    set {_action} to {-uf::guictx::%uuid of player%::action}
+    if {_s} is 11:
+        wait 1 tick
+        close inventory of player
+        uf_doaction(player, {_action})
+    else if {_s} is 15:
+        wait 1 tick
+        close inventory of player
+        uf_msg(player, "&7取り消しました")
+
+function uf_doaction(p: player, action: text):
+    if uf_admin({_p}) is false:
+        stop
+    if {_action} is "event_start":
+        set {uf::event::active} to true
+        set {uf::event::started} to now
+        broadcast "&6&l[EVENT] &e大学祭イベントが始まりました！ &f/ranking event で順位を確認"
+    else if {_action} is "event_stop":
+        set {uf::event::active} to false
+        broadcast "&6&l[EVENT] &e大学祭イベントが終了しました！ 結果発表"
+        loop uf_toplines("event", 3):
+            broadcast loop-value
+    else if {_action} is "event_reset":
+        # 現在のイベントスコア（main.sk の {score::*}）を退避してから消去
+        set {_d} to now formatted as "yyyyMMdd-HHmmss"
+        loop {score::*}:
+            set {uf::eventarchive::%{_d}%::%loop-index%} to loop-value
+        delete {score::*}
+        uf_msg({_p}, "&aイベントスコアをリセットしました（退避先: {uf::eventarchive::%{_d}%::*}）")
+    else if {_action} is "maint_on":
+        set {uf::maint} to true
+        loop all players:
+            if uf_admin(loop-player) is false:
+                kick loop-player due to "メンテナンス中です。しばらくお待ちください"
+        uf_msg({_p}, "&cメンテナンスモードにしました")
+    else if {_action} is "maint_off":
+        set {uf::maint} to false
+        uf_msg({_p}, "&aメンテナンスモードを解除しました")
+    else:
+        stop
+    uf_adminlog({_p}, "action %{_action}%")
+
+on join:
+    {uf::maint} is true
+    uf_admin(player) is false
+    kick player due to "メンテナンス中です。しばらくお待ちください"

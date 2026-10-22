@@ -1,0 +1,68 @@
+# ============================================================
+# uf_09_weapons.sk : 特殊武器（銃・近接武器）
+#   銃: 右クリックで雪玉を発射し、命中時のダメージを武器ごとの値に置き換える。
+#       gun_scope = dungeon（既定）ならダンジョンワールドでのみ撃てる。
+#       プレイヤーには当たってもダメージなし。
+#   近接武器: 通常の攻撃ダメージに倍率をかける。
+#   強化レベル 1 につき +10％。
+#   ※統合版で右クリック（空中）が届くかは要検証
+# ============================================================
+
+on right click:
+    set {_id} to uf_id(player's tool)
+    {_id} starts with "gun_"
+    cancel event
+    uf_shoot(player, {_id}, uf_lv(player's tool))
+
+function uf_shoot(p: player, id: text, lv: number):
+    if uf_on("weapons") is false:
+        uf_msg({_p}, "&c特殊武器は現在使用できません")
+        stop
+    if {uf::cfg::gun_scope} is "dungeon":
+        if uf_inworld(location of {_p}, "dungeon") is false:
+            uf_msg({_p}, "&c銃はダンジョン内でのみ使用できます")
+            stop
+    set {_u} to uuid of {_p}
+    if {-uf::gcd::%{_u}%} is set:
+        if {-uf::tick} - {-uf::gcd::%{_u}%} < {uf::cfg::gun::%{_id}%::cd}:
+            stop
+    set {-uf::gcd::%{_u}%} to {-uf::tick}
+    set {_ammo} to {uf::cfg::gun::%{_id}%::ammo}
+    if {_ammo} > 0:
+        set {_ai} to uf_item("ammo")
+        if {_p} doesn't have {_ammo} of {_ai}:
+            uf_msg({_p}, "&c弾薬がありません（ショップの弾薬パック）")
+            stop
+        remove {_ammo} of {_ai} from {_p}'s inventory
+    set {_pel} to {uf::cfg::gun::%{_id}%::pellets}
+    loop {_pel} times:
+        make {_p} shoot a snowball at speed {uf::cfg::gun::%{_id}%::speed}
+        if {_pel} > 1:
+            set {_s} to last shot snowball
+            push {_s} left at speed (random number between -0.12 and 0.12)
+            push {_s} upwards at speed (random number between -0.08 and 0.08)
+    play sound "entity.firework_rocket.blast" with volume 0.5 at {_p}
+
+on damage:
+    damage cause is projectile
+    set {_a} to attacker
+    {_a} is a player
+    set {_id} to uf_id(tool of {_a})
+    {_id} starts with "gun_"
+    uf_on("weapons") is true
+    set {_v} to victim
+    if {_v} is a player:
+        cancel event
+        stop
+    set damage to {uf::cfg::gun::%{_id}%::dmg} * (1 + 0.1 * uf_lv(tool of {_a}))
+
+on damage:
+    damage cause is attack
+    set {_a} to attacker
+    {_a} is a player
+    set {_id} to uf_id(tool of {_a})
+    {_id} starts with "melee_"
+    uf_on("weapons") is true
+    set {_m} to {uf::cfg::melee::%{_id}%}
+    {_m} is set
+    set damage to damage * {_m} * (1 + 0.1 * uf_lv(tool of {_a}))

@@ -1,0 +1,310 @@
+# ============================================================
+# uf_10_casino.sk : 地下カジノ（ゲーム内チップのみ。現実のお金は扱わない）
+#   チップ ⇔ ポイントの交換（chip_rate、初期 1:1、手数料なし）
+#   運のゲーム: スロット / ルーレット（赤・黒）
+#     当選確率 prob（％）と払い戻し倍率 mult を別々に設定する。
+#     理論還元率 = prob / 100 × mult（例: 20％ × 4倍 = 80％）
+#   技能のゲーム: 反応速度ゲーム（緑になってから window tick 以内にクリック）
+#   設定値はゲーム開始時に読むので、変更は次のゲームから反映される。
+#   集計: {uf::cstat::<ゲーム>::in|out|plays}
+# ============================================================
+
+command /casino:
+    description: カジノを開く
+    executable by: players
+    trigger:
+        if uf_on("casino") is false:
+            uf_msg(player, "&cカジノは現在停止中です")
+            stop
+        if uf_inarea(player, "casino") is false:
+            uf_msg(player, "&cカジノは15号館の地下で利用できます")
+            stop
+        uf_casinogui(player)
+
+function uf_bet(p: player) :: number:
+    set {_b} to {-uf::bet::%uuid of {_p}%}
+    if {_b} is not set:
+        return 10
+    return {_b}
+
+function uf_casinogui(p: player):
+    set {_g} to chest inventory with 4 rows named "&8地下カジノ"
+    uf_guiclear({_p})
+    set slot 4 of {_g} to gold ingot named "&e所持チップ: %uf_chip({_p})%" with lore "&7ポイント: %uf_pt({_p})%pt" and "&7交換レート: 1pt = %{uf::cfg::chip_rate}% チップ"
+    set slot 10 of {_g} to emerald named "&a100pt → チップ"
+    set slot 11 of {_g} to emerald block named "&a1000pt → チップ"
+    set slot 15 of {_g} to gold nugget named "&eチップ100枚 → pt"
+    set slot 16 of {_g} to gold block named "&eチップ1000枚 → pt"
+    set slot 19 of {_g} to uf_gameicon("slot", diamond, "&bスロット")
+    set slot 21 of {_g} to uf_gameicon("roulette", red wool, "&cルーレット：赤")
+    set slot 23 of {_g} to uf_gameicon("roulette", black wool, "&8ルーレット：黒")
+    set slot 25 of {_g} to uf_gameicon("reaction", clock, "&a反応速度ゲーム")
+    set slot 31 of {_g} to paper named "&f賭け金: &e%uf_bet({_p})% チップ" with lore "&7クリックで変更（10 / 50 / 100 / 500 / 1000）"
+    uf_gui({_p}, "casino", {_g})
+
+function uf_gameicon(game: text, icon: item, name: text) :: item:
+    delete {_lore::*}
+    if {uf::cfg::casino::%{_game}%::enabled} is true:
+        add "&a営業中" to {_lore::*}
+    else:
+        add "&c休止中" to {_lore::*}
+    add "&7賭け金: %{uf::cfg::casino::%{_game}%::min}%〜%{uf::cfg::casino::%{_game}%::max}% チップ" to {_lore::*}
+    if {_game} is "reaction":
+        add "&7成功で賭け金の %{uf::cfg::casino::reaction::mult}% 倍" to {_lore::*}
+    else:
+        add "&7当たりで賭け金の %{uf::cfg::casino::%{_game}%::mult}% 倍" to {_lore::*}
+    add "&eクリックで遊ぶ" to {_lore::*}
+    return ({_icon} named {_name}) with lore {_lore::*}
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "casino"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 10:
+        uf_exchange(player, "tochip", 100)
+    else if {_s} is 11:
+        uf_exchange(player, "tochip", 1000)
+    else if {_s} is 15:
+        uf_exchange(player, "topt", 100)
+    else if {_s} is 16:
+        uf_exchange(player, "topt", 1000)
+    else if {_s} is 19:
+        uf_luck(player, "slot", "")
+    else if {_s} is 21:
+        uf_luck(player, "roulette", "red")
+    else if {_s} is 23:
+        uf_luck(player, "roulette", "black")
+    else if {_s} is 25:
+        wait 1 tick
+        if player is online:
+            uf_reaction(player)
+        stop
+    else if {_s} is 31:
+        set {_b} to uf_bet(player)
+        if {_b} is 10:
+            set {_b} to 50
+        else if {_b} is 50:
+            set {_b} to 100
+        else if {_b} is 100:
+            set {_b} to 500
+        else if {_b} is 500:
+            set {_b} to 1000
+        else:
+            set {_b} to 10
+        set {-uf::bet::%uuid of player%} to {_b}
+    else:
+        stop
+    wait 1 tick
+    if player is online:
+        uf_casinogui(player)
+
+# ------------------------------------------------------------
+# 交換
+# ------------------------------------------------------------
+function uf_exchange(p: player, dir: text, amt: number):
+    set {_rate} to {uf::cfg::chip_rate}
+    if {_rate} <= 0:
+        uf_msg({_p}, "&c交換は現在停止中です")
+        stop
+    if {_dir} is "tochip":
+        if uf_takept({_p}, {_amt}, "exchange:tochip") is false:
+            uf_msg({_p}, "&cポイントが足りません")
+            stop
+        uf_addchip({_p}, {_amt} * {_rate}, "exchange")
+        uf_msg({_p}, "&a%{_amt}%pt をチップ %floor({_amt} * {_rate})% 枚に交換した")
+    else:
+        if uf_takechip({_p}, {_amt}, "exchange:topt") is false:
+            uf_msg({_p}, "&cチップが足りません")
+            stop
+        uf_addpt({_p}, {_amt} / {_rate}, "chip:exchange")
+        uf_msg({_p}, "&aチップ %{_amt}% 枚を %floor({_amt} / {_rate})%pt に交換した")
+
+# 賭け金の確認と徴収（失敗時は false）
+function uf_takebet(p: player, game: text, bet: number) :: boolean:
+    if {uf::cfg::casino::%{_game}%::enabled} is not true:
+        uf_msg({_p}, "&cこのゲームは休止中です")
+        return false
+    if {_bet} < {uf::cfg::casino::%{_game}%::min}:
+        uf_msg({_p}, "&c賭け金は %{uf::cfg::casino::%{_game}%::min}% チップ以上です")
+        return false
+    if {_bet} > {uf::cfg::casino::%{_game}%::max}:
+        uf_msg({_p}, "&c賭け金は %{uf::cfg::casino::%{_game}%::max}% チップ以下です")
+        return false
+    if uf_takechip({_p}, {_bet}, "bet:%{_game}%") is false:
+        uf_msg({_p}, "&cチップが足りません")
+        return false
+    add {_bet} to {uf::cstat::%{_game}%::in}
+    add 1 to {uf::cstat::%{_game}%::plays}
+    return true
+
+function uf_payout(p: player, game: text, n: number):
+    set {_n} to floor({_n})
+    if {_n} <= 0:
+        stop
+    uf_addchip({_p}, {_n}, "win:%{_game}%")
+    add {_n} to {uf::cstat::%{_game}%::out}
+
+# ------------------------------------------------------------
+# スロット・ルーレット
+# ------------------------------------------------------------
+function uf_luck(p: player, game: text, choice: text):
+    set {_bet} to uf_bet({_p})
+    set {_prob} to {uf::cfg::casino::%{_game}%::prob}
+    set {_mult} to {uf::cfg::casino::%{_game}%::mult}
+    if uf_takebet({_p}, {_game}, {_bet}) is false:
+        stop
+    set {_win} to false
+    if random number between 0 and 100 < {_prob}:
+        set {_win} to true
+    if {_game} is "slot":
+        set {_sym::*} to "&c7", "&eベル", "&aチェリー", "&bダイヤ" and "&dスター"
+        if {_win} is true:
+            set {_a} to random element out of {_sym::*}
+            set {_r} to "%{_a}% %{_a}% %{_a}%"
+        else:
+            set {_a} to random element out of {_sym::*}
+            set {_b} to random element out of {_sym::*}
+            set {_c} to random element out of {_sym::*}
+            while {_a} is {_b}:
+                if {_b} is not {_c}:
+                    exit loop
+                set {_c} to random element out of {_sym::*}
+            set {_r} to "%{_a}% %{_b}% %{_c}%"
+        uf_msg({_p}, "&f[ %{_r}% &f]")
+    else:
+        if {_win} is true:
+            set {_res} to {_choice}
+        else if random integer between 1 and 19 is 1:
+            set {_res} to "green"
+        else if {_choice} is "red":
+            set {_res} to "black"
+        else:
+            set {_res} to "red"
+        if {_res} is "red":
+            uf_msg({_p}, "&fルーレットの結果: &c赤")
+        else if {_res} is "black":
+            uf_msg({_p}, "&fルーレットの結果: &8黒")
+        else:
+            uf_msg({_p}, "&fルーレットの結果: &a緑（0）")
+    if {_win} is true:
+        uf_payout({_p}, {_game}, {_bet} * {_mult})
+        uf_msg({_p}, "&6当たり！ &eチップ +%floor({_bet} * {_mult})%")
+    else:
+        uf_msg({_p}, "&7はずれ（-%{_bet}% チップ）")
+    uf_log("casino", "%{_game}% %{_p}% bet=%{_bet}% win=%{_win}% prob=%{_prob}% mult=%{_mult}%")
+
+# ------------------------------------------------------------
+# 反応速度ゲーム
+# ------------------------------------------------------------
+function uf_reaction(p: player):
+    set {_bet} to uf_bet({_p})
+    if uf_takebet({_p}, "reaction", {_bet}) is false:
+        stop
+    set {_u} to uuid of {_p}
+    set {_window} to {uf::cfg::casino::reaction::window}
+    set {_mult} to {uf::cfg::casino::reaction::mult}
+    set {_g} to chest inventory with 3 rows named "&8緑になったらクリック！"
+    loop 27 times:
+        set slot (loop-value - 1) of {_g} to red stained glass pane named "&c待て…"
+    set {-uf::react::%{_u}%::state} to "wait"
+    set {-uf::react::%{_u}%::bet} to {_bet}
+    set {-uf::react::%{_u}%::mult} to {_mult}
+    uf_gui({_p}, "react", {_g})
+    loop (random integer between 30 and 80) times:
+        wait 1 tick
+        if {-uf::react::%{_u}%::state} is not "wait":
+            stop
+    loop 27 times:
+        set slot (loop-value - 1) of {_g} to lime stained glass pane named "&a今だ！"
+    set {-uf::react::%{_u}%::state} to "go"
+    set {-uf::react::%{_u}%::t} to {-uf::tick}
+    set {-uf::react::%{_u}%::window} to {_window}
+    loop {_window} times:
+        wait 1 tick
+        if {-uf::react::%{_u}%::state} is not "go":
+            stop
+    set {-uf::react::%{_u}%::state} to "done"
+    if {_p} is online:
+        uf_msg({_p}, "&7遅かった…（-%{_bet}% チップ）")
+        close inventory of {_p}
+    uf_log("casino", "reaction %{_p}% bet=%{_bet}% result=slow")
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "react"
+    cancel event
+    set {_u} to uuid of player
+    set {_st} to {-uf::react::%{_u}%::state}
+    if {_st} is "wait":
+        set {-uf::react::%{_u}%::state} to "done"
+        uf_msg(player, "&cフライング！（-%{-uf::react::%{_u}%::bet}% チップ）")
+        uf_log("casino", "reaction %player% result=early")
+    else if {_st} is "go":
+        set {-uf::react::%{_u}%::state} to "done"
+        set {_dt} to {-uf::tick} - {-uf::react::%{_u}%::t}
+        if {_dt} <= {-uf::react::%{_u}%::window}:
+            set {_win} to {-uf::react::%{_u}%::bet} * {-uf::react::%{_u}%::mult}
+            uf_payout(player, "reaction", {_win})
+            uf_msg(player, "&6成功！ 反応 約%{_dt} * 50%ms &eチップ +%floor({_win})%")
+            uf_log("casino", "reaction %player% result=win ticks=%{_dt}%")
+        else:
+            uf_msg(player, "&7遅かった…")
+    else:
+        stop
+    wait 1 tick
+    if player is online:
+        close inventory of player
+
+# ------------------------------------------------------------
+# 管理者用：カジノ管理 GUI（クリックで営業/休止を切り替え）
+#   数値の変更: /ufadmin casino <slot|roulette|reaction> <prob|mult|min|max|window> <値>
+# ------------------------------------------------------------
+function uf_casinoadmingui(p: player):
+    set {_g} to chest inventory with 3 rows named "&4カジノ管理（クリックで営業切替）"
+    uf_guiclear({_p})
+    set {_slots::slot} to 11
+    set {_slots::roulette} to 13
+    set {_slots::reaction} to 15
+    loop "slot", "roulette" and "reaction":
+        set {_gm} to loop-value
+        delete {_lore::*}
+        if {uf::cfg::casino::%{_gm}%::enabled} is true:
+            add "&a営業中" to {_lore::*}
+        else:
+            add "&c休止中" to {_lore::*}
+        if {_gm} is "reaction":
+            add "&7制限時間: %{uf::cfg::casino::reaction::window}% tick / 倍率 %{uf::cfg::casino::reaction::mult}%" to {_lore::*}
+        else:
+            set {_rtp} to {uf::cfg::casino::%{_gm}%::prob} * {uf::cfg::casino::%{_gm}%::mult}
+            add "&7当選確率 %{uf::cfg::casino::%{_gm}%::prob}%％ / 倍率 %{uf::cfg::casino::%{_gm}%::mult}%" to {_lore::*}
+            add "&7理論還元率 %{_rtp}%％" to {_lore::*}
+        add "&7賭け金 %{uf::cfg::casino::%{_gm}%::min}%〜%{uf::cfg::casino::%{_gm}%::max}%" to {_lore::*}
+        set {_in} to {uf::cstat::%{_gm}%::in}
+        set {_out} to {uf::cstat::%{_gm}%::out}
+        if {_in} is not set:
+            set {_in} to 0
+        if {_out} is not set:
+            set {_out} to 0
+        add "&7実績: 回数 %{uf::cstat::%{_gm}%::plays}% / 賭け %{_in}% / 払い戻し %{_out}%" to {_lore::*}
+        if {_in} > 0:
+            add "&7実際の還元率 %round({_out} / {_in} * 1000) / 10%％" to {_lore::*}
+        add "&eクリックで営業/休止を切り替え" to {_lore::*}
+        set slot {_slots::%{_gm}%} of {_g} to (paper named "&f%{_gm}%") with lore {_lore::*}
+        set {-uf::guictx::%uuid of {_p}%::%{_slots::%{_gm}%}%} to {_gm}
+    uf_gui({_p}, "casinoadmin", {_g})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "casinoadmin"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    uf_admin(player) is true
+    set {_gm} to {-uf::guictx::%uuid of player%::%index of event-slot%}
+    {_gm} is set
+    if {uf::cfg::casino::%{_gm}%::enabled} is true:
+        set {uf::cfg::casino::%{_gm}%::enabled} to false
+    else:
+        set {uf::cfg::casino::%{_gm}%::enabled} to true
+    uf_adminlog(player, "casino %{_gm}% enabled=%{uf::cfg::casino::%{_gm}%::enabled}%")
+    wait 1 tick
+    if player is online:
+        uf_casinoadmingui(player)

@@ -1,0 +1,147 @@
+# ============================================================
+# uf_06_death.sk : 死亡時のポイント・回収・蘇生
+#   死亡時に所持ポイントの半分（切り捨て）を「回収対象」として失う。
+#     例: 501pt → 250pt が回収対象、251pt が残る
+#   回収対象は死亡地点ごとに別々に保存し、本人がその地点へ戻ると 1 回だけ回収できる。
+#   適用範囲は death_loss_scope（dungeon=ダンジョンのみ / all=全ワールド / none=なし）
+#
+#   蘇生（ダンジョン挑戦中・2 人以上のパーティーのみ）
+#     死亡した人はフロアの復帰地点（cp）で復活する。
+#     仲間が死亡地点でしゃがみ続けて revive_seconds 秒たつと、死亡地点へ呼び戻される。
+#     被ダメージで中断・進行リセット。失ったポイントは返らない。
+# ============================================================
+
+on death of player:
+    if uf_on("death") is false:
+        stop
+    set {_p} to victim
+    set {_u} to uuid of {_p}
+    set {_l} to location of {_p}
+    set {_apply} to false
+    if {uf::cfg::death_loss_scope} is "all":
+        set {_apply} to true
+    else if {uf::cfg::death_loss_scope} is "dungeon":
+        if uf_inworld({_l}, "dungeon") is true:
+            set {_apply} to true
+    if {_apply} is true:
+        set {_loss} to floor(uf_pt({_p}) * {uf::cfg::death_loss_rate})
+        if {_loss} > 0:
+            if uf_takept({_p}, {_loss}, "death") is true:
+                add 1 to {uf::recn::%{_u}%}
+                set {_i} to {uf::recn::%{_u}%}
+                set {uf::rec::%{_u}%::%{_i}%::amt} to {_loss}
+                set {uf::rec::%{_u}%::%{_i}%::loc} to {_l}
+                set {uf::recidx::%{_u}%::%{_i}%} to {_i}
+                uf_msg({_p}, "&c%{_loss}%pt を落とした。&7%uf_fmtloc({_l})% &cに戻ると回収できる")
+    if {-uf::insess::%{_u}%} is set:
+        if size of uf_members({_p}) > 1:
+            set {-uf::soul::%{_u}%} to {_l}
+            set {-uf::soult::%{_u}%} to {-uf::tick}
+            set {-uf::soulp::%{_u}%} to {_p}
+            set {-uf::revp::%{_u}%} to 0
+            loop uf_members({_p}):
+                if loop-value is not {_p}:
+                    if loop-value is online:
+                        uf_msg(loop-value, "&c%{_p}% が倒れた！ &7%uf_fmtloc({_l})% &eでしゃがみ続けると蘇生できる")
+
+# ダンジョン挑戦中はフロアの復帰地点で復活する
+on respawn:
+    set {_f} to {-uf::insess::%uuid of player%}
+    {_f} is set
+    set {_cp} to {uf::floor::%{_f}%::cp}
+    if {_cp} is not set:
+        set {_cp} to {uf::floor::%{_f}%::start}
+    {_cp} is set
+    wait 1 tick
+    if player is online:
+        teleport player to {_cp}
+
+function uf_soulclear(p: player):
+    set {_u} to uuid of {_p}
+    delete {-uf::soul::%{_u}%}
+    delete {-uf::soult::%{_u}%}
+    delete {-uf::soulp::%{_u}%}
+    delete {-uf::revp::%{_u}%}
+
+# ------------------------------------------------------------
+# 回収：本人が死亡地点の近く（2.5 ブロック）に来たら回収
+# ------------------------------------------------------------
+every 1 second:
+    if uf_on("death") is false:
+        stop
+    loop all players:
+        set {_p} to loop-player
+        set {_u} to uuid of {_p}
+        delete {_got::*}
+        loop {uf::recidx::%{_u}%::*}:
+            set {_l} to {uf::rec::%{_u}%::%loop-value-2%::loc}
+            if {_l} is set:
+                if "%world of {_l}%" is "%world of {_p}%":
+                    if distance between {_l} and {_p} < 2.5:
+                        add loop-value-2 to {_got::*}
+        loop {_got::*}:
+            set {_i} to loop-value-2
+            set {_amt} to {uf::rec::%{_u}%::%{_i}%::amt}
+            # 先に記録を消してから戻す（二重回収防止）
+            delete {uf::rec::%{_u}%::%{_i}%::*}
+            delete {uf::recidx::%{_u}%::%{_i}%}
+            if {_amt} is set:
+                uf_addpt({_p}, {_amt}, "recover")
+                uf_msg({_p}, "&a落としたポイントを回収した &e+%{_amt}%pt")
+
+# ------------------------------------------------------------
+# 蘇生
+# ------------------------------------------------------------
+every 10 ticks:
+    if uf_on("death") is false:
+        stop
+    delete {_clear::*}
+    loop {-uf::soulp::*}:
+        set {_d} to loop-value-1
+        set {_u} to loop-index-1
+        set {_l} to {-uf::soul::%{_u}%}
+        set {_expired} to false
+        if {_d} is not online:
+            set {_expired} to true
+        else if {-uf::insess::%{_u}%} is not set:
+            set {_expired} to true
+        else if {-uf::tick} - {-uf::soult::%{_u}%} > {uf::cfg::soul_seconds} * 20:
+            set {_expired} to true
+            uf_msg({_d}, "&7蘇生の受付時間が終わった")
+        if {_expired} is true:
+            add {_d} to {_clear::*}
+        else:
+            delete {_r}
+            loop uf_members({_d}):
+                if {_r} is not set:
+                    set {_m} to loop-value-2
+                    if {_m} is not {_d}:
+                        if {_m} is online:
+                            if {-uf::soul::%uuid of {_m}%} is not set:
+                                if {_m} is sneaking:
+                                    if "%world of {_m}%" is "%world of {_l}%":
+                                        if distance between {_m} and {_l} <= {uf::cfg::revive_range}:
+                                            set {_r} to {_m}
+            if {_r} is set:
+                add 0.5 to {-uf::revp::%{_u}%}
+                set {-uf::reviving::%uuid of {_r}%} to {_u}
+                send title " " with subtitle "&a蘇生中… %{-uf::revp::%{_u}%}% / %{uf::cfg::revive_seconds}% 秒" to {_r} for 1 second
+                if {-uf::revp::%{_u}%} >= {uf::cfg::revive_seconds}:
+                    teleport {_d} to {_l}
+                    heal {_d}
+                    add {_d} to {_clear::*}
+                    uf_msg({_d}, "&a%{_r}% に蘇生された！")
+                    uf_msg({_r}, "&a%{_d}% を蘇生した！")
+                    uf_log("death", "revive %{_d}% by %{_r}%")
+            else:
+                set {-uf::revp::%{_u}%} to 0
+    loop {_clear::*}:
+        uf_soulclear(loop-value)
+
+# 蘇生している人がダメージを受けたら中断
+on damage of player:
+    set {_v} to victim
+    set {_t} to {-uf::reviving::%uuid of {_v}%}
+    {_t} is set
+    set {-uf::revp::%{_t}%} to 0
+    delete {-uf::reviving::%uuid of {_v}%}

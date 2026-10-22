@@ -1,0 +1,230 @@
+# ============================================================
+# uf_08_tools.sk : 特殊道具
+#   3×3 ピッケル / 3×3 シャベル / 木こり斧 / 鉱石探知ポーション / グラップリングフック
+#
+# 安全策
+#   - 範囲破壊は「常設サバイバルワールド」（/ufadmin world survival）でのみ動く
+#   - 壊してよいブロックの一覧に入っているものだけ壊す（チェストなどは対象外）
+#   - 保護区域（/ufadmin prot）とプレイヤーが置いたブロック（再起動まで記録）は壊さない
+#   - しゃがんでいる間は通常どおり 1 ブロックだけ
+# ============================================================
+
+function uf_breakable(b: block, kind: text) :: boolean:
+    set {_t} to "%type of {_b}%"
+    if {_kind} is "pick":
+        if {_t} is "stone", "deepslate", "cobblestone", "cobbled deepslate", "granite", "diorite", "andesite", "tuff", "calcite", "netherrack", "blackstone", "basalt", "end stone" or "sandstone":
+            return true
+        if {_t} ends with " ore":
+            return true
+        return false
+    if {_kind} is "shovel":
+        if {_t} is "dirt", "grass block", "coarse dirt", "rooted dirt", "podzol", "mycelium", "sand", "red sand", "gravel", "clay", "soul sand", "soul soil", "snow block" or "mud":
+            return true
+    return false
+
+# ------------------------------------------------------------
+# 3×3 ピッケル / シャベル
+# ------------------------------------------------------------
+on break:
+    set {_id} to uf_id(player's tool)
+    {_id} is "tool_pick3" or "tool_shovel3"
+    uf_on("tools") is true
+    player is not sneaking
+    set {_b} to event-block
+    uf_inworld(location of {_b}, "survival") is true
+    set {_kind} to "pick"
+    if {_id} is "tool_shovel3":
+        set {_kind} to "shovel"
+    uf_breakable({_b}, {_kind}) is true
+    set {_p} to player
+    set {_bx} to x-coordinate of {_b}
+    set {_by} to y-coordinate of {_b}
+    set {_bz} to z-coordinate of {_b}
+    set {_w} to world of {_b}
+    # 掘る面の向き：真上・真下を見ていれば水平面、それ以外は横向きの面
+    if abs(pitch of {_p}) > 50:
+        set {_plane} to "xz"
+    else if abs({_bx} + 0.5 - x-coordinate of {_p}) > abs({_bz} + 0.5 - z-coordinate of {_p}):
+        set {_plane} to "yz"
+    else:
+        set {_plane} to "xy"
+    set {_cnt} to 0
+    loop integers between -1 and 1:
+        loop integers between -1 and 1:
+            set {_i} to loop-value-1
+            set {_j} to loop-value-2
+            if abs({_i}) + abs({_j}) > 0:
+                if {_plane} is "xz":
+                    set {_l} to location({_bx} + {_i}, {_by}, {_bz} + {_j}, {_w})
+                else if {_plane} is "yz":
+                    set {_l} to location({_bx}, {_by} + {_i}, {_bz} + {_j}, {_w})
+                else:
+                    set {_l} to location({_bx} + {_i}, {_by} + {_j}, {_bz}, {_w})
+                set {_t} to block at {_l}
+                if uf_breakable({_t}, {_kind}) is true:
+                    if uf_protected({_l}) is false:
+                        if metadata value "uf_placed" of {_t} is not set:
+                            break {_t} naturally using player's tool
+                            add 1 to {_cnt}
+    if {_cnt} > 0:
+        uf_questadd({_p}, "tool", {_cnt})
+
+# ------------------------------------------------------------
+# 木こり斧：同じ種類の原木を最大 tree::max 個、高さ tree::height、
+#           水平半径 tree::radius の範囲でたどる。
+#           周囲に葉が 3 個未満なら「自然の木ではない」とみなして何もしない。
+# ------------------------------------------------------------
+on break:
+    uf_id(player's tool) is "tool_axe"
+    uf_on("tools") is true
+    player is not sneaking
+    "%type of event-block%" ends with " log"
+    uf_inworld(location of event-block, "survival") is true
+    metadata value "uf_placed" of event-block is not set
+    uf_treefell(player, event-block)
+
+function uf_treefell(p: player, b: block):
+    set {_type} to type of {_b}
+    set {_w} to world of {_b}
+    set {_ox} to x-coordinate of {_b}
+    set {_oy} to y-coordinate of {_b}
+    set {_oz} to z-coordinate of {_b}
+    set {_max} to {uf::cfg::tree::max}
+    set {_hmax} to {uf::cfg::tree::height}
+    set {_rad} to {uf::cfg::tree::radius}
+    set {_q::1} to location of {_b}
+    set {_seen::%uf_lockey(location of {_b})%} to true
+    set {_head} to 1
+    set {_tail} to 1
+    set {_leaves} to 0
+    while {_head} <= {_tail}:
+        set {_l} to {_q::%{_head}%}
+        add 1 to {_head}
+        loop integers between -1 and 1:
+            loop integers between -1 and 1:
+                loop integers between -1 and 1:
+                    set {_nx} to x-coordinate of {_l} + loop-value-1
+                    set {_ny} to y-coordinate of {_l} + loop-value-2
+                    set {_nz} to z-coordinate of {_l} + loop-value-3
+                    if {_ny} >= {_oy}:
+                        if {_ny} <= {_oy} + {_hmax}:
+                            if abs({_nx} - {_ox}) <= {_rad}:
+                                if abs({_nz} - {_oz}) <= {_rad}:
+                                    set {_nl} to location({_nx}, {_ny}, {_nz}, {_w})
+                                    set {_k} to uf_lockey({_nl})
+                                    if {_seen::%{_k}%} is not set:
+                                        set {_seen::%{_k}%} to true
+                                        set {_nb} to block at {_nl}
+                                        if "%type of {_nb}%" ends with " leaves":
+                                            add 1 to {_leaves}
+                                        else if {_nb} is {_type}:
+                                            if {_tail} < {_max}:
+                                                add 1 to {_tail}
+                                                set {_q::%{_tail}%} to {_nl}
+    if {_leaves} < 3:
+        stop
+    # 起点（{_q::1}）は通常の破壊で壊れるので含めない
+    if {_tail} < 2:
+        stop
+    set {_cnt} to 0
+    loop integers between 2 and {_tail}:
+        set {_l} to {_q::%loop-value%}
+        if uf_protected({_l}) is false:
+            set {_t} to block at {_l}
+            if metadata value "uf_placed" of {_t} is not set:
+                break {_t} naturally using tool of {_p}
+                add 1 to {_cnt}
+    if {_cnt} > 0:
+        uf_questadd({_p}, "tool", {_cnt})
+
+# ------------------------------------------------------------
+# 鉱石探知ポーション：ore::seconds 秒間、半径 ore::radius の最寄りの鉱石を表示
+# ------------------------------------------------------------
+function uf_dir(dx: number, dz: number) :: text:
+    if abs({_dx}) > abs({_dz}):
+        if {_dx} > 0:
+            return "東"
+        return "西"
+    if {_dz} > 0:
+        return "南"
+    return "北"
+
+function uf_oredetect(p: player):
+    if uf_on("tools") is false:
+        uf_msg({_p}, "&c鉱石探知は現在停止中です")
+        stop
+    set {_u} to uuid of {_p}
+    add 1 to {-uf::oretok::%{_u}%}
+    set {_tok} to {-uf::oretok::%{_u}%}
+    uf_msg({_p}, "&b鉱石探知を開始（%{uf::cfg::ore::seconds}%秒）")
+    loop {uf::cfg::ore::seconds} times:
+        if {_p} is not online:
+            stop
+        if {-uf::oretok::%{_u}%} is not {_tok}:
+            stop
+        set {_best} to -1
+        delete {_bl}
+        loop blocks in radius {uf::cfg::ore::radius} around location of {_p}:
+            if "%type of loop-block%" ends with " ore":
+                set {_d} to distance between loop-block and {_p}
+                if {_best} < 0:
+                    set {_best} to {_d}
+                    set {_bl} to loop-block
+                else if {_d} < {_best}:
+                    set {_best} to {_d}
+                    set {_bl} to loop-block
+        if {_bl} is set:
+            set {_dx} to x-coordinate of {_bl} - x-coordinate of {_p}
+            set {_dy} to y-coordinate of {_bl} - y-coordinate of {_p}
+            set {_dz} to z-coordinate of {_bl} - z-coordinate of {_p}
+            set {_v} to "同じ高さ"
+            if {_dy} > 1:
+                set {_v} to "上"
+            else if {_dy} < -1:
+                set {_v} to "下"
+            send title " " with subtitle "&b%type of {_bl}% &f%round({_best})%m &e%uf_dir({_dx}, {_dz})% / %{_v}%" to {_p} for 1.5 seconds
+        else:
+            send title " " with subtitle "&7近くに鉱石は見つからない" to {_p} for 1.5 seconds
+        wait 1 second
+    if {-uf::oretok::%{_u}%} is {_tok}:
+        uf_msg({_p}, "&7鉱石探知の効果が切れた")
+
+# ------------------------------------------------------------
+# グラップリングフック（引き寄せ型の簡易版）
+#   見ているブロックが hook::range 以内なら、その方向へ飛びつく。
+#   使用後 5 秒間は落下ダメージなし。クールダウン hook::cooldown tick。
+# ------------------------------------------------------------
+on right click:
+    uf_id(player's tool) is "hook"
+    cancel event
+    if uf_on("tools") is false:
+        uf_msg(player, "&cグラップリングフックは現在停止中です")
+        stop
+    set {_u} to uuid of player
+    if {-uf::hookcd::%{_u}%} is set:
+        if {-uf::tick} - {-uf::hookcd::%{_u}%} < {uf::cfg::hook::cooldown}:
+            stop
+    set {_t} to targeted block of player
+    if {_t} is not set:
+        uf_msg(player, "&7引っかけるブロックがない")
+        stop
+    if {_t} is air:
+        uf_msg(player, "&7引っかけるブロックがない")
+        stop
+    set {_d} to distance between {_t} and player
+    if {_d} > {uf::cfg::hook::range}:
+        uf_msg(player, "&7遠すぎる（最大 %{uf::cfg::hook::range}% ブロック）")
+        stop
+    set {-uf::hookcd::%{_u}%} to {-uf::tick}
+    set {-uf::nofall::%{_u}%} to {-uf::tick}
+    push player forward at speed min(3, 0.6 + {_d} * 0.08)
+    push player upwards at speed 0.45
+    play sound "entity.fishing_bobber.throw" with volume 0.8 at player
+
+on damage of player:
+    damage cause is fall
+    set {_v} to victim
+    set {_t} to {-uf::nofall::%uuid of {_v}%}
+    {_t} is set
+    {-uf::tick} - {_t} < 100
+    cancel event

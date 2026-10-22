@@ -1,0 +1,350 @@
+# ============================================================
+# uf_11_progress.sk : デイリークエスト・実績・ランキング・ステータス・案内
+#   クエストは毎日 3 つを抽選（日付が変わって最初の参照時）。
+#   プレイヤーが置いたブロックは再起動まで記録し、採集クエストに数えない。
+#   「作物」「魚」のクエストは売却数で数える（釣った瞬間の判定は Skript の版に依存するため）。
+# ============================================================
+
+function uf_qids() :: texts:
+    return "log", "ore", "crop", "fish", "kill", "dkill", "dclear" and "tool"
+
+function uf_qname(q: text) :: text:
+    if {_q} is "log":
+        return "原木を64個集める"
+    if {_q} is "ore":
+        return "鉱石を32個掘る"
+    if {_q} is "crop":
+        return "作物を64個売る"
+    if {_q} is "fish":
+        return "魚を5匹売る"
+    if {_q} is "kill":
+        return "モンスターを30体倒す"
+    if {_q} is "dkill":
+        return "ダンジョンで敵を20体倒す"
+    if {_q} is "dclear":
+        return "ダンジョンの階を1回クリアする"
+    return "特殊道具で50ブロック掘る・切る"
+
+function uf_qtarget(q: text) :: number:
+    if {_q} is "log":
+        return 64
+    if {_q} is "ore":
+        return 32
+    if {_q} is "crop":
+        return 64
+    if {_q} is "fish":
+        return 5
+    if {_q} is "kill":
+        return 30
+    if {_q} is "dkill":
+        return 20
+    if {_q} is "dclear":
+        return 1
+    return 50
+
+function uf_qreward(q: text) :: number:
+    if {_q} is "dclear":
+        return 200
+    if {_q} is "fish":
+        return 120
+    if {_q} is "crop":
+        return 120
+    if {_q} is "tool":
+        return 100
+    return 150
+
+function uf_qtoday() :: texts:
+    set {_d} to now formatted as "yyyy-MM-dd"
+    if {uf::qday} is not {_d}:
+        set {uf::qday} to {_d}
+        delete {uf::qtoday::*}
+        set {_pool::*} to uf_qids()
+        loop 3 times:
+            set {_q} to random element out of {_pool::*}
+            remove {_q} from {_pool::*}
+            add {_q} to {uf::qtoday::*}
+    return {uf::qtoday::*}
+
+function uf_questadd(p: player, type: text, n: number):
+    if uf_on("progress") is false:
+        stop
+    set {_u} to uuid of {_p}
+    set {_d} to now formatted as "yyyy-MM-dd"
+    if {uf::qpday::%{_u}%} is not {_d}:
+        delete {uf::qp::%{_u}%::*}
+        set {uf::qpday::%{_u}%} to {_d}
+    set {_today::*} to uf_qtoday()
+    if {_today::*} does not contain {_type}:
+        stop
+    if {uf::qp::%{_u}%::%{_type}%::done} is true:
+        stop
+    add {_n} to {uf::qp::%{_u}%::%{_type}%::n}
+    if {uf::qp::%{_u}%::%{_type}%::n} >= uf_qtarget({_type}):
+        set {uf::qp::%{_u}%::%{_type}%::done} to true
+        set {_r} to uf_qreward({_type})
+        uf_addpt({_p}, {_r}, "quest:%{_type}%")
+        uf_addxp({_p}, floor({_r} / 2))
+        add 1 to {uf::stat::%{_u}%::quests}
+        uf_msg({_p}, "&6クエスト達成！ &f%uf_qname({_type})% &e+%{_r}%pt")
+
+command /quest:
+    description: 今日のクエスト
+    aliases: /q
+    executable by: players
+    trigger:
+        if uf_on("progress") is false:
+            uf_msg(player, "&cクエストは現在停止中です")
+            stop
+        set {_u} to uuid of player
+        set {_d} to now formatted as "yyyy-MM-dd"
+        if {uf::qpday::%{_u}%} is not {_d}:
+            delete {uf::qp::%{_u}%::*}
+            set {uf::qpday::%{_u}%} to {_d}
+        uf_msg(player, "&e今日のクエスト（%{_d}%）")
+        loop uf_qtoday():
+            set {_q} to loop-value
+            set {_n} to {uf::qp::%{_u}%::%{_q}%::n}
+            if {_n} is not set:
+                set {_n} to 0
+            if {uf::qp::%{_u}%::%{_q}%::done} is true:
+                send "&a✔ %uf_qname({_q})% &7（報酬 %uf_qreward({_q})%pt）" to player
+            else:
+                send "&7- &f%uf_qname({_q})% &7%{_n}% / %uf_qtarget({_q})%（報酬 %uf_qreward({_q})%pt）" to player
+
+# 置いたブロックを記録（メモリのみ。再起動で消える）
+on place:
+    set metadata value "uf_placed" of event-block to true
+
+on break:
+    if metadata value "uf_placed" of event-block is set:
+        delete metadata value "uf_placed" of event-block
+        stop
+    set {_t} to "%type of event-block%"
+    if {_t} ends with " log":
+        uf_questadd(player, "log", 1)
+    else if {_t} ends with " ore":
+        uf_questadd(player, "ore", 1)
+
+on death of monster:
+    set {_a} to attacker
+    {_a} is a player
+    uf_questadd({_a}, "kill", 1)
+
+# ------------------------------------------------------------
+# 実績
+# ------------------------------------------------------------
+function uf_achname(a: text) :: text:
+    if {_a} starts with "clear_":
+        return "%last 1 characters of {_a}%階 初クリア"
+    if {_a} is "allclear":
+        return "15号館 完全制覇"
+    if {_a} is "kill100":
+        return "討伐数100"
+    if {_a} is "kill1000":
+        return "討伐数1000"
+    if {_a} is "earn10k":
+        return "累計10,000pt獲得"
+    if {_a} is "earn50k":
+        return "累計50,000pt獲得"
+    if {_a} is "lv10":
+        return "レベル10到達"
+    if {_a} is "lv30":
+        return "レベル30到達"
+    if {_a} is "sell1000":
+        return "生産物を1000個売却"
+    if {_a} is "play10h":
+        return "10時間プレイ"
+    return {_a}
+
+function uf_achpt(a: text) :: number:
+    if {_a} is "allclear":
+        return 1000
+    if {_a} is "kill100":
+        return 100
+    if {_a} is "kill1000":
+        return 500
+    if {_a} is "earn10k":
+        return 300
+    if {_a} is "earn50k":
+        return 800
+    if {_a} is "lv10":
+        return 200
+    if {_a} is "lv30":
+        return 500
+    if {_a} is "sell1000":
+        return 200
+    if {_a} is "play10h":
+        return 300
+    return 0
+
+function uf_achids() :: texts:
+    return "clear_2", "clear_3", "clear_4", "clear_5", "clear_6", "clear_7", "clear_8", "clear_9", "allclear", "kill100", "kill1000", "earn10k", "earn50k", "lv10", "lv30", "sell1000" and "play10h"
+
+function uf_ach(p: player, a: text):
+    if uf_on("progress") is false:
+        stop
+    set {_u} to uuid of {_p}
+    if {uf::ach::%{_u}%::%{_a}%} is true:
+        stop
+    set {uf::ach::%{_u}%::%{_a}%} to true
+    set {_pt} to uf_achpt({_a})
+    if {_pt} > 0:
+        uf_addpt({_p}, {_pt}, "ach:%{_a}%")
+    broadcast "&6[実績] &e%{_p}% &fが「%uf_achname({_a})%」を達成！"
+    uf_log("progress", "ach %{_p}% (%{_u}%) %{_a}%")
+
+function uf_stat(u: text, k: text) :: number:
+    set {_v} to {uf::stat::%{_u}%::%{_k}%}
+    if {_v} is not set:
+        return 0
+    return {_v}
+
+function uf_achcheck(p: player):
+    if uf_on("progress") is false:
+        stop
+    set {_u} to uuid of {_p}
+    if uf_stat({_u}, "dkills") >= 100:
+        uf_ach({_p}, "kill100")
+    if uf_stat({_u}, "dkills") >= 1000:
+        uf_ach({_p}, "kill1000")
+    if uf_stat({_u}, "earned") >= 10000:
+        uf_ach({_p}, "earn10k")
+    if uf_stat({_u}, "earned") >= 50000:
+        uf_ach({_p}, "earn50k")
+    if uf_lvof({_p}) >= 10:
+        uf_ach({_p}, "lv10")
+    if uf_lvof({_p}) >= 30:
+        uf_ach({_p}, "lv30")
+    if uf_stat({_u}, "sold") >= 1000:
+        uf_ach({_p}, "sell1000")
+    if uf_stat({_u}, "minutes") >= 600:
+        uf_ach({_p}, "play10h")
+    set {_c} to 0
+    loop integers between 2 and 9:
+        if {uf::clear::%{_u}%::%loop-value%} is true:
+            add 1 to {_c}
+    if {_c} >= 8:
+        uf_ach({_p}, "allclear")
+
+command /achievements:
+    description: 実績の一覧
+    aliases: /ach
+    executable by: players
+    trigger:
+        set {_u} to uuid of player
+        uf_msg(player, "&e実績")
+        loop uf_achids():
+            if {uf::ach::%{_u}%::%loop-value%} is true:
+                send "&a✔ %uf_achname(loop-value)%" to player
+            else:
+                send "&8- %uf_achname(loop-value)%" to player
+
+# プレイ時間（分）。モジュールの状態に関係なく数える
+every 1 minute:
+    loop all players:
+        add 1 to {uf::stat::%uuid of loop-player%::minutes}
+        if mod({uf::stat::%uuid of loop-player%::minutes}, 30) is 0:
+            uf_achcheck(loop-player)
+
+# ------------------------------------------------------------
+# ランキング
+#   earned=累計獲得pt / level / dkills=ダンジョン討伐 / clears=クリア回数
+#   event=大学祭イベントスコア（main.sk の {score::*}）
+# ------------------------------------------------------------
+function uf_rankval(u: text, src: text) :: number:
+    if {_src} is "event":
+        set {_v} to {score::%{_u}%}
+    else if {_src} is "level":
+        set {_v} to {uf::lv::%{_u}%}
+    else:
+        set {_v} to {uf::stat::%{_u}%::%{_src}%}
+    if {_v} is not set:
+        return 0
+    return {_v}
+
+function uf_toplines(src: text, n: number) :: texts:
+    loop {uf::name::*}:
+        set {_v} to uf_rankval(loop-index, {_src})
+        if {_v} > 0:
+            set {_vals::%loop-index%} to {_v}
+    set {_rank} to 0
+    loop {_n} times:
+        set {_best} to -1
+        delete {_bu}
+        loop {_vals::*}:
+            if loop-value-2 > {_best}:
+                set {_best} to loop-value-2
+                set {_bu} to loop-index
+        if {_bu} is not set:
+            exit loop
+        add 1 to {_rank}
+        add "&e%{_rank}%. &f%{uf::name::%{_bu}%}% &7- &6%{_best}%" to {_out::*}
+        delete {_vals::%{_bu}%}
+    return {_out::*}
+
+command /ranking [<text>]:
+    description: ランキング（earned / level / dkills / clears / event）
+    aliases: /rank
+    trigger:
+        set {_src} to arg-1
+        if {_src} is not set:
+            set {_src} to "earned"
+        if {_src} is not "earned", "level", "dkills", "clears" or "event":
+            send "&c種類: earned / level / dkills / clears / event" to command sender
+            stop
+        send "&6=== ランキング: %{_src}% ===" to command sender
+        set {_lines::*} to uf_toplines({_src}, 10)
+        if size of {_lines::*} is 0:
+            send "&7まだデータがありません" to command sender
+        loop {_lines::*}:
+            send loop-value to command sender
+
+# ------------------------------------------------------------
+# ステータス・案内
+# ------------------------------------------------------------
+command /status:
+    description: 自分のステータス
+    aliases: /st
+    executable by: players
+    trigger:
+        set {_u} to uuid of player
+        set {_lv} to uf_lvof(player)
+        set {_xp} to {uf::xp::%{_u}%}
+        if {_xp} is not set:
+            set {_xp} to 0
+        uf_msg(player, "&e%player% のステータス")
+        send "&7ポイント: &e%uf_pt(player)% &7/ チップ: &e%uf_chip(player)%" to player
+        send "&7Lv.%{_lv}%（経験値 %{_xp}% / %uf_need({_lv})%）" to player
+        send "&7挑戦できる最上階: &b%uf_unlock(player)%階" to player
+        set {_cl} to ""
+        loop integers between 2 and 9:
+            if {uf::clear::%{_u}%::%loop-value%} is true:
+                set {_cl} to "%{_cl}%%loop-value% "
+        send "&7初回クリア済み: &a%{_cl}%" to player
+        set {_sk} to uf_stat({_u}, "dkills")
+        set {_se} to uf_stat({_u}, "earned")
+        set {_sm} to uf_stat({_u}, "minutes")
+        send "&7ダンジョン討伐: %{_sk}% / 累計獲得: %{_se}%pt / プレイ %{_sm}%分" to player
+
+command /guide:
+    description: 遊び方
+    trigger:
+        send "&6=== 15号館へようこそ ===" to command sender
+        send "&f1. まずはサバイバル！ 木・鉱石・作物・魚を集めて &e/sell &fで売るとポイントになる" to command sender
+        send "&f2. 1階のショップ（&e/shop&f）で回復キットや武器を買える" to command sender
+        send "&f3. フロアマップ（コンパス）を右クリック、または &e/dungeon &fで2階から挑戦" to command sender
+        send "&f4. 仲間と &e/party invite <名前> &fで協力。倒れた仲間はしゃがんで蘇生" to command sender
+        send "&f5. 死ぬとポイントの半分を落とす。死んだ場所に戻れば回収できる" to command sender
+        send "&f6. &e/quest &fで今日のクエスト、&e/status &fで自分の記録、&e/ranking &fで順位" to command sender
+        send "&f7. 地下カジノ（&e/casino&f）はチップで遊ぶ。現実のお金は使わない" to command sender
+
+on join:
+    set {uf::name::%uuid of player%} to name of player
+    uf_on("guide") is true
+    {uf::joined::%uuid of player%} is not set
+    set {uf::joined::%uuid of player%} to now
+    wait 2 seconds
+    if player is online:
+        send title "&6ようこそ 15号館へ" with subtitle "&f/guide で遊び方を確認" to player for 5 seconds
+        if uf_on("dungeon") is true:
+            uf_give(player, uf_item("map"))
