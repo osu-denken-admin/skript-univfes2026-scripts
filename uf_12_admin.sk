@@ -70,8 +70,8 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             uf_adminlog(player, "world %arg-2% = %world of player%")
 
         else if {_a} is "area":
-            if arg-2 is not "shop" or "casino":
-                uf_msg(player, "&c区域は shop / casino です")
+            if arg-2 is not "shop", "casino" or "reception":
+                uf_msg(player, "&c区域は shop / casino / reception です")
                 stop
             if arg-3 is "pos1":
                 set {uf::area::%arg-2%::a} to location of player

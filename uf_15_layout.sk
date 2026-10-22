@@ -1,5 +1,5 @@
 # ============================================================
-# uf_15_layout.sk : 15号館 2〜9 階の内装に合わせたダンジョン設定（自動生成）
+# uf_15_layout.sk : 15号館 2〜9 階の内装と闘技場に合わせたダンジョン設定（自動生成）
 #   tools/gen.js で生成した内装の座標を、管理者ツールのボタン 1 つで登録する。
 #   座標は「15号館（ダンジョン）」として登録したワールドに対して設定される。
 #   内装を作り直したら、このファイルも作り直すこと（手で編集しない）。
@@ -20,6 +20,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::2::boss} to uf_layout_loc(-209.5, 73, 118.5)
     set {uf::floor::2::p1} to uf_layout_loc(-267, 73, 87)
     set {uf::floor::2::p2} to uf_layout_loc(-204, 76, 125)
+    set {uf::floor::2::midroom::a} to uf_layout_loc(-234, 73, 87)
+    set {uf::floor::2::midroom::b} to uf_layout_loc(-222, 76, 100)
+    set {uf::floor::2::marena::player} to uf_layout_loc(-286.5, 201, -36.5)
+    set {uf::floor::2::marena::boss} to uf_layout_loc(-286.5, 201, -51.5)
+    set {uf::floor::2::barena::player} to uf_layout_loc(-282.5, 201, 16.5)
+    set {uf::floor::2::barena::boss} to uf_layout_loc(-282.5, 201, -3.5)
     add uf_layout_loc(-261.5, 73, 113.5) to {uf::floor::2::spawn::*}
     add uf_layout_loc(-262.5, 73, 123.5) to {uf::floor::2::spawn::*}
     add uf_layout_loc(-248.5, 73, 97.5) to {uf::floor::2::spawn::*}
@@ -54,6 +60,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::3::boss} to uf_layout_loc(-209.5, 78, 118.5)
     set {uf::floor::3::p1} to uf_layout_loc(-267, 78, 87)
     set {uf::floor::3::p2} to uf_layout_loc(-204, 81, 125)
+    set {uf::floor::3::midroom::a} to uf_layout_loc(-239, 78, 99)
+    set {uf::floor::3::midroom::b} to uf_layout_loc(-225, 81, 115)
+    set {uf::floor::3::marena::player} to uf_layout_loc(-246.5, 201, -36.5)
+    set {uf::floor::3::marena::boss} to uf_layout_loc(-246.5, 201, -51.5)
+    set {uf::floor::3::barena::player} to uf_layout_loc(-242.5, 201, 16.5)
+    set {uf::floor::3::barena::boss} to uf_layout_loc(-242.5, 201, -3.5)
     add uf_layout_loc(-248.5, 78, 104.5) to {uf::floor::3::spawn::*}
     add uf_layout_loc(-241.5, 78, 95.5) to {uf::floor::3::spawn::*}
     add uf_layout_loc(-257.5, 78, 123.5) to {uf::floor::3::spawn::*}
@@ -86,6 +98,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::4::boss} to uf_layout_loc(-212.5, 83, 120.5)
     set {uf::floor::4::p1} to uf_layout_loc(-267, 83, 87)
     set {uf::floor::4::p2} to uf_layout_loc(-204, 86, 125)
+    set {uf::floor::4::midroom::a} to uf_layout_loc(-221, 83, 87)
+    set {uf::floor::4::midroom::b} to uf_layout_loc(-214, 86, 100)
+    set {uf::floor::4::marena::player} to uf_layout_loc(-206.5, 201, -36.5)
+    set {uf::floor::4::marena::boss} to uf_layout_loc(-206.5, 201, -51.5)
+    set {uf::floor::4::barena::player} to uf_layout_loc(-202.5, 201, 16.5)
+    set {uf::floor::4::barena::boss} to uf_layout_loc(-202.5, 201, -3.5)
     add uf_layout_loc(-246.5, 83, 90.5) to {uf::floor::4::spawn::*}
     add uf_layout_loc(-242.5, 83, 96.5) to {uf::floor::4::spawn::*}
     add uf_layout_loc(-226.5, 83, 94.5) to {uf::floor::4::spawn::*}
@@ -120,6 +138,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::5::boss} to uf_layout_loc(-208.5, 88, 106.5)
     set {uf::floor::5::p1} to uf_layout_loc(-267, 88, 87)
     set {uf::floor::5::p2} to uf_layout_loc(-204, 91, 125)
+    set {uf::floor::5::midroom::a} to uf_layout_loc(-233, 88, 99)
+    set {uf::floor::5::midroom::b} to uf_layout_loc(-215, 91, 108)
+    set {uf::floor::5::marena::player} to uf_layout_loc(-166.5, 201, -36.5)
+    set {uf::floor::5::marena::boss} to uf_layout_loc(-166.5, 201, -51.5)
+    set {uf::floor::5::barena::player} to uf_layout_loc(-162.5, 201, 16.5)
+    set {uf::floor::5::barena::boss} to uf_layout_loc(-162.5, 201, -3.5)
     add uf_layout_loc(-256.5, 88, 99.5) to {uf::floor::5::spawn::*}
     add uf_layout_loc(-263.5, 88, 100.5) to {uf::floor::5::spawn::*}
     add uf_layout_loc(-261.5, 88, 123.5) to {uf::floor::5::spawn::*}
@@ -154,6 +178,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::6::boss} to uf_layout_loc(-211.5, 93, 115.5)
     set {uf::floor::6::p1} to uf_layout_loc(-267, 93, 87)
     set {uf::floor::6::p2} to uf_layout_loc(-204, 96, 125)
+    set {uf::floor::6::midroom::a} to uf_layout_loc(-246, 93, 116)
+    set {uf::floor::6::midroom::b} to uf_layout_loc(-234, 96, 125)
+    set {uf::floor::6::marena::player} to uf_layout_loc(-126.5, 201, -36.5)
+    set {uf::floor::6::marena::boss} to uf_layout_loc(-126.5, 201, -51.5)
+    set {uf::floor::6::barena::player} to uf_layout_loc(-122.5, 201, 16.5)
+    set {uf::floor::6::barena::boss} to uf_layout_loc(-122.5, 201, -3.5)
     add uf_layout_loc(-247.5, 93, 93.5) to {uf::floor::6::spawn::*}
     add uf_layout_loc(-245.5, 93, 96.5) to {uf::floor::6::spawn::*}
     add uf_layout_loc(-237.5, 93, 96.5) to {uf::floor::6::spawn::*}
@@ -188,6 +218,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::7::boss} to uf_layout_loc(-208.5, 98, 90.5)
     set {uf::floor::7::p1} to uf_layout_loc(-267, 98, 87)
     set {uf::floor::7::p2} to uf_layout_loc(-204, 101, 125)
+    set {uf::floor::7::midroom::a} to uf_layout_loc(-248, 98, 111)
+    set {uf::floor::7::midroom::b} to uf_layout_loc(-235, 101, 125)
+    set {uf::floor::7::marena::player} to uf_layout_loc(-86.5, 201, -36.5)
+    set {uf::floor::7::marena::boss} to uf_layout_loc(-86.5, 201, -51.5)
+    set {uf::floor::7::barena::player} to uf_layout_loc(-82.5, 201, 16.5)
+    set {uf::floor::7::barena::boss} to uf_layout_loc(-82.5, 201, -3.5)
     add uf_layout_loc(-263.5, 98, 106.5) to {uf::floor::7::spawn::*}
     add uf_layout_loc(-264.5, 98, 120.5) to {uf::floor::7::spawn::*}
     add uf_layout_loc(-237.5, 98, 97.5) to {uf::floor::7::spawn::*}
@@ -222,6 +258,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::8::boss} to uf_layout_loc(-209.5, 103, 118.5)
     set {uf::floor::8::p1} to uf_layout_loc(-267, 103, 87)
     set {uf::floor::8::p2} to uf_layout_loc(-204, 106, 125)
+    set {uf::floor::8::midroom::a} to uf_layout_loc(-242, 103, 117)
+    set {uf::floor::8::midroom::b} to uf_layout_loc(-233, 106, 125)
+    set {uf::floor::8::marena::player} to uf_layout_loc(-46.5, 201, -36.5)
+    set {uf::floor::8::marena::boss} to uf_layout_loc(-46.5, 201, -51.5)
+    set {uf::floor::8::barena::player} to uf_layout_loc(-42.5, 201, 16.5)
+    set {uf::floor::8::barena::boss} to uf_layout_loc(-42.5, 201, -3.5)
     add uf_layout_loc(-262.5, 103, 103.5) to {uf::floor::8::spawn::*}
     add uf_layout_loc(-260.5, 103, 99.5) to {uf::floor::8::spawn::*}
     add uf_layout_loc(-253.5, 103, 99.5) to {uf::floor::8::spawn::*}
@@ -256,6 +298,12 @@ function uf_layout_apply() :: boolean:
     set {uf::floor::9::boss} to uf_layout_loc(-208.5, 108, 121.5)
     set {uf::floor::9::p1} to uf_layout_loc(-267, 108, 87)
     set {uf::floor::9::p2} to uf_layout_loc(-204, 111, 125)
+    set {uf::floor::9::midroom::a} to uf_layout_loc(-222, 108, 87)
+    set {uf::floor::9::midroom::b} to uf_layout_loc(-205, 111, 101)
+    set {uf::floor::9::marena::player} to uf_layout_loc(-6.5, 201, -36.5)
+    set {uf::floor::9::marena::boss} to uf_layout_loc(-6.5, 201, -51.5)
+    set {uf::floor::9::barena::player} to uf_layout_loc(-2.5, 201, 16.5)
+    set {uf::floor::9::barena::boss} to uf_layout_loc(-2.5, 201, -3.5)
     add uf_layout_loc(-242.5, 108, 88.5) to {uf::floor::9::spawn::*}
     add uf_layout_loc(-245.5, 108, 98.5) to {uf::floor::9::spawn::*}
     add uf_layout_loc(-228.5, 108, 88.5) to {uf::floor::9::spawn::*}

@@ -98,7 +98,7 @@ dd { margin: 0; }
   <header>
     <div class="kicker">大阪産業大学 電子計算研究部 ／ 大学祭 Minecraft サーバー</div>
     <h1>15号館 ダンジョン案内図（案）</h1>
-    <p class="lead">2〜9 階の内装の案です。建物の外壁・床・天井はそのままに、各階の 64 × 39 ブロックの空間を部屋と通路に分けました。テストサーバーで、ボットが全階を開始からクリアまで通しで遊べることを確認済みです。</p>
+    <p class="lead">1 階の受付から 2 階に入り、9 階まで通しで上へ進むダンジョンです。各階で中ボスの部屋に入ると上空の中ボス闘技場へ、階の敵を全滅させるとボス闘技場へ移動し、勝つと次の階へ進みます。テストサーバーで、ボットが 2→9 階を通しで突破できることを確認済みです。</p>
   </header>
   <div class="main">
     <nav class="floors" id="floors" aria-label="階の切り替え"></nav>
@@ -107,8 +107,7 @@ dd { margin: 0; }
       <div class="plan"><svg id="plan" role="img" aria-label="平面図"></svg></div>
       <div class="legend">
         <span><i style="background:var(--exit)"></i>開始・復帰地点（敵なし）</span>
-        <span><i style="background:var(--amber)"></i>中ボスの部屋</span>
-        <span><i style="background:var(--alarm)"></i>ボスの部屋</span>
+        <span><i style="background:var(--amber)"></i>中ボスの部屋（入ると中ボス闘技場へ）</span>
         <span><i style="background:var(--alarm);border-radius:50%"></i>敵の出現地点</span>
         <span><i style="background:var(--chest)"></i>宝箱の候補</span>
         <span><i style="background:var(--deco)"></i>家具・障害物</span>
@@ -120,11 +119,18 @@ dd { margin: 0; }
         <section><h3>数字</h3><dl id="fstats"></dl></section>
       </div>
       <div class="notes">
+        <h3>進み方</h3>
+        <ul>
+          <li>1 階の受付で開始する階を選ぶ。最初は 2 階だけ。突破した階の次の階からも始められるようになる。</li>
+          <li>中ボスの部屋（オレンジ）に入ると、パーティー全員が上空の中ボス闘技場（25 × 25）へ。勝つと中ボスの部屋に戻る。</li>
+          <li>階の敵を全滅させると、5 秒後にボス闘技場（33 × 33）へ。勝つと次の階が解放され、そのまま次の階の開始地点へ。</li>
+          <li>全員が倒れたら、その回は終了して 1 階へ。解放と報酬は残る。</li>
+          <li>闘技場は各階に 1 組ずつ、階のテーマに合わせた素材で上空（y 200）に並べた。複数のパーティーが別々の階を同時に進められる。</li>
+        </ul>
         <h3>全階共通のつくり</h3>
         <ul>
           <li>入口は西側の階段からの 1 か所だけ。エレベーター側は壁でふさいだ（ほかの入口から敵を素通りできないように）。</li>
           <li>開始地点の部屋には敵を出さない。死んで復活するのもこの部屋なので、落としたポイントをすぐ拾われる心配が少ない。</li>
-          <li>ボスの部屋は入口からいちばん遠い部屋、中ボスはその途中の部屋。</li>
           <li>部屋どうしは幅 3 マスの出入口でつながる。家具は出入口と通り道をふさがない位置にだけ置いた。</li>
           <li>天井の照明は少し暗め（上の階ほど暗い）。自然に敵が湧かない明るさは保っている。</li>
           <li>挑戦中のパーティー以外がフロアに入ると、ロビーに戻される（管理者は除く）。</li>
@@ -147,7 +153,7 @@ function draw(fl) {
   svg.setAttribute('viewBox', '0 0 ' + (w + pad * 2) + ' ' + (h + pad * 2));
   const g = el('g', { transform: 'translate(' + pad + ',' + pad + ')' }, svg);
   el('rect', { x: 0, y: 0, width: w, height: h, fill: css('--room'), stroke: css('--wall'), 'stroke-width': 3 }, g);
-  const tint = { start: '--exit-tint', mid: '--amber-tint', boss: '--alarm-tint' };
+  const tint = { start: '--exit-tint', mid: '--amber-tint' };
   for (const r of fl.rooms) if (tint[r.role]) el('rect', { x: r.x1 * S, y: r.z1 * S, width: (r.x2 - r.x1 + 1) * S, height: (r.z2 - r.z1 + 1) * S, fill: css(tint[r.role]) }, g);
   for (let z = 0; z < fl.D; z++) for (let x = 0; x < fl.W; x++) {
     const v = fl.grid[z * fl.W + x];
@@ -161,7 +167,7 @@ function draw(fl) {
     el('circle', { cx: p[0] * S + S / 2, cy: p[1] * S + S / 2, r: S * 1.15, fill: color }, g);
     const t = el('text', { x: p[0] * S + S / 2, y: p[1] * S + S / 2 + 5, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: css('--room'), 'font-family': 'sans-serif' }, g); t.textContent = label;
   };
-  mark(fl.start, css('--exit'), 'S'); mark(fl.mid, css('--amber'), '中'); mark(fl.bossAt, css('--alarm'), 'B');
+  mark(fl.start, css('--exit'), 'S'); mark(fl.mid, css('--amber'), '中');
   // 入口の矢印（西側、z 92〜94）と方角
   const ez = (92 - 87) * S + S * 1.5;
   el('path', { d: 'M ' + (-pad + 4) + ' ' + ez + ' L -4 ' + ez + ' M -10 ' + (ez - 6) + ' L -4 ' + ez + ' L -10 ' + (ez + 6), stroke: css('--exit'), 'stroke-width': 3, fill: 'none' }, g);
@@ -179,7 +185,7 @@ function show(f) {
   document.getElementById('fdeco').textContent = fl.deco + '。壁：' + fl.wall + '。';
   const dl = document.getElementById('fstats');
   dl.innerHTML = '';
-  for (const [k, v] of [['部屋', fl.rooms.length + ' 部屋'], ['敵の出現地点', fl.spawns.length + ' か所'], ['宝箱の候補', fl.chests.length + ' か所'], ['通しプレイ', 'ボットで確認済み']]) {
+  for (const [k, v] of [['部屋', fl.rooms.length + ' 部屋'], ['敵の出現地点', fl.spawns.length + ' か所'], ['宝箱の候補', fl.chests.length + ' か所'], ['通し挑戦', 'ボットで確認済み']]) {
     const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.append(dt, dd);
   }
   draw(fl);

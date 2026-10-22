@@ -3,7 +3,7 @@ const fs = require('fs');
 const dir = process.argv[2];
 const L = [];
 L.push('# ============================================================');
-L.push('# uf_15_layout.sk : 15号館 2〜9 階の内装に合わせたダンジョン設定（自動生成）');
+L.push('# uf_15_layout.sk : 15号館 2〜9 階の内装と闘技場に合わせたダンジョン設定（自動生成）');
 L.push('#   tools/gen.js で生成した内装の座標を、管理者ツールのボタン 1 つで登録する。');
 L.push('#   座標は「15号館（ダンジョン）」として登録したワールドに対して設定される。');
 L.push('#   内装を作り直したら、このファイルも作り直すこと（手で編集しない）。');
@@ -27,6 +27,14 @@ for (let f = 2; f <= 9; f++) {
   L.push(`    set {uf::floor::${f}::boss} to ${p(m.bossLoc)}`);
   L.push(`    set {uf::floor::${f}::p1} to ${p(m.p1)}`);
   L.push(`    set {uf::floor::${f}::p2} to ${p(m.p2)}`);
+  const mr = m.rooms.find((r) => r.role === 'mid');
+  L.push(`    set {uf::floor::${f}::midroom::a} to ${p({ x: mr.x1, y: m.y + 1, z: mr.z1 })}`);
+  L.push(`    set {uf::floor::${f}::midroom::b} to ${p({ x: mr.x2, y: m.y + 4, z: mr.z2 })}`);
+  const ar = JSON.parse(fs.readFileSync(`${dir}/arena_${f}.json`));
+  L.push(`    set {uf::floor::${f}::marena::player} to ${p(ar.mid.player)}`);
+  L.push(`    set {uf::floor::${f}::marena::boss} to ${p(ar.mid.boss)}`);
+  L.push(`    set {uf::floor::${f}::barena::player} to ${p(ar.boss.player)}`);
+  L.push(`    set {uf::floor::${f}::barena::boss} to ${p(ar.boss.boss)}`);
   for (const s of m.spawns) L.push(`    add ${p(s)} to {uf::floor::${f}::spawn::*}`);
   for (const c of m.chests) L.push(`    add ${p(c)} to {uf::floor::${f}::chest::*}`);
 }

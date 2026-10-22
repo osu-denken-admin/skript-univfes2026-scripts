@@ -174,6 +174,8 @@ T.admintool = async ({ A }) => {
 
 // ---------------------------------------------------------------
 T.economy = async ({ P }) => {
+  // 前の回の持ち物が残っていると売却額が変わるので、空にしてから始める
+  con(`clear ${P.username}`); await sleep(800);
   const base = await points(P);
   const qFrom = P.msgs.length;
   con(`give ${P.username} wheat 64`); await sleep(800);
@@ -209,7 +211,7 @@ T.dungeon = async ({ P }) => {
   await sleep(500);
   const before = await points(P);
   let w = await cmdWin(P, '/dungeon');
-  check('floor map opens', titleOf(w).includes('フロアマップ'), titleOf(w));
+  check('reception opens', titleOf(w).includes('受付'), titleOf(w));
   let from = P.msgs.length;
   await clickWin(P, 10);
   check('dungeon starts (teleported)', !!(await waitMsg(P, from, /.*/, 1500)) || true);
@@ -228,21 +230,21 @@ T.dungeon = async ({ P }) => {
   }
   from = P.msgs.length;
   await killAll(P, 30000);
-  check('mid boss appears', !!(await waitMsg(P, from, /中ボスが現れた/, 8000)));
+  check('mid boss appears', !!(await waitMsg(P, from, /中ボスの気配/, 8000)));
   await sleep(1000); await killAll(P, 60000);
   check('mid boss reward', !!(await waitMsg(P, from, /討伐報酬 \+150pt/, 5000)));
-  check('floor boss appears', !!(await waitMsg(P, from, /階層ボスが現れた/, 8000)));
+  check('floor boss appears', !!(await waitMsg(P, from, /受付に残る影 が現れた/, 12000)));
   await sleep(1000); await killAll(P, 90000);
   check('boss reward', !!(await waitMsg(P, from, /討伐報酬 \+300pt/, 8000)));
-  check('first clear reward', !!(await waitMsg(P, from, /初回クリア報酬 \+200pt/, 8000)));
+  check('first clear reward', !!(await waitMsg(P, from, /初回突破報酬 \+200pt/, 8000)));
   check('floor 3 unlocked', !!(await waitMsg(P, from, /3階 が解放された/, 5000)));
-  await sleep(11500);
+  await sleep(7500);
   check('back to lobby after clear', P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
   const after = await points(P);
   check('points increased by dungeon', after > before, `${before} -> ${after}`);
   // 再挑戦は初回報酬なし
   w = await cmdWin(P, '/dungeon');
-  check('floor 2 shows cleared', itemText(w && w.slots[10]).includes('初回クリア済み'));
+  check('floor 2 shows cleared', itemText(w && w.slots[10]).includes('突破済み'));
   closeWin(P);
   // ショップの解放
   w = await cmdWin(P, '/buy');

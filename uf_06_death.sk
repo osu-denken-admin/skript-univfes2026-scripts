@@ -5,8 +5,9 @@
 #   回収対象は死亡地点ごとに別々に保存し、本人がその地点へ戻ると 1 回だけ回収できる。
 #   適用範囲は death_loss_scope（dungeon=ダンジョンのみ / all=全ワールド / none=なし）
 #
+#   全滅: 挑戦中のメンバー全員が「倒れている」状態になると、その回の挑戦は終了（1 人なら死んだ時点で終了）
 #   蘇生（ダンジョン挑戦中・2 人以上のパーティーのみ）
-#     死亡した人はフロアの復帰地点（cp）で復活する。
+#     死亡した人はフロアの復帰地点（cp）で復活する（闘技場で倒れても、復帰はフロアの開始地点）。
 #     仲間が死亡地点でしゃがみ続けて revive_seconds 秒たつと、死亡地点へ呼び戻される。
 #     被ダメージで中断・進行リセット。失ったポイントは返らない。
 # ============================================================
@@ -34,6 +35,8 @@ on death of player:
                 set {uf::recidx::%{_u}%::%{_i}%} to {_i}
                 uf_msg({_p}, "&c%{_loss}%pt を落とした。&7%uf_fmtloc({_l})% &cに戻ると回収できる")
     if {-uf::insess::%{_u}%} is set:
+        # 倒れた扱い（全滅の判定に使う。蘇生されるか、受付時間が過ぎると解除）
+        set {-uf::down::%{_u}%} to true
         if size of uf_members({_p}) > 1:
             set {-uf::soul::%{_u}%} to {_l}
             set {-uf::soult::%{_u}%} to {-uf::tick}
@@ -43,6 +46,8 @@ on death of player:
                 if loop-value is not {_p}:
                     if loop-value is online:
                         uf_msg(loop-value, "&c%{_p}% が倒れた！ &7%uf_fmtloc({_l})% &eでしゃがみ続けると蘇生できる")
+        # 全員が倒れていたら、その回の挑戦は終了
+        uf_dwipecheck({-uf::insess::%{_u}%})
 
 # ダンジョン挑戦中はフロアの復帰地点で復活する
 on respawn:
@@ -58,6 +63,7 @@ on respawn:
 
 function uf_soulclear(p: player):
     set {_u} to uuid of {_p}
+    delete {-uf::down::%{_u}%}
     delete {-uf::soul::%{_u}%}
     delete {-uf::soult::%{_u}%}
     delete {-uf::soulp::%{_u}%}
@@ -73,6 +79,9 @@ every 1 second:
         set {_p} to loop-player
         set {_u} to uuid of {_p}
         delete {_got::*}
+        # 死亡画面の間はまだ死んだ場所にいるので、生きているときだけ回収する
+        if {_p} is dead:
+            continue
         loop {uf::recidx::%{_u}%::*}:
             set {_l} to {uf::rec::%{_u}%::%loop-value-2%::loc}
             if {_l} is set:
