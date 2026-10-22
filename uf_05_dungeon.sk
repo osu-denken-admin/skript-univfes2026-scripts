@@ -306,6 +306,7 @@ on death:
 # ------------------------------------------------------------
 function uf_dclear(f: number):
     set {-uf::sess::%{_f}%::phase} to "cleared"
+    set {-uf::sess::%{_f}%::tclear} to {-uf::tick}
     uf_log("dungeon", "clear f=%{_f}%")
     loop {-uf::sess::%{_f}%::mem::*}:
         set {_p} to loop-value
@@ -394,7 +395,11 @@ every 5 seconds:
     loop integers between 2 and 9:
         set {_f} to loop-value-1
         if {-uf::sess::%{_f}%::on} is true:
-            if {-uf::sess::%{_f}%::phase} is not "cleared":
+            if {-uf::sess::%{_f}%::phase} is "cleared":
+                # 10分ごとの sk reload all で「10秒後に終了」の待ちが中断されても、ここで必ず終わらせる
+                if {-uf::tick} - {-uf::sess::%{_f}%::tclear} > 300:
+                    uf_dend({_f}, "clear")
+            else:
                 if {-uf::tick} - {-uf::sess::%{_f}%::t0} > {uf::cfg::session_minutes} * 1200:
                     uf_dsay({_f}, "&c時間切れ！ ロビーへ戻ります")
                     uf_dend({_f}, "timeout")
