@@ -1,0 +1,1060 @@
+# ============================================================
+# uf_14_admintool.sk : 管理者ツール（本）から開く管理メニュー
+#   コマンドを使わずに、GUI だけで設定を変えられるようにする。
+#   - 管理者ツールを右クリック / 左クリック / 捨てる（Q）と開く
+#     （統合版はタップ、または捨てる操作）
+#   - 権限 univfes.admin は、開くときとボタンを押すたびに確認する
+#   - 数値は「＋／－ボタン → 決定」で変える（チャット入力は使わない）
+#   - 消去・強制終了などの重要な操作は確認画面を通す
+#   - 管理者が初めて参加したときに 1 冊配る。なくしたら /ufadmin tool
+#
+# ボタンの動作は「操作文字列」で表し、uf_aact で実行する
+#   open/<ページ>  edit/<対象>  ask/<確認文>|<操作>  など
+# ============================================================
+
+# ------------------------------------------------------------
+# ツールを開く
+# ------------------------------------------------------------
+on click:
+    uf_id(player's tool) is "admin_tool"
+    cancel event
+    uf_atoolopen(player)
+
+on drop:
+    uf_id(event-item) is "admin_tool"
+    cancel event
+    uf_atoolopen(player)
+
+function uf_atoolopen(p: player):
+    if uf_admin({_p}) is false:
+        uf_msg({_p}, "&cこれは管理者専用のアイテムです")
+        stop
+    uf_adminopen({_p}, "hub")
+
+# 管理者以外は拾えない
+on pickup:
+    uf_id(event-item) is "admin_tool"
+    uf_admin(player) is false
+    cancel event
+
+# 管理者が初めて参加したときに 1 冊配る
+on join:
+    uf_admin(player) is true
+    {uf::atoolgiven::%uuid of player%} is not set
+    set {uf::atoolgiven::%uuid of player%} to true
+    wait 2 seconds
+    if player is online:
+        uf_give(player, uf_item("admin_tool"))
+        uf_msg(player, "&e管理者ツールを渡しました。右クリック（統合版はタップ）で管理メニューを開けます")
+
+# ------------------------------------------------------------
+# 部品
+# ------------------------------------------------------------
+# lore は "|" 区切り
+function uf_abtn(p: player, g: inventory, s: number, icon: item, name: text, lore: text, action: text):
+    set {_l::*} to split {_lore} at "|"
+    set slot {_s} of {_g} to ({_icon} named {_name}) with lore {_l::*}
+    if {_action} is not "":
+        set {-uf::guictx::%uuid of {_p}%::%{_s}%} to {_action}
+
+function uf_apage(p: player, title: text) :: inventory:
+    uf_guiclear({_p})
+    return chest inventory with 6 rows named {_title}
+
+# 戻るボタン（49）と閉じるボタン（53）を置いて開く
+function uf_ashow(p: player, g: inventory, back: text):
+    if {_back} is not "":
+        uf_abtn({_p}, {_g}, 49, arrow, "&f戻る", "&7前の画面へ", "open/%{_back}%")
+    uf_abtn({_p}, {_g}, 53, barrier, "&c閉じる", "&7メニューを閉じる", "close")
+    uf_gui({_p}, "atool", {_g})
+
+function uf_onoff(b: object) :: text:
+    if {_b} is true:
+        return "&a有効"
+    return "&c無効"
+
+function uf_locstr(l: object) :: text:
+    if {_l} is not set:
+        return "&c未設定"
+    return "&f%uf_fmtloc({_l})%"
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "atool"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_a} to {-uf::guictx::%uuid of player%::%index of event-slot%}
+    {_a} is set
+    wait 1 tick
+    player is online
+    uf_aact(player, {_a})
+
+# ------------------------------------------------------------
+# ページ
+# ------------------------------------------------------------
+function uf_adminopen(p: player, page: text):
+    if uf_admin({_p}) is false:
+        stop
+    set {-uf::apage::%uuid of {_p}%} to {_page}
+    set {_q::*} to split {_page} at "/"
+    set {_k} to {_q::1}
+    if {_k} is "hub":
+        uf_ap_hub({_p})
+    else if {_k} is "modules":
+        uf_ap_modules({_p})
+    else if {_k} is "worlds":
+        uf_ap_worlds({_p})
+    else if {_k} is "floors":
+        uf_ap_floors({_p})
+    else if {_k} is "floor":
+        uf_ap_floor({_p}, {_q::2} parsed as number)
+    else if {_k} is "shop":
+        uf_ap_shop({_p})
+    else if {_k} is "shopitem":
+        uf_ap_shopitem({_p}, {_q::2})
+    else if {_k} is "casino":
+        uf_ap_casino({_p})
+    else if {_k} is "casinogame":
+        uf_ap_casinogame({_p}, {_q::2})
+    else if {_k} is "sell":
+        uf_ap_sell({_p})
+    else if {_k} is "sellitem":
+        uf_ap_sellitem({_p}, {_q::2})
+    else if {_k} is "cfg":
+        uf_ap_cfg({_p})
+    else if {_k} is "cfgcat":
+        uf_ap_cfgcat({_p}, {_q::2})
+    else if {_k} is "players":
+        uf_ap_players({_p})
+    else if {_k} is "player":
+        uf_ap_player({_p}, {_q::2})
+    else if {_k} is "areas":
+        uf_ap_areas({_p})
+    else if {_k} is "prot":
+        uf_ap_prot({_p})
+    else if {_k} is "protarea":
+        uf_ap_protarea({_p}, {_q::2})
+    else if {_k} is "event":
+        uf_ap_event({_p})
+    else if {_k} is "items":
+        uf_ap_items({_p})
+    else if {_k} is "logs":
+        uf_ap_logs({_p})
+    else if {_k} is "editor":
+        uf_edgui({_p})
+    else:
+        uf_ap_hub({_p})
+
+function uf_ap_hub(p: player):
+    set {_g} to uf_apage({_p}, "&4管理者ツール")
+    uf_abtn({_p}, {_g}, 10, comparator, "&eモジュールの有効・無効", "&7機能ごとにオン・オフ", "open/modules")
+    uf_abtn({_p}, {_g}, 11, grass block, "&eワールドとロビー", "&7サバイバル・ダンジョン・イベントの登録", "open/worlds")
+    uf_abtn({_p}, {_g}, 12, oak door, "&eダンジョンの各階", "&7開始地点・敵の出現地点・宝箱など", "open/floors")
+    uf_abtn({_p}, {_g}, 13, emerald, "&eショップ", "&7販売状態・価格・解放条件", "open/shop")
+    uf_abtn({_p}, {_g}, 14, gold ingot, "&eカジノ", "&7営業・確率・倍率・賭け金", "open/casino")
+    uf_abtn({_p}, {_g}, 15, wheat, "&e売却価格", "&7生産物の買い取り価格", "open/sell")
+    uf_abtn({_p}, {_g}, 16, redstone torch, "&e各種設定", "&7報酬・死亡・宝箱・道具・武器・RPG", "open/cfg")
+    uf_abtn({_p}, {_g}, 28, player head, "&eプレイヤー", "&7ポイント・チップ・解放階の確認と変更", "open/players")
+    uf_abtn({_p}, {_g}, 29, oak sign, "&eショップ・カジノの区域", "&7利用できる範囲", "open/areas")
+    uf_abtn({_p}, {_g}, 30, shield, "&e保護区域", "&7特殊道具で壊させない範囲", "open/prot")
+    if {uf::event::active} is true:
+        uf_abtn({_p}, {_g}, 31, firework rocket, "&e大学祭イベント（&a開催中&e）", "&7開始・終了・スコアのリセット", "open/event")
+    else:
+        uf_abtn({_p}, {_g}, 31, firework rocket, "&e大学祭イベント（&7停止中&e）", "&7開始・終了・スコアのリセット", "open/event")
+    if {uf::maint} is true:
+        uf_abtn({_p}, {_g}, 32, iron door, "&cメンテナンス中", "&eクリックで解除", "act/maint_off")
+    else:
+        uf_abtn({_p}, {_g}, 32, iron door, "&7メンテナンス: 停止中", "&eクリックで開始（管理者以外をキック）", "ask/メンテナンスモードにする（管理者以外をキック）|act/maint_on")
+    uf_abtn({_p}, {_g}, 33, chest, "&e特殊アイテムを受け取る", "&7テスト用", "open/items")
+    uf_abtn({_p}, {_g}, 34, book, "&e操作履歴", "&7管理者の操作の記録", "open/logs")
+    uf_ashow({_p}, {_g}, "")
+
+function uf_ap_modules(p: player):
+    set {_g} to uf_apage({_p}, "&4モジュール（クリックで切り替え）")
+    set {_s} to 10
+    loop "economy", "shop", "party", "dungeon", "death", "rpg", "tools", "weapons", "casino", "progress" and "guide":
+        if {_s} is 17:
+            set {_s} to 19
+        if {uf::mod::%loop-value%} is true:
+            uf_abtn({_p}, {_g}, {_s}, lime concrete, "&a%uf_modname(loop-value)%", "&7%loop-value%|&a有効|&eクリックで無効にする", "mod/%loop-value%")
+        else:
+            uf_abtn({_p}, {_g}, {_s}, red concrete, "&c%uf_modname(loop-value)%", "&7%loop-value%|&c無効|&eクリックで有効にする", "mod/%loop-value%")
+        add 1 to {_s}
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_modname(m: text) :: text:
+    if {_m} is "economy":
+        return "売却（経済）"
+    if {_m} is "shop":
+        return "ショップ"
+    if {_m} is "party":
+        return "パーティー"
+    if {_m} is "dungeon":
+        return "ダンジョン"
+    if {_m} is "death":
+        return "死亡・回収・蘇生"
+    if {_m} is "rpg":
+        return "レベル・スキル"
+    if {_m} is "tools":
+        return "特殊道具"
+    if {_m} is "weapons":
+        return "特殊武器・アクセサリー"
+    if {_m} is "casino":
+        return "カジノ"
+    if {_m} is "progress":
+        return "クエスト・実績"
+    return "初参加の案内"
+
+function uf_ap_worlds(p: player):
+    set {_g} to uf_apage({_p}, "&4ワールドとロビー")
+    set {_w} to "%world of {_p}%"
+    uf_abtn({_p}, {_g}, 11, grass block, "&e常設サバイバル", "&7現在: &f%{uf::cfg::world::survival}%|&eクリックで今いるワールド（%{_w}%）にする", "world/survival")
+    uf_abtn({_p}, {_g}, 13, oak door, "&e15号館（ダンジョン）", "&7現在: &f%{uf::cfg::world::dungeon}%|&eクリックで今いるワールド（%{_w}%）にする", "world/dungeon")
+    uf_abtn({_p}, {_g}, 15, firework rocket, "&eイベント", "&7現在: &f%{uf::cfg::world::event}%|&eクリックで今いるワールド（%{_w}%）にする", "world/event")
+    uf_abtn({_p}, {_g}, 31, red bed, "&eロビー（ダンジョンからの退出先）", "&7現在: %uf_locstr({uf::cfg::lobby})%|&eクリックで今いる場所にする", "lobby")
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_floors(p: player):
+    set {_g} to uf_apage({_p}, "&4ダンジョンの各階")
+    loop integers between 2 and 9:
+        set {_f} to loop-value
+        set {_ns} to size of {uf::floor::%{_f}%::spawn::*}
+        set {_nc} to size of {uf::floor::%{_f}%::chest::*}
+        if {uf::floor::%{_f}%::start} is set:
+            set {_st} to "&a開始地点あり"
+        else:
+            set {_st} to "&c開始地点なし"
+        if {-uf::sess::%{_f}%::on} is true:
+            set {_st} to "%{_st}%|&6挑戦中"
+        uf_abtn({_p}, {_g}, {_f} + 17, oak door, "&f%{_f}%階", "%{_st}%|&7敵の出現地点: %{_ns}% / 宝箱候補: %{_nc}%|&eクリックで設定", "open/floor/%{_f}%")
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_floor(p: player, f: number):
+    if {_f} is not between 2 and 9:
+        uf_ap_floors({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4%{_f}%階の設定")
+    set {_h} to "|&eクリックで今いる場所にする"
+    uf_abtn({_p}, {_g}, 10, lime banner, "&e開始地点", "%uf_locstr({uf::floor::%{_f}%::start})%%{_h}%", "floc/%{_f}%/start")
+    uf_abtn({_p}, {_g}, 11, white banner, "&e復帰地点（死亡時）", "%uf_locstr({uf::floor::%{_f}%::cp})%|&7未設定なら開始地点%{_h}%", "floc/%{_f}%/cp")
+    uf_abtn({_p}, {_g}, 12, orange banner, "&e中ボスの出現地点", "%uf_locstr({uf::floor::%{_f}%::mid})%|&7未設定なら出現地点から抽選%{_h}%", "floc/%{_f}%/mid")
+    uf_abtn({_p}, {_g}, 13, red banner, "&e階層ボスの出現地点", "%uf_locstr({uf::floor::%{_f}%::boss})%|&7未設定なら出現地点から抽選%{_h}%", "floc/%{_f}%/boss")
+    uf_abtn({_p}, {_g}, 15, white wool, "&eフロアの範囲（角1）", "%uf_locstr({uf::floor::%{_f}%::p1})%%{_h}%", "floc/%{_f}%/p1")
+    uf_abtn({_p}, {_g}, 16, white wool, "&eフロアの範囲（角2）", "%uf_locstr({uf::floor::%{_f}%::p2})%%{_h}%", "floc/%{_f}%/p2")
+    uf_abtn({_p}, {_g}, 19, rotten flesh, "&e敵の出現地点を追加", "&7登録数: %size of {uf::floor::%{_f}%::spawn::*}%|&eクリックで今いる場所を追加", "fadd/%{_f}%/spawn")
+    uf_abtn({_p}, {_g}, 20, tnt, "&c敵の出現地点をすべて消す", "&7確認画面が出ます", "ask/%{_f}%階の敵の出現地点をすべて消す|fclear/%{_f}%/spawn")
+    uf_abtn({_p}, {_g}, 22, chest, "&e宝箱の候補地点を追加", "&7登録数: %size of {uf::floor::%{_f}%::chest::*}%|&eクリックで今立っている場所を追加", "fadd/%{_f}%/chest")
+    uf_abtn({_p}, {_g}, 23, tnt, "&c宝箱の候補地点をすべて消す", "&7確認画面が出ます", "ask/%{_f}%階の宝箱の候補地点をすべて消す|fclear/%{_f}%/chest")
+    set {_cn} to uf_dcount({_f}, "normal")
+    set {_cs} to uf_dcount({_f}, "strong")
+    set {_ce} to uf_dcount({_f}, "elite")
+    uf_abtn({_p}, {_g}, 28, bone, "&e通常敵の数", "&7現在: %{_cn}%|&eクリックで変更", "edit/count/%{_f}%/normal")
+    uf_abtn({_p}, {_g}, 29, bone, "&e強化敵の数", "&7現在: %{_cs}%|&eクリックで変更", "edit/count/%{_f}%/strong")
+    uf_abtn({_p}, {_g}, 30, blaze rod, "&eエリート敵の数", "&7現在: %{_ce}%|&eクリックで変更", "edit/count/%{_f}%/elite")
+    if {uf::floor::%{_f}%::start} is set:
+        uf_abtn({_p}, {_g}, 32, ender pearl, "&b開始地点へ移動", "&7確認用", "ftp/%{_f}%")
+    if {-uf::sess::%{_f}%::on} is true:
+        uf_abtn({_p}, {_g}, 33, clock, "&6次の段階へ進める", "&7段階: %{-uf::sess::%{_f}%::phase}% / 残り %{-uf::sess::%{_f}%::alive}%体|&7確認画面が出ます", "ask/%{_f}%階を次の段階へ進める（敵を倒した扱い・報酬なし）|fskip/%{_f}%")
+        uf_abtn({_p}, {_g}, 34, barrier, "&c挑戦を強制終了", "&7確認画面が出ます", "ask/%{_f}%階の挑戦を強制終了する|fend/%{_f}%")
+    uf_ashow({_p}, {_g}, "floors")
+
+function uf_ap_shop(p: player):
+    set {_g} to uf_apage({_p}, "&4ショップ（クリックで商品の設定）")
+    set {_s} to 0
+    loop {uf::shopids::*}:
+        if {_s} < 45:
+            set {_id} to loop-value
+            set {_icon} to uf_shopicon({_id})
+            if {_icon} is not set:
+                set {_icon} to paper
+            uf_abtn({_p}, {_g}, {_s}, {_icon}, uf_shopname({_id}), "%uf_onoff({uf::shop::%{_id}%::enabled})%|&7価格: &e%{uf::shop::%{_id}%::price}%pt|&7解放: %{uf::shop::%{_id}%::req}%階クリア（0=なし）|&eクリックで設定", "open/shopitem/%{_id}%")
+            add 1 to {_s}
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_shopitem(p: player, id: text):
+    if {uf::shop::%{_id}%::price} is not set:
+        uf_ap_shop({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4商品: %uf_shopname({_id})%")
+    set {_icon} to uf_shopicon({_id})
+    if {_icon} is not set:
+        set {_icon} to paper
+    uf_abtn({_p}, {_g}, 4, {_icon}, uf_shopname({_id}), "&7ID: %{_id}%", "")
+    if {uf::shop::%{_id}%::enabled} is true:
+        uf_abtn({_p}, {_g}, 20, lime concrete, "&a販売中", "&eクリックで販売を止める", "shoptoggle/%{_id}%")
+    else:
+        uf_abtn({_p}, {_g}, 20, red concrete, "&c販売停止中", "&eクリックで販売する", "shoptoggle/%{_id}%")
+    uf_abtn({_p}, {_g}, 22, gold nugget, "&e価格", "&7現在: %{uf::shop::%{_id}%::price}%pt|&eクリックで変更", "edit/shopprice/%{_id}%")
+    uf_abtn({_p}, {_g}, 24, iron bars, "&e解放条件", "&7現在: %{uf::shop::%{_id}%::req}%階クリア（0=なし）|&eクリックで変更", "edit/shopreq/%{_id}%")
+    uf_ashow({_p}, {_g}, "shop")
+
+function uf_ap_casino(p: player):
+    set {_g} to uf_apage({_p}, "&4カジノ（クリックでゲームの設定）")
+    set {_s1} to uf_casinosum("slot")
+    set {_s2} to uf_casinosum("roulette")
+    set {_s3} to uf_casinosum("reaction")
+    uf_abtn({_p}, {_g}, 20, diamond, "&bスロット", "%uf_onoff({uf::cfg::casino::slot::enabled})%|%{_s1}%|&eクリックで設定", "open/casinogame/slot")
+    uf_abtn({_p}, {_g}, 22, red wool, "&cルーレット", "%uf_onoff({uf::cfg::casino::roulette::enabled})%|%{_s2}%|&eクリックで設定", "open/casinogame/roulette")
+    uf_abtn({_p}, {_g}, 24, clock, "&a反応速度ゲーム", "%uf_onoff({uf::cfg::casino::reaction::enabled})%|%{_s3}%|&eクリックで設定", "open/casinogame/reaction")
+    uf_ashow({_p}, {_g}, "hub")
+
+# 設定と集計の要約（"|" 区切り）
+function uf_casinosum(gm: text) :: text:
+    if {_gm} is "reaction":
+        set {_t} to "&7制限時間 %{uf::cfg::casino::reaction::window}% tick / 倍率 %{uf::cfg::casino::reaction::mult}%"
+    else:
+        set {_rtp} to {uf::cfg::casino::%{_gm}%::prob} * {uf::cfg::casino::%{_gm}%::mult}
+        set {_t} to "&7当選 %{uf::cfg::casino::%{_gm}%::prob}%％ / 倍率 %{uf::cfg::casino::%{_gm}%::mult}% / 理論還元率 %{_rtp}%％"
+    set {_t} to "%{_t}%|&7賭け金 %{uf::cfg::casino::%{_gm}%::min}%〜%{uf::cfg::casino::%{_gm}%::max}%"
+    set {_in} to {uf::cstat::%{_gm}%::in}
+    set {_out} to {uf::cstat::%{_gm}%::out}
+    if {_in} is not set:
+        set {_in} to 0
+    if {_out} is not set:
+        set {_out} to 0
+    set {_n} to {uf::cstat::%{_gm}%::plays}
+    if {_n} is not set:
+        set {_n} to 0
+    set {_t} to "%{_t}%|&7実績: %{_n}%回 / 賭け %{_in}% / 払い戻し %{_out}%"
+    if {_in} > 0:
+        set {_t} to "%{_t}%|&7実際の還元率 %round({_out} / {_in} * 1000) / 10%％"
+    return {_t}
+
+function uf_ap_casinogame(p: player, gm: text):
+    if {_gm} is not "slot", "roulette" or "reaction":
+        uf_ap_casino({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4カジノ: %{_gm}%")
+    uf_abtn({_p}, {_g}, 4, paper, "&f%{_gm}%", uf_casinosum({_gm}), "")
+    if {uf::cfg::casino::%{_gm}%::enabled} is true:
+        uf_abtn({_p}, {_g}, 19, lime concrete, "&a営業中", "&eクリックで休止する", "casinotoggle/%{_gm}%")
+    else:
+        uf_abtn({_p}, {_g}, 19, red concrete, "&c休止中", "&eクリックで営業する", "casinotoggle/%{_gm}%")
+    if {_gm} is "reaction":
+        uf_abtn({_p}, {_g}, 21, clock, "&e制限時間（tick）", "&7現在: %{uf::cfg::casino::reaction::window}%|&7緑になってからこの時間内なら成功|&eクリックで変更", "edit/casino/reaction/window")
+    else:
+        uf_abtn({_p}, {_g}, 21, ender eye, "&e当選確率（％）", "&7現在: %{uf::cfg::casino::%{_gm}%::prob}%|&eクリックで変更", "edit/casino/%{_gm}%/prob")
+    uf_abtn({_p}, {_g}, 22, gold ingot, "&e払い戻し倍率", "&7現在: %{uf::cfg::casino::%{_gm}%::mult}%|&eクリックで変更", "edit/casino/%{_gm}%/mult")
+    uf_abtn({_p}, {_g}, 24, gold nugget, "&e最低賭け金", "&7現在: %{uf::cfg::casino::%{_gm}%::min}%|&eクリックで変更", "edit/casino/%{_gm}%/min")
+    uf_abtn({_p}, {_g}, 25, gold block, "&e最高賭け金", "&7現在: %{uf::cfg::casino::%{_gm}%::max}%|&eクリックで変更", "edit/casino/%{_gm}%/max")
+    uf_ashow({_p}, {_g}, "casino")
+
+function uf_ap_sell(p: player):
+    set {_g} to uf_apage({_p}, "&4売却価格（クリックで設定）")
+    set {_s} to 0
+    loop {uf::sell::*}:
+        if {_s} < 45:
+            set {_icon} to loop-index parsed as item type
+            if {_icon} is not set:
+                set {_icon} to paper
+            set {_cat} to {uf::sellcat::%loop-index%}
+            uf_abtn({_p}, {_g}, {_s}, {_icon}, "&f%loop-index%", "&7価格: &e%loop-value%pt|&7分類: %{_cat}%|&eクリックで設定", "open/sellitem/%loop-index%")
+            add 1 to {_s}
+    uf_abtn({_p}, {_g}, 51, hopper, "&a手に持っているアイテムを登録・変更", "&7メニューを開く前に、登録したいアイテムを手に持っておく", "selladd")
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_sellitem(p: player, k: text):
+    set {_g} to uf_apage({_p}, "&4売却: %{_k}%")
+    set {_icon} to {_k} parsed as item type
+    if {_icon} is not set:
+        set {_icon} to paper
+    set {_v} to {uf::sell::%{_k}%}
+    if {_v} is not set:
+        set {_v} to 0
+    uf_abtn({_p}, {_g}, 4, {_icon}, "&f%{_k}%", "&7価格: %{_v}%pt / 分類: %{uf::sellcat::%{_k}%}%", "")
+    uf_abtn({_p}, {_g}, 20, gold nugget, "&e価格（1個あたり）", "&7現在: %{_v}%pt|&eクリックで変更", "edit/sell/%{_k}%")
+    uf_abtn({_p}, {_g}, 22, name tag, "&e分類（クエスト用）", "&7現在: %{uf::sellcat::%{_k}%}%|&7crop=作物 / fish=魚 / ore=鉱石 / wood=木材 / none=なし|&eクリックで切り替え", "sellcat/%{_k}%")
+    uf_abtn({_p}, {_g}, 24, tnt, "&c売却できなくする", "&7確認画面が出ます", "ask/%{_k}% を売却できなくする|selldel/%{_k}%")
+    uf_ashow({_p}, {_g}, "sell")
+
+# ------------------------------------------------------------
+# 各種設定（カテゴリ → 項目 → 数値エディタ）
+# ------------------------------------------------------------
+function uf_cfgkeys(cat: text) :: texts:
+    if {_cat} is "reward":
+        return "reward::normal", "reward::strong", "reward::elite", "reward::mid", "reward::boss", "clear_pt::2", "clear_pt::3", "clear_pt::4", "clear_pt::5", "clear_pt::6", "clear_pt::7", "clear_pt::8", "clear_pt::9", "repeat_rate", "session_minutes" and "party_max"
+    if {_cat} is "death":
+        return "death_loss_scope", "death_loss_rate", "revive_seconds", "revive_range" and "soul_seconds"
+    if {_cat} is "chest":
+        return "chest::min", "chest::max", "chest::shift", "rarity::normal", "rarity::rare", "rarity::epic" and "rarity::legendary"
+    if {_cat} is "tools":
+        return "tree::max", "tree::height", "tree::radius", "ore::radius", "ore::seconds", "hook::range" and "hook::cooldown"
+    if {_cat} is "weapons":
+        return "gun_scope", "gun::gun_handgun::dmg", "gun::gun_handgun::cd", "gun::gun_handgun::ammo", "gun::gun_rifle::dmg", "gun::gun_rifle::cd", "gun::gun_rifle::ammo", "gun::gun_shotgun::dmg", "gun::gun_shotgun::cd", "gun::gun_shotgun::ammo", "gun::gun_shotgun::pellets", "gun::gun_energy::dmg", "gun::gun_energy::cd", "melee::melee_basic" and "melee::melee_adv"
+    if {_cat} is "rpg":
+        return "level::max", "level::base", "level::step", "skill::max" and "skill_reset_cost"
+    return "chip_rate" and "sell_daily_cap"
+
+function uf_cfgcatname(cat: text) :: text:
+    if {_cat} is "reward":
+        return "ダンジョンの報酬"
+    if {_cat} is "death":
+        return "死亡・回収・蘇生"
+    if {_cat} is "chest":
+        return "宝箱"
+    if {_cat} is "tools":
+        return "特殊道具"
+    if {_cat} is "weapons":
+        return "特殊武器"
+    if {_cat} is "rpg":
+        return "レベル・スキル"
+    return "経済"
+
+function uf_cfglabel(k: text) :: text:
+    if {_k} starts with "clear_pt::":
+        return "%last 1 characters of {_k}%階の初回クリア報酬（pt）"
+    if {_k} starts with "gun::":
+        set {_x::*} to split {_k} at "::"
+        set {_n} to uncolored uf_shopname({_x::2})
+        if {_x::3} is "dmg":
+            return "%{_n}% ダメージ"
+        if {_x::3} is "cd":
+            return "%{_n}% 発射間隔（tick）"
+        if {_x::3} is "ammo":
+            return "%{_n}% 1発の弾薬消費"
+        if {_x::3} is "pellets":
+            return "%{_n}% 散弾の数"
+        return "%{_n}% 弾速"
+    if {_k} is "reward::normal":
+        return "通常敵の討伐報酬（pt）"
+    if {_k} is "reward::strong":
+        return "強化敵の討伐報酬（pt）"
+    if {_k} is "reward::elite":
+        return "エリート敵の討伐報酬（pt）"
+    if {_k} is "reward::mid":
+        return "中ボスの討伐報酬（pt）"
+    if {_k} is "reward::boss":
+        return "階層ボスの討伐報酬（pt）"
+    if {_k} is "repeat_rate":
+        return "再挑戦報酬の割合（初回報酬に対して）"
+    if {_k} is "session_minutes":
+        return "挑戦の制限時間（分）"
+    if {_k} is "party_max":
+        return "パーティーの最大人数"
+    if {_k} is "death_loss_scope":
+        return "死亡でポイントを失う範囲"
+    if {_k} is "death_loss_rate":
+        return "死亡で失うポイントの割合"
+    if {_k} is "revive_seconds":
+        return "蘇生に必要な時間（秒）"
+    if {_k} is "revive_range":
+        return "蘇生できる距離（ブロック）"
+    if {_k} is "soul_seconds":
+        return "蘇生を受け付ける時間（秒）"
+    if {_k} is "chest::min":
+        return "1回の挑戦で置く宝箱の最小数"
+    if {_k} is "chest::max":
+        return "1回の挑戦で置く宝箱の最大数"
+    if {_k} is "chest::shift":
+        return "階が上がるごとのレア度の上がり方"
+    if {_k} is "rarity::normal":
+        return "ノーマルの重み（2階）"
+    if {_k} is "rarity::rare":
+        return "レアの重み（2階）"
+    if {_k} is "rarity::epic":
+        return "エピックの重み（2階）"
+    if {_k} is "rarity::legendary":
+        return "レジェンダリーの重み（2階）"
+    if {_k} is "tree::max":
+        return "木こり斧: 一度に切る最大数"
+    if {_k} is "tree::height":
+        return "木こり斧: 最大の高さ"
+    if {_k} is "tree::radius":
+        return "木こり斧: 水平の範囲"
+    if {_k} is "ore::radius":
+        return "鉱石探知: 半径（重くなるので注意）"
+    if {_k} is "ore::seconds":
+        return "鉱石探知: 効果時間（秒）"
+    if {_k} is "hook::range":
+        return "フック: 届く距離"
+    if {_k} is "hook::cooldown":
+        return "フック: 再使用までの時間（tick）"
+    if {_k} is "gun_scope":
+        return "銃を使える場所"
+    if {_k} is "melee::melee_basic":
+        return "電研ブレードのダメージ倍率"
+    if {_k} is "melee::melee_adv":
+        return "蒼刃のダメージ倍率"
+    if {_k} is "level::max":
+        return "レベルの上限"
+    if {_k} is "level::base":
+        return "Lv1→2 に必要な経験値"
+    if {_k} is "level::step":
+        return "レベルごとの必要経験値の増加"
+    if {_k} is "skill::max":
+        return "スキルの最大段階"
+    if {_k} is "skill_reset_cost":
+        return "スキル振り直しの費用（pt）"
+    if {_k} is "chip_rate":
+        return "1pt あたりのチップ枚数（0 で交換停止）"
+    if {_k} is "sell_daily_cap":
+        return "1日の売却上限（pt、0 で無制限）"
+    return {_k}
+
+function uf_ap_cfg(p: player):
+    set {_g} to uf_apage({_p}, "&4各種設定")
+    uf_abtn({_p}, {_g}, 19, gold ingot, uf_cfgcatname2("reward"), "&7討伐・クリア報酬、制限時間、人数", "open/cfgcat/reward")
+    uf_abtn({_p}, {_g}, 20, skeleton skull, uf_cfgcatname2("death"), "&7ポイントを失う範囲・割合、蘇生", "open/cfgcat/death")
+    uf_abtn({_p}, {_g}, 21, chest, uf_cfgcatname2("chest"), "&7宝箱の数とレア度", "open/cfgcat/chest")
+    uf_abtn({_p}, {_g}, 22, diamond pickaxe, uf_cfgcatname2("tools"), "&7木こり斧・鉱石探知・フック", "open/cfgcat/tools")
+    uf_abtn({_p}, {_g}, 23, iron sword, uf_cfgcatname2("weapons"), "&7銃・近接武器", "open/cfgcat/weapons")
+    uf_abtn({_p}, {_g}, 24, book, uf_cfgcatname2("rpg"), "&7レベル上限・必要経験値・スキル", "open/cfgcat/rpg")
+    uf_abtn({_p}, {_g}, 25, emerald, uf_cfgcatname2("economy"), "&7チップ交換・売却上限", "open/cfgcat/economy")
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_cfgcat(p: player, cat: text):
+    set {_g} to uf_apage({_p}, "&4設定: %uf_cfgcatname({_cat})%")
+    set {_s} to 0
+    loop uf_cfgkeys({_cat}):
+        set {_k} to loop-value
+        set {_v} to {uf::cfg::%{_k}%}
+        if {_k} is "death_loss_scope" or "gun_scope":
+            uf_abtn({_p}, {_g}, {_s}, name tag, "&e%uf_cfglabel({_k})%", "&7現在: &f%uf_scopename({_v})%|&eクリックで切り替え", "cyc/%{_k}%")
+        else:
+            uf_abtn({_p}, {_g}, {_s}, paper, "&e%uf_cfglabel({_k})%", "&7現在: &f%{_v}%|&7範囲: %uf_cfgmin({_k})%〜%uf_cfgmax({_k})%|&eクリックで変更", "edit/cfg/%{_k}%")
+        add 1 to {_s}
+    uf_ashow({_p}, {_g}, "cfg")
+
+function uf_scopename(v: text) :: text:
+    if {_v} is "dungeon":
+        return "ダンジョンのみ"
+    if {_v} is "all":
+        return "すべてのワールド"
+    if {_v} is "none":
+        return "なし"
+    return {_v}
+
+function uf_cfgdec(k: text) :: boolean:
+    if {_k} is "death_loss_rate", "repeat_rate", "chest::shift" or "chip_rate":
+        return true
+    if {_k} starts with "melee::":
+        return true
+    if {_k} starts with "rarity::":
+        return true
+    if {_k} ends with "::speed":
+        return true
+    return false
+
+function uf_cfgmin(k: text) :: number:
+    if {_k} is "party_max", "revive_seconds", "revive_range", "tree::max", "tree::height", "tree::radius", "ore::radius", "level::max", "level::base", "skill::max" or "session_minutes":
+        return 1
+    if {_k} ends with "::cd":
+        return 1
+    if {_k} ends with "::pellets":
+        return 1
+    if {_k} is "soul_seconds" or "ore::seconds":
+        return 5
+    if {_k} is "hook::range":
+        return 5
+    return 0
+
+function uf_cfgmax(k: text) :: number:
+    if {_k} is "death_loss_rate" or "repeat_rate":
+        return 1
+    if {_k} starts with "rarity::":
+        return 100
+    if {_k} is "chest::shift":
+        return 5
+    if {_k} is "chest::min" or "chest::max":
+        return 5
+    if {_k} is "chip_rate":
+        return 100
+    if {_k} starts with "melee::":
+        return 10
+    if {_k} ends with "::speed":
+        return 6
+    if {_k} ends with "::pellets" or "::ammo":
+        return 10
+    if {_k} ends with "::dmg":
+        return 100
+    if {_k} ends with "::cd":
+        return 200
+    if {_k} is "party_max":
+        return 10
+    if {_k} is "revive_seconds":
+        return 60
+    if {_k} is "revive_range" or "tree::radius":
+        return 8
+    if {_k} is "soul_seconds" or "ore::seconds":
+        return 300
+    if {_k} is "tree::max":
+        return 256
+    if {_k} is "tree::height":
+        return 64
+    if {_k} is "ore::radius":
+        return 16
+    if {_k} is "hook::range":
+        return 64
+    if {_k} is "hook::cooldown":
+        return 200
+    if {_k} is "session_minutes":
+        return 120
+    if {_k} is "level::max":
+        return 200
+    if {_k} is "skill::max":
+        return 20
+    return 1000000
+
+# ------------------------------------------------------------
+# プレイヤー・区域・イベント・アイテム・履歴
+# ------------------------------------------------------------
+function uf_ap_players(p: player):
+    set {_g} to uf_apage({_p}, "&4プレイヤー（オンライン）")
+    set {_s} to 0
+    loop all players:
+        if {_s} < 45:
+            set {_u} to uuid of loop-player
+            set {-uf::apl::%{_u}%} to loop-player
+            uf_abtn({_p}, {_g}, {_s}, skull of loop-player, "&f%loop-player%", "&7pt %uf_pt(loop-player)% / チップ %uf_chip(loop-player)% / Lv %uf_lvof(loop-player)%|&eクリックで詳細", "open/player/%{_u}%")
+            add 1 to {_s}
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_player(p: player, u: text):
+    set {_t} to {-uf::apl::%{_u}%}
+    if {_t} is not set:
+        uf_ap_players({_p})
+        stop
+    if {_t} is not online:
+        uf_msg({_p}, "&cそのプレイヤーはオフラインです")
+        uf_ap_players({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4プレイヤー: %{_t}%")
+    set {_cl} to ""
+    loop integers between 2 and 9:
+        if {uf::clear::%{_u}%::%loop-value%} is true:
+            set {_cl} to "%{_cl}%%loop-value% "
+    set {_info} to "&7Lv %uf_lvof({_t})% / 挑戦できる最上階 %uf_unlock({_t})%階|&7初回クリア済み: %{_cl}%|&7回収待ち: %size of {uf::recidx::%{_u}%::*}%件|&7挑戦中の階: %{-uf::insess::%{_u}%}%"
+    uf_abtn({_p}, {_g}, 4, skull of {_t}, "&f%{_t}%", {_info}, "")
+    uf_abtn({_p}, {_g}, 20, gold nugget, "&eポイント", "&7現在: %uf_pt({_t})%|&eクリックで変更（記録が残ります）", "edit/pt/%{_u}%")
+    uf_abtn({_p}, {_g}, 22, gold ingot, "&eカジノチップ", "&7現在: %uf_chip({_t})%|&eクリックで変更（記録が残ります）", "edit/chip/%{_u}%")
+    uf_abtn({_p}, {_g}, 24, oak door, "&e挑戦できる最上階", "&7現在: %uf_unlock({_t})%階|&eクリックで変更", "edit/unlock/%{_u}%")
+    if {-uf::insess::%{_u}%} is set:
+        uf_abtn({_p}, {_g}, 31, barrier, "&cダンジョンから退出させる", "&7確認画面が出ます", "ask/%{_t}% をダンジョンから退出させる|pleave/%{_u}%")
+    uf_ashow({_p}, {_g}, "players")
+
+function uf_ap_areas(p: player):
+    set {_g} to uf_apage({_p}, "&4ショップ・カジノの区域")
+    set {_h} to "|&eクリックで今いる場所にする"
+    uf_abtn({_p}, {_g}, 10, emerald, "&eショップの区域", "&7未設定ならどこでも /buy を使える", "")
+    uf_abtn({_p}, {_g}, 11, white wool, "&eショップ: 角1", "%uf_locstr({uf::area::shop::a})%%{_h}%", "area/shop/a")
+    uf_abtn({_p}, {_g}, 12, white wool, "&eショップ: 角2", "%uf_locstr({uf::area::shop::b})%%{_h}%", "area/shop/b")
+    uf_abtn({_p}, {_g}, 13, tnt, "&cショップの区域を解除", "&7確認画面が出ます", "ask/ショップの区域を解除する|areadel/shop")
+    uf_abtn({_p}, {_g}, 28, gold ingot, "&eカジノの区域", "&7未設定ならどこでも /casino を使える", "")
+    uf_abtn({_p}, {_g}, 29, white wool, "&eカジノ: 角1", "%uf_locstr({uf::area::casino::a})%%{_h}%", "area/casino/a")
+    uf_abtn({_p}, {_g}, 30, white wool, "&eカジノ: 角2", "%uf_locstr({uf::area::casino::b})%%{_h}%", "area/casino/b")
+    uf_abtn({_p}, {_g}, 31, tnt, "&cカジノの区域を解除", "&7確認画面が出ます", "ask/カジノの区域を解除する|areadel/casino")
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_prot(p: player):
+    set {_g} to uf_apage({_p}, "&4保護区域（特殊道具で壊させない範囲）")
+    set {_s} to 0
+    loop {uf::protlist::*}:
+        if {_s} < 45:
+            uf_abtn({_p}, {_g}, {_s}, shield, "&f%loop-value%", "&7角1: %uf_locstr({uf::prot::%loop-value%::a})%|&7角2: %uf_locstr({uf::prot::%loop-value%::b})%|&eクリックで設定", "open/protarea/%loop-value%")
+            add 1 to {_s}
+    uf_abtn({_p}, {_g}, 51, lime concrete, "&a新しい保護区域を作る", "&7今いる場所を角1にして作成する", "protnew")
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_protarea(p: player, n: text):
+    if {uf::protlist::%{_n}%} is not set:
+        uf_ap_prot({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4保護区域: %{_n}%")
+    uf_abtn({_p}, {_g}, 20, white wool, "&e角1", "%uf_locstr({uf::prot::%{_n}%::a})%|&eクリックで今いる場所にする", "prot/%{_n}%/a")
+    uf_abtn({_p}, {_g}, 22, white wool, "&e角2", "%uf_locstr({uf::prot::%{_n}%::b})%|&eクリックで今いる場所にする", "prot/%{_n}%/b")
+    uf_abtn({_p}, {_g}, 24, tnt, "&cこの保護区域を消す", "&7確認画面が出ます", "ask/保護区域 %{_n}% を消す|protdel/%{_n}%")
+    uf_ashow({_p}, {_g}, "prot")
+
+function uf_ap_event(p: player):
+    set {_g} to uf_apage({_p}, "&4大学祭イベント")
+    if {uf::event::active} is true:
+        uf_abtn({_p}, {_g}, 4, firework rocket, "&a開催中", "&7開始: %{uf::event::started}%", "")
+    else:
+        uf_abtn({_p}, {_g}, 4, firework rocket, "&7停止中", "&7イベントスコアは main.sk の {score::*}", "")
+    uf_abtn({_p}, {_g}, 20, lime concrete, "&aイベントを開始", "&7全員に告知します|&7確認画面が出ます", "ask/大学祭イベントを開始する|act/event_start")
+    uf_abtn({_p}, {_g}, 22, red concrete, "&cイベントを終了", "&7上位3名を発表します|&7確認画面が出ます", "ask/大学祭イベントを終了する|act/event_stop")
+    uf_abtn({_p}, {_g}, 24, tnt, "&cイベントスコアをリセット", "&7退避してから消去します|&7常設のポイントなどは消えません|&7確認画面が出ます", "ask/イベントスコアをリセットする（退避してから消去）|act/event_reset")
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_items(p: player):
+    set {_g} to uf_apage({_p}, "&4特殊アイテム（クリックで1個受け取る）")
+    set {_s} to 0
+    loop "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_kit" and "admin_tool":
+        set {_it} to uf_item(loop-value)
+        if {_it} is set:
+            set slot {_s} of {_g} to {_it}
+            set {-uf::guictx::%uuid of {_p}%::%{_s}%} to "give/%loop-value%"
+            add 1 to {_s}
+    uf_ashow({_p}, {_g}, "hub")
+
+function uf_ap_logs(p: player):
+    set {_g} to uf_apage({_p}, "&4操作履歴（新しい順）")
+    set {_n} to {uf::adminlog::n}
+    if {_n} is set:
+        loop 27 times:
+            set {_i} to {_n} - loop-value + 1
+            if {_i} >= 1:
+                set {_e} to {uf::adminlog::e::%mod({_i}, 50)%}
+                if {_e} is set:
+                    uf_abtn({_p}, {_g}, loop-value - 1, paper, "&f%{_e}%", "&7No.%{_i}%", "")
+    uf_ashow({_p}, {_g}, "hub")
+
+# ------------------------------------------------------------
+# 数値エディタ（＋／－ → 決定）
+#   対象: cfg/<キー> shopprice/<id> shopreq/<id> casino/<ゲーム>/<項目>
+#         sell/<キー> count/<階>/<種類> pt/<uuid> chip/<uuid> unlock/<uuid>
+# ------------------------------------------------------------
+function uf_edopen(p: player, target: text):
+    set {_u} to uuid of {_p}
+    set {_x::*} to split {_target} at "/"
+    set {_kind} to {_x::1}
+    set {_min} to 0
+    set {_max} to 1000000
+    set {_dec} to false
+    if {_kind} is "cfg":
+        set {_k} to {_x::2}
+        set {_cur} to {uf::cfg::%{_k}%}
+        set {_label} to uf_cfglabel({_k})
+        set {_min} to uf_cfgmin({_k})
+        set {_max} to uf_cfgmax({_k})
+        set {_dec} to uf_cfgdec({_k})
+    else if {_kind} is "shopprice":
+        set {_cur} to {uf::shop::%{_x::2}%::price}
+        set {_label} to "%uncolored uf_shopname({_x::2})% の価格（pt）"
+    else if {_kind} is "shopreq":
+        set {_cur} to {uf::shop::%{_x::2}%::req}
+        set {_label} to "%uncolored uf_shopname({_x::2})% の解放条件（クリア階、0=なし）"
+        set {_max} to 9
+    else if {_kind} is "casino":
+        set {_cur} to {uf::cfg::casino::%{_x::2}%::%{_x::3}%}
+        set {_label} to "カジノ %{_x::2}% の %{_x::3}%"
+        if {_x::3} is "prob":
+            set {_max} to 100
+            set {_dec} to true
+        else if {_x::3} is "mult":
+            set {_max} to 1000
+            set {_dec} to true
+        else if {_x::3} is "window":
+            set {_min} to 2
+            set {_max} to 40
+        else:
+            set {_min} to 1
+    else if {_kind} is "sell":
+        set {_cur} to {uf::sell::%{_x::2}%}
+        set {_label} to "%{_x::2}% の売却価格（pt）"
+        set {_max} to 100000
+    else if {_kind} is "count":
+        set {_cur} to uf_dcount({_x::2} parsed as number, {_x::3})
+        set {_label} to "%{_x::2}%階の %{_x::3}% の数"
+        set {_max} to 50
+    else if {_kind} is "pt" or "chip" or "unlock":
+        set {_t} to {-uf::apl::%{_x::2}%}
+        if {_t} is not online:
+            uf_msg({_p}, "&cそのプレイヤーはオフラインです")
+            stop
+        if {_kind} is "pt":
+            set {_cur} to uf_pt({_t})
+            set {_label} to "%{_t}% のポイント"
+            set {_max} to 10000000
+        else if {_kind} is "chip":
+            set {_cur} to uf_chip({_t})
+            set {_label} to "%{_t}% のカジノチップ"
+            set {_max} to 10000000
+        else:
+            set {_cur} to uf_unlock({_t})
+            set {_label} to "%{_t}% の挑戦できる最上階"
+            set {_min} to 2
+            set {_max} to 9
+    else:
+        stop
+    if {_cur} is not set:
+        set {_cur} to 0
+    delete {-uf::ed::%{_u}%::*}
+    set {-uf::ed::%{_u}%::target} to {_target}
+    set {-uf::ed::%{_u}%::orig} to {_cur}
+    set {-uf::ed::%{_u}%::val} to {_cur}
+    set {-uf::ed::%{_u}%::min} to {_min}
+    set {-uf::ed::%{_u}%::max} to {_max}
+    set {-uf::ed::%{_u}%::dec} to {_dec}
+    set {-uf::ed::%{_u}%::label} to {_label}
+    set {-uf::ed::%{_u}%::back} to {-uf::apage::%{_u}%}
+    set {-uf::apage::%{_u}%} to "editor"
+    uf_edgui({_p})
+
+function uf_edgui(p: player):
+    set {_u} to uuid of {_p}
+    if {-uf::ed::%{_u}%::target} is not set:
+        uf_ap_hub({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4数値の変更")
+    set {_label} to {-uf::ed::%{_u}%::label}
+    set {_v} to {-uf::ed::%{_u}%::val}
+    set {_info} to "&7元の値: &f%{-uf::ed::%{_u}%::orig}%|&7変更後: &a%{_v}%|&7範囲: %{-uf::ed::%{_u}%::min}%〜%{-uf::ed::%{_u}%::max}%"
+    uf_abtn({_p}, {_g}, 4, paper, "&e%{_label}%", {_info}, "")
+    uf_abtn({_p}, {_g}, 22, name tag, "&a%{_v}%", {_info}, "")
+    if {-uf::ed::%{_u}%::dec} is true:
+        set {_d::*} to -10, -1, -0.1, 0.1, 1 and 10
+        set {_sl::*} to 19, 20, 21, 23, 24 and 25
+    else:
+        set {_d::*} to -1000, -100, -10, -1, 1, 10, 100 and 1000
+        set {_sl::*} to 18, 19, 20, 21, 23, 24, 25 and 26
+    loop {_d::*}:
+        set {_s} to {_sl::%loop-index%}
+        if loop-value < 0:
+            uf_abtn({_p}, {_g}, {_s}, red stained glass pane, "&c%loop-value%", "&7クリックで減らす", "ed/%loop-value%")
+        else:
+            uf_abtn({_p}, {_g}, {_s}, lime stained glass pane, "&a+%loop-value%", "&7クリックで増やす", "ed/%loop-value%")
+    uf_abtn({_p}, {_g}, 38, yellow concrete, "&e元の値に戻す", "&7%{-uf::ed::%{_u}%::orig}%", "edreset")
+    uf_abtn({_p}, {_g}, 40, lime concrete, "&a決定", "&7%{-uf::ed::%{_u}%::orig}% → %{_v}%", "edok")
+    uf_abtn({_p}, {_g}, 42, red concrete, "&cやめる", "&7変更せずに戻る", "edcancel")
+    uf_ashow({_p}, {_g}, "")
+
+function uf_edadd(p: player, d: number):
+    set {_u} to uuid of {_p}
+    set {_v} to {-uf::ed::%{_u}%::val} + {_d}
+    if {-uf::ed::%{_u}%::dec} is true:
+        set {_v} to round({_v} * 100) / 100
+    else:
+        set {_v} to round({_v})
+    set {_v} to max({-uf::ed::%{_u}%::min}, min({-uf::ed::%{_u}%::max}, {_v}))
+    set {-uf::ed::%{_u}%::val} to {_v}
+
+# 決定。成功したら true
+function uf_edapply(p: player) :: boolean:
+    set {_u} to uuid of {_p}
+    set {_target} to {-uf::ed::%{_u}%::target}
+    set {_v} to {-uf::ed::%{_u}%::val}
+    set {_old} to {-uf::ed::%{_u}%::orig}
+    if {_target} is not set:
+        return false
+    set {_x::*} to split {_target} at "/"
+    set {_kind} to {_x::1}
+    if {_kind} is "cfg":
+        set {_k} to {_x::2}
+        if {_k} is "chest::min":
+            if {_v} > {uf::cfg::chest::max}:
+                uf_msg({_p}, "&c最小数が最大数（%{uf::cfg::chest::max}%）を超えています")
+                return false
+        if {_k} is "chest::max":
+            if {_v} < {uf::cfg::chest::min}:
+                uf_msg({_p}, "&c最大数が最小数（%{uf::cfg::chest::min}%）を下回っています")
+                return false
+        set {uf::cfg::%{_k}%} to {_v}
+    else if {_kind} is "shopprice":
+        set {uf::shop::%{_x::2}%::price} to {_v}
+    else if {_kind} is "shopreq":
+        set {uf::shop::%{_x::2}%::req} to {_v}
+    else if {_kind} is "casino":
+        set {_gm} to {_x::2}
+        set {_k} to {_x::3}
+        if {_k} is "min":
+            if {_v} > {uf::cfg::casino::%{_gm}%::max}:
+                uf_msg({_p}, "&c最低額が最高額を超えています")
+                return false
+        if {_k} is "max":
+            if {_v} < {uf::cfg::casino::%{_gm}%::min}:
+                uf_msg({_p}, "&c最高額が最低額を下回っています")
+                return false
+        set {uf::cfg::casino::%{_gm}%::%{_k}%} to {_v}
+        if {_gm} is not "reaction":
+            set {_rtp} to {uf::cfg::casino::%{_gm}%::prob} * {uf::cfg::casino::%{_gm}%::mult}
+            if {_rtp} > 100:
+                uf_msg({_p}, "&c注意: 理論還元率が %{_rtp}%％ です（100％超はプレイヤーが得をする設定）")
+    else if {_kind} is "sell":
+        if {_v} <= 0:
+            delete {uf::sell::%{_x::2}%}
+        else:
+            set {uf::sell::%{_x::2}%} to {_v}
+        set {uf::selldone::%{_x::2}%} to true
+        if {uf::sellcat::%{_x::2}%} is not set:
+            set {uf::sellcat::%{_x::2}%} to "none"
+    else if {_kind} is "count":
+        set {uf::floor::%{_x::2}%::count::%{_x::3}%} to {_v}
+    else if {_kind} is "pt" or "chip" or "unlock":
+        set {_t} to {-uf::apl::%{_x::2}%}
+        if {_t} is not online:
+            uf_msg({_p}, "&cそのプレイヤーはオフラインです")
+            return false
+        if {_kind} is "pt":
+            set {uf::pt::%{_x::2}%} to {_v}
+            uf_log("economy", "set %{_v}% pt %{_t}% (%{_x::2}%) reason=admin:%{_p}% old=%{_old}%")
+        else if {_kind} is "chip":
+            set {uf::chip::%{_x::2}%} to {_v}
+            uf_log("casino", "set %{_v}% chip %{_t}% (%{_x::2}%) reason=admin:%{_p}% old=%{_old}%")
+        else:
+            set {uf::unlock::%{_x::2}%} to {_v}
+    else:
+        return false
+    uf_adminlog({_p}, "edit %{_target}% %{_old}% -> %{_v}%")
+    uf_msg({_p}, "&a%{-uf::ed::%{_u}%::label}%: %{_old}% → %{_v}%")
+    return true
+
+# ------------------------------------------------------------
+# 操作の実行
+# ------------------------------------------------------------
+function uf_aact(p: player, a: text):
+    if uf_admin({_p}) is false:
+        stop
+    set {_u} to uuid of {_p}
+    set {_x::*} to split {_a} at "/"
+    set {_c} to {_x::1}
+    if {_c} is "open":
+        uf_adminopen({_p}, last (length of {_a} - 5) characters of {_a})
+        stop
+    if {_c} is "close":
+        close inventory of {_p}
+        stop
+    if {_c} is "edit":
+        uf_edopen({_p}, last (length of {_a} - 5) characters of {_a})
+        stop
+    if {_c} is "ed":
+        uf_edadd({_p}, {_x::2} parsed as number)
+        uf_edgui({_p})
+        stop
+    if {_c} is "edreset":
+        set {-uf::ed::%{_u}%::val} to {-uf::ed::%{_u}%::orig}
+        uf_edgui({_p})
+        stop
+    if {_c} is "edok":
+        if uf_edapply({_p}) is true:
+            uf_adminopen({_p}, {-uf::ed::%{_u}%::back})
+        else:
+            uf_edgui({_p})
+        stop
+    if {_c} is "edcancel":
+        uf_adminopen({_p}, {-uf::ed::%{_u}%::back})
+        stop
+    if {_c} is "ask":
+        set {_rest} to last (length of {_a} - 4) characters of {_a}
+        set {_y::*} to split {_rest} at "|"
+        uf_confirm({_p}, "x/%{_y::2}%", {_y::1})
+        stop
+    if {_c} is "act":
+        uf_doaction({_p}, {_x::2})
+        uf_adminopen({_p}, {-uf::apage::%{_u}%})
+        stop
+    if {_c} is "give":
+        uf_give({_p}, uf_item({_x::2}))
+        uf_adminlog({_p}, "give self %{_x::2}%")
+        stop
+
+    # ここから下は設定を変える操作（実行後に今のページを開き直す）
+    if {_c} is "mod":
+        if {uf::mod::%{_x::2}%} is true:
+            set {uf::mod::%{_x::2}%} to false
+        else:
+            set {uf::mod::%{_x::2}%} to true
+        uf_msg({_p}, "&a%uf_modname({_x::2})%: %uf_onoff({uf::mod::%{_x::2}%})%")
+    else if {_c} is "world":
+        set {uf::cfg::world::%{_x::2}%} to "%world of {_p}%"
+        uf_msg({_p}, "&a%{_x::2}% ワールドを %world of {_p}% にしました")
+    else if {_c} is "lobby":
+        set {uf::cfg::lobby} to location of {_p}
+        uf_msg({_p}, "&aロビーを今いる場所にしました")
+    else if {_c} is "floc":
+        set {uf::floor::%{_x::2}%::%{_x::3}%} to location of {_p}
+        uf_msg({_p}, "&a%{_x::2}%階の %{_x::3}% を今いる場所にしました")
+    else if {_c} is "fadd":
+        if {_x::3} is "spawn":
+            add location of {_p} to {uf::floor::%{_x::2}%::spawn::*}
+            uf_msg({_p}, "&a敵の出現地点を追加しました（計 %size of {uf::floor::%{_x::2}%::spawn::*}%）")
+        else:
+            add location of block at location of {_p} to {uf::floor::%{_x::2}%::chest::*}
+            uf_msg({_p}, "&a宝箱の候補地点を追加しました（計 %size of {uf::floor::%{_x::2}%::chest::*}%）")
+    else if {_c} is "fclear":
+        delete {uf::floor::%{_x::2}%::%{_x::3}%::*}
+        uf_msg({_p}, "&e消去しました")
+    else if {_c} is "ftp":
+        teleport {_p} to {uf::floor::%{_x::2}%::start}
+    else if {_c} is "fend":
+        uf_dend({_x::2} parsed as number, "admin")
+        uf_msg({_p}, "&e挑戦を終了しました")
+    else if {_c} is "fskip":
+        uf_dskip({_x::2} parsed as number)
+        uf_msg({_p}, "&e次の段階へ進めました")
+    else if {_c} is "shoptoggle":
+        if {uf::shop::%{_x::2}%::enabled} is true:
+            set {uf::shop::%{_x::2}%::enabled} to false
+        else:
+            set {uf::shop::%{_x::2}%::enabled} to true
+    else if {_c} is "casinotoggle":
+        if {uf::cfg::casino::%{_x::2}%::enabled} is true:
+            set {uf::cfg::casino::%{_x::2}%::enabled} to false
+        else:
+            set {uf::cfg::casino::%{_x::2}%::enabled} to true
+    else if {_c} is "selladd":
+        set {_i} to tool of {_p}
+        if {_i} is air:
+            uf_msg({_p}, "&c登録したいアイテムを手に持ってから、メニューを開いてください")
+            stop
+        if uf_id({_i}) is not "":
+            uf_msg({_p}, "&c特殊アイテムは売却対象にできません")
+            stop
+        uf_edopen({_p}, "sell/%type of {_i}%")
+        stop
+    else if {_c} is "sellcat":
+        set {_k} to {_x::2}
+        set {_cur} to {uf::sellcat::%{_k}%}
+        if {_cur} is "crop":
+            set {_cur} to "fish"
+        else if {_cur} is "fish":
+            set {_cur} to "ore"
+        else if {_cur} is "ore":
+            set {_cur} to "wood"
+        else if {_cur} is "wood":
+            set {_cur} to "none"
+        else:
+            set {_cur} to "crop"
+        set {uf::sellcat::%{_k}%} to {_cur}
+    else if {_c} is "selldel":
+        delete {uf::sell::%{_x::2}%}
+        set {uf::selldone::%{_x::2}%} to true
+        set {-uf::apage::%{_u}%} to "sell"
+    else if {_c} is "cyc":
+        set {_k} to {_x::2}
+        set {_cur} to {uf::cfg::%{_k}%}
+        if {_k} is "death_loss_scope":
+            if {_cur} is "dungeon":
+                set {uf::cfg::%{_k}%} to "all"
+            else if {_cur} is "all":
+                set {uf::cfg::%{_k}%} to "none"
+            else:
+                set {uf::cfg::%{_k}%} to "dungeon"
+        else if {_k} is "gun_scope":
+            if {_cur} is "dungeon":
+                set {uf::cfg::%{_k}%} to "all"
+            else:
+                set {uf::cfg::%{_k}%} to "dungeon"
+        uf_msg({_p}, "&a%uf_cfglabel({_k})%: %uf_scopename({uf::cfg::%{_k}%})%")
+    else if {_c} is "area":
+        set {uf::area::%{_x::2}%::%{_x::3}%} to location of {_p}
+        uf_msg({_p}, "&a区域を設定しました")
+    else if {_c} is "areadel":
+        delete {uf::area::%{_x::2}%::*}
+        uf_msg({_p}, "&e区域を解除しました（どこでも利用可）")
+    else if {_c} is "protnew":
+        add 1 to {uf::protseq}
+        set {_n} to "area%{uf::protseq}%"
+        set {uf::protlist::%{_n}%} to {_n}
+        set {uf::prot::%{_n}%::a} to location of {_p}
+        uf_msg({_p}, "&a保護区域 %{_n}% を作りました。もう一方の角へ移動して「角2」を設定してください")
+        set {-uf::apage::%{_u}%} to "protarea/%{_n}%"
+    else if {_c} is "prot":
+        set {uf::prot::%{_x::2}%::%{_x::3}%} to location of {_p}
+        uf_msg({_p}, "&a保護区域 %{_x::2}% の角を設定しました")
+    else if {_c} is "protdel":
+        delete {uf::prot::%{_x::2}%::*}
+        delete {uf::protlist::%{_x::2}%}
+        set {-uf::apage::%{_u}%} to "prot"
+    else if {_c} is "pleave":
+        set {_t} to {-uf::apl::%{_x::2}%}
+        if {_t} is online:
+            uf_dleave({_t})
+    else:
+        uf_msg({_p}, "&c不明な操作です: %{_a}%")
+        stop
+    uf_adminlog({_p}, "tool %{_a}%")
+    uf_adminopen({_p}, {-uf::apage::%{_u}%})
+
+# 設定カテゴリ名（ボタン用の色つき）
+function uf_cfgcatname2(cat: text) :: text:
+    return "&e%uf_cfgcatname({_cat})%"

@@ -374,6 +374,18 @@ function uf_dend(f: number, reason: text):
     uf_log("dungeon", "end f=%{_f}% reason=%{_reason}%")
     delete {-uf::sess::%{_f}%::*}
 
+# 管理者用：今の段階の敵を倒した扱いにして次の段階へ（報酬なし、段階は 1 回だけ進める）
+function uf_dskip(f: number):
+    if {-uf::sess::%{_f}%::on} is not true:
+        stop
+    set {-uf::sess::%{_f}%::skipping} to true
+    loop {-uf::sess::%{_f}%::mobs::*}:
+        if loop-value is alive:
+            kill loop-value
+    delete {-uf::sess::%{_f}%::skipping}
+    set {-uf::sess::%{_f}%::alive} to 0
+    uf_dphase({_f})
+
 function uf_dleave(p: player):
     set {_f} to {-uf::insess::%uuid of {_p}%}
     if {_f} is not set:
@@ -573,14 +585,7 @@ command /ufd [<text>] [<number>] [<text>] [<number>]:
             if {-uf::sess::%{_f}%::on} is not true:
                 uf_msg(player, "&cこの階は挑戦中ではありません")
                 stop
-            # 強制で倒した敵には報酬を出さず、段階も 1 回だけ進める
-            set {-uf::sess::%{_f}%::skipping} to true
-            loop {-uf::sess::%{_f}%::mobs::*}:
-                if loop-value is alive:
-                    kill loop-value
-            delete {-uf::sess::%{_f}%::skipping}
-            set {-uf::sess::%{_f}%::alive} to 0
-            uf_dphase({_f})
+            uf_dskip({_f})
             uf_msg(player, "&e次の段階へ進めました")
         else:
             uf_msg(player, "&c不明な操作です（/ufd で一覧）")

@@ -331,7 +331,7 @@ command /guide:
     trigger:
         send "&6=== 15号館へようこそ ===" to command sender
         send "&f1. まずはサバイバル！ 木・鉱石・作物・魚を集めて &e/sell &fで売るとポイントになる" to command sender
-        send "&f2. 1階のショップ（&e/shop&f）で回復キットや武器を買える" to command sender
+        send "&f2. 1階のショップ（&e/buy&f）で回復キットや武器を買える" to command sender
         send "&f3. フロアマップ（コンパス）を右クリック、または &e/dungeon &fで2階から挑戦" to command sender
         send "&f4. 仲間と &e/party invite <名前> &fで協力。倒れた仲間はしゃがんで蘇生" to command sender
         send "&f5. 死ぬとポイントの半分を落とす。死んだ場所に戻れば回収できる" to command sender

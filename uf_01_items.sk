@@ -89,6 +89,11 @@ function uf_item(id: text, lv: number = 0) :: item:
         set {_b} to water bottle
         set {_n} to "&3鉱石探知ポーション"
         add "&7飲むと一定時間、近くの鉱石の方向を表示する" to {_d::*}
+    else if {_id} is "admin_tool":
+        set {_b} to book
+        set {_n} to "&4管理者ツール"
+        add "&7右クリック（統合版はタップ）で管理メニューを開く" to {_d::*}
+        add "&7管理者以外は使えない" to {_d::*}
     else if {_id} is "map":
         set {_b} to compass
         set {_n} to "&eフロアマップ"

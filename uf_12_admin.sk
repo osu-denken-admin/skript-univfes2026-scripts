@@ -1,6 +1,7 @@
 # ============================================================
 # uf_12_admin.sk : 管理者向け機能（権限 univfes.admin。OP は自動で持つ）
-#   /ufadmin                         管理 GUI
+#   /ufadmin                         管理メニュー（管理者ツールと同じ）
+#   /ufadmin tool                    管理者ツール（本）を受け取る
 #   /ufadmin module <名前|list> [on|off]
 #   /ufadmin world <survival|dungeon|event>   今いるワールドを登録
 #   /ufadmin area <shop|casino> <pos1|pos2|del>
@@ -26,7 +27,13 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
     trigger:
         set {_a} to arg-1
         if {_a} is not set:
-            uf_admingui(player)
+            uf_adminopen(player, "hub")
+            stop
+
+        if {_a} is "tool":
+            uf_give(player, uf_item("admin_tool"))
+            uf_msg(player, "&a管理者ツールを渡しました")
+            uf_adminlog(player, "tool given")
             stop
 
         if {_a} is "module":
@@ -183,7 +190,7 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             uf_adminlog(player, "unlock %{_t}% %floor({_f})%")
 
         else if {_a} is "shop":
-            uf_shopadmingui(player)
+            uf_adminopen(player, "shop")
 
         else if {_a} is "shopprice" or "shopreq":
             set {_id} to arg-2
@@ -242,7 +249,7 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
 
         else if {_a} is "casino":
             if arg-2 is not set:
-                uf_casinoadmingui(player)
+                uf_adminopen(player, "casino")
                 stop
             set {_g} to arg-2
             set {_k} to arg-3
@@ -376,55 +383,8 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             uf_msg(player, "&c不明なサブコマンドです")
 
 # ------------------------------------------------------------
-# 管理 GUI と確認画面
+# 確認画面（管理者ツールからも使う）
 # ------------------------------------------------------------
-function uf_admingui(p: player):
-    set {_g} to chest inventory with 3 rows named "&4電研サーバー管理"
-    uf_guiclear({_p})
-    set slot 10 of {_g} to emerald named "&aショップ管理"
-    set slot 11 of {_g} to gold ingot named "&eカジノ管理"
-    if {uf::event::active} is true:
-        set slot 13 of {_g} to firework rocket named "&6イベント: &a開催中" with lore "&eクリックで終了"
-    else:
-        set slot 13 of {_g} to firework rocket named "&6イベント: &7停止中" with lore "&eクリックで開始"
-    if {uf::maint} is true:
-        set slot 14 of {_g} to iron door named "&cメンテナンス: ON" with lore "&eクリックで解除"
-    else:
-        set slot 14 of {_g} to iron door named "&7メンテナンス: OFF" with lore "&eクリックで開始"
-    set slot 15 of {_g} to book named "&f操作履歴" with lore "&7/ufadmin log と同じ"
-    set slot 16 of {_g} to comparator named "&fモジュール一覧" with lore "&7/ufadmin module list と同じ"
-    uf_gui({_p}, "admin", {_g})
-
-on inventory click:
-    {-uf::gui::%uuid of player%} is "admin"
-    cancel event
-    event-inventory is {-uf::guiinv::%uuid of player%}
-    uf_admin(player) is true
-    set {_s} to index of event-slot
-    wait 1 tick
-    player is online
-    if {_s} is 10:
-        uf_shopadmingui(player)
-    else if {_s} is 11:
-        uf_casinoadmingui(player)
-    else if {_s} is 13:
-        if {uf::event::active} is true:
-            uf_confirm(player, "event_stop", "大学祭イベントを終了する")
-        else:
-            uf_confirm(player, "event_start", "大学祭イベントを開始する")
-    else if {_s} is 14:
-        if {uf::maint} is true:
-            close inventory of player
-            uf_doaction(player, "maint_off")
-        else:
-            uf_confirm(player, "maint_on", "メンテナンスモードにする（管理者以外をキック）")
-    else if {_s} is 15:
-        close inventory of player
-        make player execute command "/ufadmin log"
-    else if {_s} is 16:
-        close inventory of player
-        make player execute command "/ufadmin module list"
-
 function uf_confirm(p: player, action: text, label: text):
     set {_g} to chest inventory with 3 rows named "&4確認: %{_label}%"
     uf_guiclear({_p})
@@ -446,11 +406,18 @@ on inventory click:
         uf_doaction(player, {_action})
     else if {_s} is 15:
         wait 1 tick
-        close inventory of player
         uf_msg(player, "&7取り消しました")
+        if {_action} starts with "x/":
+            uf_adminopen(player, {-uf::apage::%uuid of player%})
+        else:
+            close inventory of player
 
 function uf_doaction(p: player, action: text):
     if uf_admin({_p}) is false:
+        stop
+    # 管理者ツールの確認画面から来た操作
+    if {_action} starts with "x/":
+        uf_aact({_p}, last (length of {_action} - 2) characters of {_action})
         stop
     if {_action} is "event_start":
         set {uf::event::active} to true

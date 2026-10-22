@@ -4,8 +4,8 @@
 #   管理者が変えられるのは「販売状態・価格・解放条件」だけ。
 # ============================================================
 
-command /shop:
-    description: ショップを開く
+command /buy:
+    description: ショップを開く（/shop は QuickShop が使うため /buy）
     executable by: players
     trigger:
         if uf_on("shop") is false:
@@ -110,47 +110,3 @@ on inventory click:
     if player is online:
         uf_shopgui(player)
 
-# ------------------------------------------------------------
-# 管理者用：商品管理 GUI（クリックで販売状態を切り替え）
-#   価格     : /ufadmin shopprice <id> <価格>
-#   解放条件 : /ufadmin shopreq <id> <階 0-9>
-# ------------------------------------------------------------
-function uf_shopadmingui(p: player):
-    set {_g} to chest inventory with 6 rows named "&4ショップ管理（クリックで販売切替）"
-    uf_guiclear({_p})
-    set {_slot} to 0
-    loop {uf::shopids::*}:
-        set {_id} to loop-value
-        if {_slot} < 54:
-            delete {_lore::*}
-            add "&7ID: &f%{_id}%" to {_lore::*}
-            if {uf::shop::%{_id}%::enabled} is true:
-                add "&a販売中" to {_lore::*}
-            else:
-                add "&c販売停止" to {_lore::*}
-            add "&7価格: &e%{uf::shop::%{_id}%::price}%pt" to {_lore::*}
-            add "&7解放条件: &e%{uf::shop::%{_id}%::req}%階クリア（0=なし）" to {_lore::*}
-            add "&eクリックで販売状態を切り替え" to {_lore::*}
-            set {_icon} to uf_shopicon({_id})
-            if {_icon} is not set:
-                set {_icon} to paper
-            set slot {_slot} of {_g} to ({_icon} named uf_shopname({_id})) with lore {_lore::*}
-            set {-uf::guictx::%uuid of {_p}%::%{_slot}%} to {_id}
-            add 1 to {_slot}
-    uf_gui({_p}, "shopadmin", {_g})
-
-on inventory click:
-    {-uf::gui::%uuid of player%} is "shopadmin"
-    cancel event
-    event-inventory is {-uf::guiinv::%uuid of player%}
-    uf_admin(player) is true
-    set {_id} to {-uf::guictx::%uuid of player%::%index of event-slot%}
-    {_id} is set
-    if {uf::shop::%{_id}%::enabled} is true:
-        set {uf::shop::%{_id}%::enabled} to false
-    else:
-        set {uf::shop::%{_id}%::enabled} to true
-    uf_adminlog(player, "shop %{_id}% enabled=%{uf::shop::%{_id}%::enabled}%")
-    wait 1 tick
-    if player is online:
-        uf_shopadmingui(player)
