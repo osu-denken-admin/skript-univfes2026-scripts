@@ -29,7 +29,7 @@ function itemText(it) { return it ? text(it) : ''; }
 
 function mk(name) {
   return new Promise((res, rej) => {
-    const b = mineflayer.createBot({ host: '127.0.0.1', port: 25599, username: name, version: '1.21.11', auth: 'offline' });
+    const b = mineflayer.createBot({ host: '127.0.0.1', port: 25599, username: name, version: process.env.MC_VERSION || false, auth: 'offline' });
     b.msgs = [];
     b.titles = [];
     b.on('messagestr', (m) => { b.msgs.push(m); if (!/^\[.*?\] .*: /.test(m)) log(`[${name}] ${m}`); });
@@ -76,6 +76,13 @@ async function points(b) {
   const from = b.msgs.length; b.chat('/points');
   const m = await waitMsg(b, from, /ポイント: (\d+)/);
   return m ? Number(m.match(/ポイント: (\d+)/)[1]) : null;
+}
+
+// しゃがむ。1.21.2〜1.21.5 では mineflayer の setControlState だけではサーバーに届かないため、パケットも直接送る
+function sneak(b, on) {
+  b.setControlState('sneak', on);
+  try { b._client.write('player_input', { inputs: { shift: on } }); } catch {}
+  try { b._client.write('entity_action', { entityId: b.entity.id, actionId: on ? 0 : 1, jumpBoost: 0 }); } catch {}
 }
 
 const HOSTILE = new Set(['zombie', 'skeleton', 'spider', 'husk', 'stray', 'wither_skeleton', 'vindicator']);
@@ -268,8 +275,9 @@ T.death = async ({ P }) => {
 
 // ---------------------------------------------------------------
 T.revive = async ({ A, P }) => {
+  // 敵に押されて死亡地点がずれないよう、二人ともクリエイティブ（/kill は効く）
   con(`gamemode creative ${A.username}`);
-  con(`gamemode survival ${P.username}`);
+  con(`gamemode creative ${P.username}`);
   let from = P.msgs.length;
   A.chat(`/party invite ${P.username}`);
   check('party invite received', !!(await waitMsg(P, from, /パーティーに招待されました/)));
@@ -287,10 +295,10 @@ T.revive = async ({ A, P }) => {
   if (P.health <= 0) { P.respawn(); }
   await sleep(1500);
   con(`tp ${A.username} 6 -60 5`); await sleep(500);
-  A.setControlState('sneak', true);
+  sneak(A, true);
   from = P.msgs.length;
   const ok = await waitMsg(P, from, /に蘇生された/, 9000);
-  A.setControlState('sneak', false);
+  sneak(A, false);
   check('revive by sneaking 5s', !!ok);
   await sleep(500);
   check('revived player back at death spot', P.entity.position.distanceTo(new Vec3(6, -60, 5)) < 2.5, P.entity.position.toString());
@@ -448,8 +456,12 @@ T.security = async ({ P }) => {
 // ---------------------------------------------------------------
 (async () => {
   con('op UfAdmin');
-  con('gamerule spawn_mobs false'); con('gamerule spawn_monsters false'); con('gamerule advance_time false'); con('time set day');
-  con('gamerule keep_inventory true'); con('gamerule immediate_respawn true'); con('difficulty normal');
+  // ゲームルール名は 1.21.11 で変わったので、新旧どちらも送る（合わない方はエラーになるだけ）
+  con('gamerule spawn_mobs false'); con('gamerule spawn_monsters false'); con('gamerule advance_time false');
+  con('gamerule keep_inventory true'); con('gamerule immediate_respawn true');
+  con('gamerule doMobSpawning false'); con('gamerule doDaylightCycle false');
+  con('gamerule keepInventory true'); con('gamerule doImmediateRespawn true');
+  con('time set day'); con('difficulty normal');
   for (let i = 0; i < 4; i++) { con('kill @e[type=!player]'); await sleep(400); }
   await sleep(1000);
   const A = await mk('UfAdmin');
