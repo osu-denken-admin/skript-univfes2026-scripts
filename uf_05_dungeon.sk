@@ -269,9 +269,30 @@ on damage:
     {_mid} is set
     set {_a} to attacker
     {_a} is a player
-    set {-uf::dmg::%{_mid}%::%uuid of {_a}%} to {_a}
     set {_f} to metadata value "uf_floor" of victim
+    # 挑戦中のパーティー以外は攻撃できない（報酬の横取り防止）
+    if {-uf::sess::%{_f}%::mem::%uuid of {_a}%} is not set:
+        cancel event
+        stop
+    set {-uf::dmg::%{_mid}%::%uuid of {_a}%} to {_a}
     set {-uf::sess::%{_f}%::active::%uuid of {_a}%} to true
+
+# 挑戦中でない人が階段やエレベーターでフロアに入ったら、ロビーへ戻す（管理者は除く）
+every 1 second:
+    uf_on("dungeon") is true
+    {uf::cfg::lobby} is set
+    loop all players:
+        set {_p} to loop-player
+        if uf_inworld(location of {_p}, "dungeon") is true:
+            if uf_admin({_p}) is false:
+                loop integers between 2 and 9:
+                    set {_f} to loop-value-2
+                    if {uf::floor::%{_f}%::p1} is set:
+                        if {uf::floor::%{_f}%::p2} is set:
+                            if uf_inbox(location of {_p}, {uf::floor::%{_f}%::p1}, {uf::floor::%{_f}%::p2}) is true:
+                                if {-uf::sess::%{_f}%::mem::%uuid of {_p}%} is not set:
+                                    teleport {_p} to {uf::cfg::lobby}
+                                    uf_msg({_p}, "&c%{_f}%階は、挑戦中のパーティーだけが入れます。&e/dungeon &cから挑戦してください")
 
 on death:
     set {_tier} to metadata value "uf_tier" of victim

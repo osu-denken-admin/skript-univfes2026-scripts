@@ -1,0 +1,284 @@
+# ============================================================
+# uf_15_layout.sk : 15号館 2〜9 階の内装に合わせたダンジョン設定（自動生成）
+#   tools/gen.js で生成した内装の座標を、管理者ツールのボタン 1 つで登録する。
+#   座標は「15号館（ダンジョン）」として登録したワールドに対して設定される。
+#   内装を作り直したら、このファイルも作り直すこと（手で編集しない）。
+# ============================================================
+
+function uf_layout_loc(x: number, y: number, z: number) :: location:
+    return location({_x}, {_y}, {_z}, world({uf::cfg::world::dungeon}))
+
+function uf_layout_apply() :: boolean:
+    if {uf::cfg::world::dungeon} is not set:
+        return false
+    # 2F 教室棟
+    delete {uf::floor::2::spawn::*}
+    delete {uf::floor::2::chest::*}
+    set {uf::floor::2::start} to uf_layout_loc(-264.5, 73, 93.5)
+    set {uf::floor::2::cp} to uf_layout_loc(-264.5, 73, 93.5)
+    set {uf::floor::2::mid} to uf_layout_loc(-227.5, 73, 93.5)
+    set {uf::floor::2::boss} to uf_layout_loc(-209.5, 73, 118.5)
+    set {uf::floor::2::p1} to uf_layout_loc(-267, 73, 87)
+    set {uf::floor::2::p2} to uf_layout_loc(-204, 76, 125)
+    add uf_layout_loc(-261.5, 73, 113.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-262.5, 73, 123.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-248.5, 73, 97.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-253.5, 73, 117.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-241.5, 73, 89.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-242.5, 73, 109.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-232.5, 73, 89.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-223.5, 73, 99.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-232.5, 73, 108.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-224.5, 73, 105.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-216.5, 73, 91.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-214.5, 73, 89.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-214.5, 73, 102.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-211.5, 73, 100.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-240.5, 73, 113.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-239.5, 73, 118.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-228.5, 73, 118.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-228.5, 73, 123.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-221.5, 73, 113.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-218.5, 73, 124.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-234, 73, 99) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-218, 73, 125) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-230, 73, 102) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-238, 73, 121) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-228, 73, 121) to {uf::floor::2::chest::*}
+    # 3F 図書室
+    delete {uf::floor::3::spawn::*}
+    delete {uf::floor::3::chest::*}
+    set {uf::floor::3::start} to uf_layout_loc(-264.5, 78, 93.5)
+    set {uf::floor::3::cp} to uf_layout_loc(-264.5, 78, 93.5)
+    set {uf::floor::3::mid} to uf_layout_loc(-231.5, 78, 107.5)
+    set {uf::floor::3::boss} to uf_layout_loc(-209.5, 78, 118.5)
+    set {uf::floor::3::p1} to uf_layout_loc(-267, 78, 87)
+    set {uf::floor::3::p2} to uf_layout_loc(-204, 81, 125)
+    add uf_layout_loc(-248.5, 78, 104.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-241.5, 78, 95.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-257.5, 78, 123.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-257.5, 78, 113.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-245.5, 78, 123.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-242.5, 78, 114.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-216.5, 78, 89.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-226.5, 78, 90.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-237.5, 78, 113.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-236.5, 78, 108.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-225.5, 78, 119.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-225.5, 78, 123.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-219.5, 78, 102.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-221.5, 78, 103.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-206.5, 78, 106.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-208.5, 78, 109.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-221.5, 78, 116.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-220.5, 78, 123.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-233, 78, 125) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-205, 78, 107) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-266, 78, 125) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-223, 78, 114) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-225, 78, 108) to {uf::floor::3::chest::*}
+    # 4F 化学実験室
+    delete {uf::floor::4::spawn::*}
+    delete {uf::floor::4::chest::*}
+    set {uf::floor::4::start} to uf_layout_loc(-264.5, 83, 93.5)
+    set {uf::floor::4::cp} to uf_layout_loc(-264.5, 83, 93.5)
+    set {uf::floor::4::mid} to uf_layout_loc(-217.5, 83, 93.5)
+    set {uf::floor::4::boss} to uf_layout_loc(-212.5, 83, 120.5)
+    set {uf::floor::4::p1} to uf_layout_loc(-267, 83, 87)
+    set {uf::floor::4::p2} to uf_layout_loc(-204, 86, 125)
+    add uf_layout_loc(-246.5, 83, 90.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-242.5, 83, 96.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-226.5, 83, 94.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-229.5, 83, 92.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-255.5, 83, 110.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-251.5, 83, 102.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-253.5, 83, 117.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-259.5, 83, 118.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-239.5, 83, 109.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-239.5, 83, 102.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-234.5, 83, 108.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-230.5, 83, 108.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-214.5, 83, 90.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-218.5, 83, 97.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-208.5, 83, 92.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-207.5, 83, 96.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-215.5, 83, 109.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-215.5, 83, 113.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-209.5, 83, 110.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-207.5, 83, 106.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-245, 83, 101) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-221, 83, 90) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-212, 83, 102) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-220, 83, 114) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-253, 83, 125) to {uf::floor::4::chest::*}
+    # 5F サーバールーム
+    delete {uf::floor::5::spawn::*}
+    delete {uf::floor::5::chest::*}
+    set {uf::floor::5::start} to uf_layout_loc(-264.5, 88, 93.5)
+    set {uf::floor::5::cp} to uf_layout_loc(-264.5, 88, 93.5)
+    set {uf::floor::5::mid} to uf_layout_loc(-223.5, 88, 103.5)
+    set {uf::floor::5::boss} to uf_layout_loc(-208.5, 88, 106.5)
+    set {uf::floor::5::p1} to uf_layout_loc(-267, 88, 87)
+    set {uf::floor::5::p2} to uf_layout_loc(-204, 91, 125)
+    add uf_layout_loc(-256.5, 88, 99.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-263.5, 88, 100.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-261.5, 88, 123.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-255.5, 88, 118.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-240.5, 88, 92.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-241.5, 88, 92.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-236.5, 88, 104.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-242.5, 88, 104.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-228.5, 88, 96.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-225.5, 88, 93.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-216.5, 88, 93.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-215.5, 88, 96.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-219.5, 88, 105.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-230.5, 88, 100.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-238.5, 88, 115.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-236.5, 88, 112.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-229.5, 88, 118.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-228.5, 88, 121.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-222.5, 88, 122.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-215.5, 88, 119.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-233, 88, 89) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-224, 88, 124) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-226, 88, 120) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-251, 88, 117) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-236, 88, 108) to {uf::floor::5::chest::*}
+    # 6F 資材倉庫
+    delete {uf::floor::6::spawn::*}
+    delete {uf::floor::6::chest::*}
+    set {uf::floor::6::start} to uf_layout_loc(-264.5, 93, 93.5)
+    set {uf::floor::6::cp} to uf_layout_loc(-264.5, 93, 93.5)
+    set {uf::floor::6::mid} to uf_layout_loc(-239.5, 93, 120.5)
+    set {uf::floor::6::boss} to uf_layout_loc(-211.5, 93, 115.5)
+    set {uf::floor::6::p1} to uf_layout_loc(-267, 93, 87)
+    set {uf::floor::6::p2} to uf_layout_loc(-204, 96, 125)
+    add uf_layout_loc(-247.5, 93, 93.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-245.5, 93, 96.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-237.5, 93, 96.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-239.5, 93, 91.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-258.5, 93, 102.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-254.5, 93, 110.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-253.5, 93, 121.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-250.5, 93, 122.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-241.5, 93, 106.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-234.5, 93, 105.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-243.5, 93, 122.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-239.5, 93, 124.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-230.5, 93, 99.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-220.5, 93, 94.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-209.5, 93, 103.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-211.5, 93, 101.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-226.5, 93, 108.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-230.5, 93, 108.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-222.5, 93, 118.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-225.5, 93, 120.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-215, 93, 89) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-205, 93, 91) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-250, 93, 87) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-234, 93, 87) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-236, 93, 125) to {uf::floor::6::chest::*}
+    # 7F 研究室・教授室
+    delete {uf::floor::7::spawn::*}
+    delete {uf::floor::7::chest::*}
+    set {uf::floor::7::start} to uf_layout_loc(-264.5, 98, 93.5)
+    set {uf::floor::7::cp} to uf_layout_loc(-264.5, 98, 93.5)
+    set {uf::floor::7::mid} to uf_layout_loc(-241.5, 98, 118.5)
+    set {uf::floor::7::boss} to uf_layout_loc(-208.5, 98, 90.5)
+    set {uf::floor::7::p1} to uf_layout_loc(-267, 98, 87)
+    set {uf::floor::7::p2} to uf_layout_loc(-204, 101, 125)
+    add uf_layout_loc(-263.5, 98, 106.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-264.5, 98, 120.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-237.5, 98, 97.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-238.5, 98, 91.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-243.5, 98, 102.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-243.5, 98, 108.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-231.5, 98, 93.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-232.5, 98, 89.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-226.5, 98, 106.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-230.5, 98, 97.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-221.5, 98, 89.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-221.5, 98, 102.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-242.5, 98, 115.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-244.5, 98, 118.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-227.5, 98, 121.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-224.5, 98, 121.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-219.5, 98, 112.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-220.5, 98, 115.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-205.5, 98, 117.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-205.5, 98, 123.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-218, 98, 125) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-250, 98, 122) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-205, 98, 110) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-233, 98, 111) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-218, 98, 87) to {uf::floor::7::chest::*}
+    # 8F 封鎖区画
+    delete {uf::floor::8::spawn::*}
+    delete {uf::floor::8::chest::*}
+    set {uf::floor::8::start} to uf_layout_loc(-264.5, 103, 93.5)
+    set {uf::floor::8::cp} to uf_layout_loc(-264.5, 103, 93.5)
+    set {uf::floor::8::mid} to uf_layout_loc(-237.5, 103, 121.5)
+    set {uf::floor::8::boss} to uf_layout_loc(-209.5, 103, 118.5)
+    set {uf::floor::8::p1} to uf_layout_loc(-267, 103, 87)
+    set {uf::floor::8::p2} to uf_layout_loc(-204, 106, 125)
+    add uf_layout_loc(-262.5, 103, 103.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-260.5, 103, 99.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-253.5, 103, 99.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-251.5, 103, 101.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-256.5, 103, 122.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-260.5, 103, 120.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-244.5, 103, 122.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-245.5, 103, 122.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-240.5, 103, 106.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-239.5, 103, 98.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-220.5, 103, 90.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-225.5, 103, 91.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-217.5, 103, 107.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-228.5, 103, 109.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-237.5, 103, 121.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-233.5, 103, 124.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-222.5, 103, 122.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-217.5, 103, 124.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-210.5, 103, 105.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-208.5, 103, 98.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-266, 103, 123) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-244, 103, 121) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-257, 103, 110) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-229, 103, 115) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-214, 103, 98) to {uf::floor::8::chest::*}
+    # 9F 最上階・大講堂
+    delete {uf::floor::9::spawn::*}
+    delete {uf::floor::9::chest::*}
+    set {uf::floor::9::start} to uf_layout_loc(-264.5, 108, 93.5)
+    set {uf::floor::9::cp} to uf_layout_loc(-264.5, 108, 93.5)
+    set {uf::floor::9::mid} to uf_layout_loc(-213.5, 108, 94.5)
+    set {uf::floor::9::boss} to uf_layout_loc(-208.5, 108, 121.5)
+    set {uf::floor::9::p1} to uf_layout_loc(-267, 108, 87)
+    set {uf::floor::9::p2} to uf_layout_loc(-204, 111, 125)
+    add uf_layout_loc(-242.5, 108, 88.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-245.5, 108, 98.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-228.5, 108, 88.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-232.5, 108, 94.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-246.5, 108, 111.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-254.5, 108, 110.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-259.5, 108, 116.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-244.5, 108, 120.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-232.5, 108, 103.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-224.5, 108, 104.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-226.5, 108, 118.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-233.5, 108, 124.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-216.5, 108, 91.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-211.5, 108, 88.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-217.5, 108, 109.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-216.5, 108, 105.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-207.5, 108, 112.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-206.5, 108, 112.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-218.5, 108, 124.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-220.5, 108, 122.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-239, 108, 115) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-221, 108, 125) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-222, 108, 105) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-224, 108, 96) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-224, 108, 106) to {uf::floor::9::chest::*}
+    return true
