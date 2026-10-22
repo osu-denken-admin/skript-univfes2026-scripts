@@ -1,0 +1,11 @@
+{
+  "name": "univfes-bot-playtest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "univfes Skript のプレイテスト（mineflayer ボット）。ローカルのテストサーバー専用",
+  "main": "test.js",
+  "dependencies": {
+    "mineflayer": "4.39.0",
+    "vec3": "^0.1.10"
+  }
+}
