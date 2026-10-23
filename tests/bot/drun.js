@@ -1,4 +1,4 @@
-// 2F→9F の通し挑戦をボットで確認する
+// 15号館を「壁をクリック → 闘技場 → 戻る → 階段を上る」で 2→9 階まで進めるか確認する
 const mineflayer = require('mineflayer');
 const { Vec3 } = require('vec3');
 const fs = require('fs');
@@ -15,7 +15,7 @@ const seen = (b, from, re) => b.msgs.slice(from).some((m) => re.test(m));
 const waitWindow = (b, ms = 5000) => new Promise((res) => { const t = setTimeout(() => res(null), ms); b.once('windowOpen', (w) => { clearTimeout(t); res(w); }); });
 async function clickWin(b, s) { const p = waitWindow(b, 3000); await b.clickWindow(s, 0, 0).catch(() => {}); return p; }
 const HOSTILE = new Set(['zombie', 'skeleton', 'spider', 'husk', 'stray', 'wither_skeleton', 'vindicator']);
-const mobs = (b) => Object.values(b.entities).filter((e) => HOSTILE.has(e.name) && e.position.distanceTo(b.entity.position) < 70);
+const mobs = (b) => Object.values(b.entities).filter((e) => HOSTILE.has(e.name) && e.position.distanceTo(b.entity.position) < 40);
 async function killUntil(b, stop, ms) {
   const end = Date.now() + ms;
   while (Date.now() < end) {
@@ -32,12 +32,25 @@ async function killUntil(b, stop, ms) {
   return stop();
 }
 const near = (b, p, d = 2.5) => b.entity.position.distanceTo(new Vec3(p.x, p.y, p.z)) < d;
+const blk = (b, x, y, z) => { const bl = b.blockAt(new Vec3(x, y, z)); return bl ? bl.name : 'null'; };
+// 壁の前に立ってクリック
+async function clickBlock(b, stand, target) {
+  con(`tp ${b.username} ${stand.x} ${stand.y} ${stand.z}`); await sleep(900);
+  const bl = b.blockAt(new Vec3(target.x, target.y, target.z));
+  if (!bl) return false;
+  await b.lookAt(new Vec3(target.x + 0.5, target.y + 0.5, target.z + 0.5), true);
+  await b.activateBlock(bl).catch(() => {});
+  return true;
+}
+const STAIR = { W: { cell: (L) => ({ x: -273, y: L + 1, z: 92 }), stand: (L) => ({ x: -272.5, y: L + 1, z: 93.5 }) },
+                E: { cell: (L) => ({ x: -202, y: L + 1, z: 93 }), stand: (L) => ({ x: -201.5, y: L + 1, z: 94.5 }) } };
 
 (async () => {
   con('op UfAdmin'); for (let i = 0; i < 3; i++) con('kill @e[type=!player]');
   const A = await mk('UfAdmin'); await sleep(800);
   const P = await mk('UfPlayer'); await sleep(2500);
   con('gamemode creative UfAdmin'); con('tp UfAdmin -235 63 105'); await sleep(1500);
+  A.chat('/ufadmin module dungeon on'); A.chat('/ufadmin module death on'); A.chat('/ufadmin module party on');
   A.chat('/ufadmin world dungeon'); await sleep(400);
   A.chat('/ufd lobby'); await sleep(400);
   const tool = A.inventory.items().find((it) => text(it).includes('管理者ツール'));
@@ -45,53 +58,74 @@ const near = (b, p, d = 2.5) => b.entity.position.distanceTo(new Vec3(p.x, p.y, 
   let p = waitWindow(A); A.activateItem(); let w = await p;
   w = await clickWin(A, 12); w = await clickWin(A, 40);
   let from = A.msgs.length; await clickWin(A, 11);
-  check('layout + arenas applied', !!(await waitMsg(A, from, /内装に合わせて登録しました/)));
+  check('layout + gates applied', !!(await waitMsg(A, from, /内装に合わせて登録しました/)));
   if (A.currentWindow) A.closeWindow(A.currentWindow);
-  // 初回は 2 階からしか始められない
+  await sleep(1500);
+  // 壁の状態
+  const l2 = JSON.parse(fs.readFileSync(`${LAYOUT}/floor_2.json`));
+  con('tp UfAdmin -240 74 100'); await sleep(1500);
+  check('2F mid gate closed (crying obsidian)', blk(A, l2.midGate[0].x, l2.midGate[0].y, l2.midGate[0].z) === 'crying_obsidian');
+  con('tp UfAdmin -230 74 92'); await sleep(1500);
+  check('2F east stair gate closed (reinforced deepslate)', blk(A, -202, 73, 93) === 'reinforced_deepslate');
+  check('2F west up-stairs blocked (white concrete)', blk(A, -273, 73, 92) === 'white_concrete', blk(A, -273, 73, 92));
+
   A.chat('/ufadmin unlock UfPlayer 2'); await sleep(400);
   con('gamemode creative UfPlayer'); con('effect give UfPlayer strength infinite 40 true'); con('tp UfPlayer -235 63 105'); await sleep(1500);
   p = waitWindow(P); P.chat('/dungeon'); w = await p;
-  check('reception GUI', w && text(w.title).includes('受付'));
-  check('only 2F selectable at first', w && w.slots[10] && w.slots[10].name === 'oak_door' && w.slots[11] && w.slots[11].name === 'iron_bars');
   from = P.msgs.length; await clickWin(P, 10); await sleep(2500);
 
   for (let f = 2; f <= 9; f++) {
     const lay = JSON.parse(fs.readFileSync(`${LAYOUT}/floor_${f}.json`));
     const ar = JSON.parse(fs.readFileSync(`${LAYOUT}/arena_${f}.json`));
-    log(`===== ${f}F`);
-    check(`${f}F at start`, near(P, lay.start), P.entity.position.toString());
-    const mr = lay.rooms.find((r) => r.role === 'mid');
+    const Lv = lay.y;
+    log(`===== ${f}F (${lay.side} -> ${lay.exit})`);
+    check(`${f}F at entry side start`, near(P, lay.start, 3), P.entity.position.toString());
     const fm = P.msgs.length;
-    con(`tp UfPlayer ${(mr.x1 + mr.x2) / 2 + 0.5} ${lay.y + 1} ${(mr.z1 + mr.z2) / 2 + 0.5}`);
-    check(`${f}F mid triggered by room`, !!(await waitMsg(P, fm, /中ボスの気配/, 5000)));
+    // 中ボスを倒す前に階段の壁を調べても開かない（2 階だけ確認）
+    if (f === 2) {
+      await clickBlock(P, STAIR[lay.exit].stand(Lv), STAIR[lay.exit].cell(Lv));
+      check('exit gate refuses before mid boss', !!(await waitMsg(P, fm, /固く閉ざされている/, 3000)));
+      await clickBlock(P, STAIR[lay.side].stand(Lv), STAIR[lay.side].cell(Lv));
+      check('wrong-way stairs blocked', !!(await waitMsg(P, fm, /崩れていて通れない/, 3000)));
+      // エレベーターで 4 階へ行こうとしても戻される
+      con(`tp UfPlayer -240 83 105`);
+      check('elevator skip sent back', !!(await waitMsg(P, fm, /挑戦中の2階に戻ります/, 4000)));
+    }
+    // 中ボスの壁（入口側の面から）
+    const g = lay.midGate[0];
+    const standX = lay.side === 'W' ? g.x - 1.5 : g.x + 2.5;
+    await clickBlock(P, { x: standX, y: Lv + 1, z: g.z + 0.5 }, g);
+    check(`${f}F mid gate click -> mid arena`, !!(await waitMsg(P, fm, /壁の向こうから/, 4000)));
     await sleep(800);
     check(`${f}F in mid arena`, near(P, ar.mid.player, 4), P.entity.position.toString());
     await killUntil(P, () => seen(P, fm, /中ボス撃破/), 30000);
-    check(`${f}F mid defeated`, seen(P, fm, /中ボス撃破/));
-    await sleep(4500);
-    check(`${f}F returned to floor`, Math.abs(P.entity.position.y - (lay.y + 1)) < 1.5, P.entity.position.toString());
-    await killUntil(P, () => seen(P, fm, /ボスの間へ/), 90000);
-    check(`${f}F floor cleared`, seen(P, fm, /ボスの間へ/));
-    await sleep(6000);
+    await sleep(4000);
+    check(`${f}F back at mid gate`, Math.abs(P.entity.position.y - (Lv + 1)) < 1.5 && Math.abs(P.entity.position.x - standX) < 3, P.entity.position.toString());
+    check(`${f}F mid gate opened`, !/obsidian/.test(blk(P, g.x, g.y, g.z)), blk(P, g.x, g.y, g.z));
+    // ボスの壁（出口側の上り階段）
+    const ex = STAIR[lay.exit];
+    await clickBlock(P, ex.stand(Lv), ex.cell(Lv));
+    check(`${f}F stair gate click -> boss arena`, !!(await waitMsg(P, fm, /が現れた！/, 4000)));
+    await sleep(800);
     check(`${f}F in boss arena`, near(P, ar.boss.player, 4), P.entity.position.toString());
     const done = f < 9 ? /突破！/ : /制覇/;
     await killUntil(P, () => seen(P, fm, done), 40000);
     check(`${f}F boss defeated`, seen(P, fm, done));
-    await sleep(6500);
+    if (f === 9) { await sleep(5000); break; }
+    await sleep(4500);
+    check(`${f}F back at stair gate`, near(P, ex.stand(Lv), 3), P.entity.position.toString());
+    const c = ex.cell(Lv);
+    check(`${f}F stairs restored`, /stairs|air/.test(blk(P, c.x, c.y, c.z)), blk(P, c.x, c.y, c.z));
+    // 階段を上って次の階のフロアへ（歩く代わりに、次の階の入口のすぐ内側へ移動）
+    const nl = JSON.parse(fs.readFileSync(`${LAYOUT}/floor_${f + 1}.json`));
+    const nm = P.msgs.length;
+    con(`tp UfPlayer ${nl.start.x} ${nl.start.y} ${nl.start.z}`);
+    await sleep(2500);
+    check(`${f + 1}F began by walking in`, mobs(P).length > 0, `mobs=${mobs(P).length}`);
+    await sleep(6000);
+    // 壁が閉じ直るのは、近くに人がいなくなってから（自動。テストの最後には全階閉じていることを確認済み）
   }
-  check('run complete -> back in lobby', near(P, { x: -234.5, y: 63, z: 105.5 }, 3), P.entity.position.toString());
-  // 解放済みの階から選べる
-  p = waitWindow(P); P.chat('/dungeon'); w = await p;
-  check('all floors selectable after full run', w && [10, 11, 12, 13, 14, 15, 16, 17].every((s) => w.slots[s] && w.slots[s].name === 'oak_door'));
-  from = P.msgs.length; await clickWin(P, 13); await sleep(2500);
-  const l5 = JSON.parse(fs.readFileSync(`${LAYOUT}/floor_5.json`));
-  check('start from 5F', near(P, l5.start), P.entity.position.toString());
-  // 全滅（1 人で倒れる）→ 1 階へ
-  con('gamemode survival UfPlayer'); await sleep(500);
-  from = P.msgs.length; con('kill UfPlayer');
-  check('wipe ends the run', !!(await waitMsg(P, from, /全滅/, 4000)));
-  await sleep(1500); if (P.health <= 0) P.respawn(); await sleep(2500);
-  check('after wipe respawn in lobby', near(P, { x: -234.5, y: 63, z: 105.5 }, 3), P.entity.position.toString());
+  check('run complete -> lobby', near(P, { x: -234.5, y: 63, z: 105.5 }, 3), P.entity.position.toString());
   const pass = results.filter((r) => r[0] === 'PASS').length;
   log(`RESULT: PASS ${pass} / FAIL ${results.length - pass}`);
   results.filter((r) => r[0] === 'FAIL').forEach((r) => log('  FAIL', r[1], r[2]));

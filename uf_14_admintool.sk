@@ -237,8 +237,8 @@ function uf_ap_floor(p: player, f: number):
     set {_h} to "|&eクリックで今いる場所にする"
     uf_abtn({_p}, {_g}, 10, lime banner, "&e開始地点", "%uf_locstr({uf::floor::%{_f}%::start})%%{_h}%", "floc/%{_f}%/start")
     uf_abtn({_p}, {_g}, 11, white banner, "&e復帰地点（死亡時）", "%uf_locstr({uf::floor::%{_f}%::cp})%|&7未設定なら開始地点%{_h}%", "floc/%{_f}%/cp")
-    uf_abtn({_p}, {_g}, 12, orange banner, "&e中ボスの部屋（角1）", "%uf_locstr({uf::floor::%{_f}%::midroom::a})%|&7この部屋に入ると中ボス戦が始まる%{_h}%", "floc/%{_f}%/midroom::a")
-    uf_abtn({_p}, {_g}, 13, orange banner, "&e中ボスの部屋（角2）", "%uf_locstr({uf::floor::%{_f}%::midroom::b})%%{_h}%", "floc/%{_f}%/midroom::b")
+    uf_abtn({_p}, {_g}, 12, crying obsidian, "&e壁を閉じる", "&7中ボスの壁と階段の壁を閉じる|&7状態: 中ボス %{uf::gatestate::%{_f}%::mid}% / 階段 %{uf::gatestate::%{_f}%::exit}%", "gates/%{_f}%/close")
+    uf_abtn({_p}, {_g}, 13, reinforced deepslate, "&e壁を開ける（点検用）", "&7だれも挑戦していなければ、近くに人がいなくなると自動で閉じる|&7確認画面が出ます", "ask/%{_f}%階の壁を開ける（点検用）|gates/%{_f}%/open")
     uf_abtn({_p}, {_g}, 24, orange wool, "&e中ボス闘技場の入口", "%uf_locstr({uf::floor::%{_f}%::marena::player})%|&7パーティーが移動する場所%{_h}%", "floc/%{_f}%/marena::player")
     uf_abtn({_p}, {_g}, 25, orange concrete, "&e中ボスの出現地点", "%uf_locstr({uf::floor::%{_f}%::marena::boss})%%{_h}%", "floc/%{_f}%/marena::boss")
     uf_abtn({_p}, {_g}, 37, red wool, "&eボス闘技場の入口", "%uf_locstr({uf::floor::%{_f}%::barena::player})%|&7パーティーが移動する場所%{_h}%", "floc/%{_f}%/barena::player")
@@ -1054,6 +1054,15 @@ function uf_aact(p: player, a: text):
         delete {uf::prot::%{_x::2}%::*}
         delete {uf::protlist::%{_x::2}%}
         set {-uf::apage::%{_u}%} to "prot"
+    else if {_c} is "gates":
+        if {_x::3} is "open":
+            uf_gateopen({_x::2} parsed as number, "mid")
+            uf_gateopen({_x::2} parsed as number, "exit")
+            uf_msg({_p}, "&e壁を開けました")
+        else:
+            uf_gateclose({_x::2} parsed as number, "mid")
+            uf_gateclose({_x::2} parsed as number, "exit")
+            uf_msg({_p}, "&a壁を閉じました")
     else if {_c} is "layout":
         if uf_layout_apply() is true:
             uf_msg({_p}, "&a2〜9階の設定を15号館の内装に合わせて登録しました")

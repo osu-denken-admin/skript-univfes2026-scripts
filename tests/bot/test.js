@@ -205,7 +205,9 @@ T.economy = async ({ P }) => {
 };
 
 // ---------------------------------------------------------------
-T.dungeon = async ({ P }) => {
+T.dungeon = async ({ A, P }) => {
+  // 平らなテスト用ワールドには壁（ゲート）がないので、中ボス・ボスは管理者の /ufd skip で進める。
+  // 15号館での壁・闘技場・階段を使った通し挑戦は drun.js で確認する。
   con(`gamemode creative ${P.username}`);
   con(`effect give ${P.username} strength infinite 20 true`);
   await sleep(500);
@@ -214,8 +216,7 @@ T.dungeon = async ({ P }) => {
   check('reception opens', titleOf(w).includes('受付'), titleOf(w));
   let from = P.msgs.length;
   await clickWin(P, 10);
-  check('dungeon starts (teleported)', !!(await waitMsg(P, from, /.*/, 1500)) || true);
-  await sleep(1500);
+  await sleep(2500);
   check('player at floor 2 start', P.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3, P.entity.position.toString());
   // 宝箱
   const chest = P.findBlock({ matching: (bl) => bl.name === 'chest', maxDistance: 20 });
@@ -228,25 +229,25 @@ T.dungeon = async ({ P }) => {
     check('chest only once', !!(await waitMsg(P, from, /すでに開けた/)));
     closeWin(P);
   }
-  from = P.msgs.length;
+  const mid = await points(P);
   await killAll(P, 30000);
-  check('mid boss appears', !!(await waitMsg(P, from, /中ボスの気配/, 8000)));
-  await sleep(1000); await killAll(P, 60000);
-  check('mid boss reward', !!(await waitMsg(P, from, /討伐報酬 \+150pt/, 5000)));
-  check('floor boss appears', !!(await waitMsg(P, from, /受付に残る影 が現れた/, 12000)));
-  await sleep(1000); await killAll(P, 90000);
+  check('kill rewards', (await points(P)) > mid);
+  from = P.msgs.length;
+  A.chat('/ufd skip 2'); await sleep(800);
+  A.chat('/ufd skip 2');
+  check('floor boss appears', !!(await waitMsg(P, from, /受付に残る影 が現れた/, 6000)));
+  await sleep(800); await killAll(P, 60000);
   check('boss reward', !!(await waitMsg(P, from, /討伐報酬 \+300pt/, 8000)));
   check('first clear reward', !!(await waitMsg(P, from, /初回突破報酬 \+200pt/, 8000)));
   check('floor 3 unlocked', !!(await waitMsg(P, from, /3階 が解放された/, 5000)));
-  await sleep(7500);
+  check('3F not ready -> run ends', !!(await waitMsg(P, from, /3階は準備中/, 8000)));
+  await sleep(1500);
   check('back to lobby after clear', P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
   const after = await points(P);
   check('points increased by dungeon', after > before, `${before} -> ${after}`);
-  // 再挑戦は初回報酬なし
   w = await cmdWin(P, '/dungeon');
   check('floor 2 shows cleared', itemText(w && w.slots[10]).includes('突破済み'));
   closeWin(P);
-  // ショップの解放
   w = await cmdWin(P, '/buy');
   const hg = findSlot(w, 'ハンドガン');
   check('handgun unlocked in shop after clear', hg >= 0 && w.slots[hg].name !== 'barrier', w && hg >= 0 ? w.slots[hg].name : 'none');

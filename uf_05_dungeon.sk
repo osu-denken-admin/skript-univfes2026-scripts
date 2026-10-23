@@ -2,28 +2,31 @@
 # uf_05_dungeon.sk : 15号館ダンジョン（2階〜9階を通しで進む）
 #
 # 流れ（1 回の挑戦 = 1 回の「通し」）
-#   1 階の受付で開始する階を選ぶ（最初は 2 階。以後は解放済みの階から選べる）
-#   → 階の敵を倒しながら進む
-#   → 中ボスの部屋に入ると、全員が上空の「中ボス闘技場」へテレポートして中ボス戦
-#   → 勝つと元の場所に戻る
-#   → 階の敵を全滅させると「ボス闘技場」へテレポートしてボス戦
-#   → 勝つとクリア報酬・次の階が解放され、そのまま次の階へ進む（9 階のボスで制覇）
+#   1 階の受付で開始する階を選ぶ（最初は 2 階。以後は突破した階の次の階からも選べる）
+#   偶数階は西の階段から入って東の階段へ、奇数階は東の階段から入って西の階段へ進む
+#   → 階の途中の「中ボスの壁」（泣く黒曜石）をクリック → 全員が上空の中ボス闘技場へ
+#   → 勝つとそれぞれ元の場所に戻り、中ボスの壁が消える
+#   → 出口側の上り階段をふさぐ「ボスの壁」（強化深層岩）をクリック → 全員がボス闘技場へ
+#   → 勝つと突破報酬・次の階の解放。元の場所に戻り、階段の壁が消える
+#   → 階段を歩いて上り、次の階のフロアに入るとその階が始まる（9 階のボスで制覇 → 1 階へ）
+#   使わない側の上り階段は白コンクリートでずっとふさいである（別の階段から先へ進めないように）
 #   全員が倒れる（全滅）・時間切れ・全員不在で、その回の挑戦は終了して 1 階へ戻る。
 #   解放と、それまでに得た報酬は残る。
 #   1 つの階を同時に使えるのは 1 パーティーだけ（闘技場も階ごとに別）。
-#   次の階がほかのパーティーで使用中なら、ボス闘技場で空くまで待つ。
+#   上の階がほかのパーティーで使用中なら、階段の壁は空くまで開かない。
 #
 # 保存される変数
 #   {uf::unlock::<uuid>}            挑戦を始められる最上階（初期値 2）
 #   {uf::clear::<uuid>::<階>}       初回クリア済み（初回報酬の二重取得防止）
 #   {uf::floor::<階>::start|cp|p1|p2}            開始・復帰地点、フロアの範囲
-#   {uf::floor::<階>::midroom::a|b}              中ボス戦が始まる部屋（対角）
+#   {uf::gatecells::<階>::mid|exit|block::*}      壁（ゲート）のブロックの場所 / {uf::gatekind::<場所>} 逆引き
+#   {uf::gatestate::<階>::<種類>} / {uf::gateorig::<場所>}  開閉状態と、ふさぐ前のブロック
 #   {uf::floor::<階>::marena::player|boss}       中ボス闘技場（入口・中ボスの出現地点）
 #   {uf::floor::<階>::barena::player|boss}       ボス闘技場（入口・ボスの出現地点）
 #   {uf::floor::<階>::spawn::*} / {uf::floor::<階>::chest::*}
 #   闘技場が未設定のときは、フロアの {uf::floor::<階>::mid|boss} で戦う
 # メモリのみ
-#   {-uf::sess::<階>::...}   挑戦中のセッション（phase: explore / mid / midwin / bossprep / boss / cleared / waiting）
+#   {-uf::sess::<階>::...}   挑戦中のセッション（phase: explore / mid / midwin / boss / bosswin / waiting / cleared）
 #   {-uf::insess::<uuid>}    挑戦中の階
 #   {-uf::down::<uuid>}      倒れている（蘇生待ち）
 #   {-uf::tolobby::<uuid>}   復活したら 1 階へ戻す
@@ -159,21 +162,30 @@ function uf_dstart(p: player, f: number):
     uf_log("dungeon", "run start f=%{_f}% leader=%{_p}% members=%{_mem::*}%")
     uf_dbegin({_f}, {_mem::*})
 
-# 階を始める（受付から、または前の階のクリア後に呼ぶ）
-function uf_dbegin(f: number, mem: players):
+# 階を始める
+#   teleport = true : 受付から（全員を開始地点へ）
+#   teleport = false: 階段を上って来た（まだ前の階にいる人だけ開始地点へ合流させる）
+function uf_dbegin(f: number, mem: players, teleport: boolean = true):
     set {-uf::sess::%{_f}%::on} to true
     set {-uf::sess::%{_f}%::phase} to "explore"
+    delete {-uf::sess::%{_f}%::middone}
     set {-uf::sess::%{_f}%::t0} to {-uf::tick}
     set {-uf::sess::%{_f}%::tphase} to {-uf::tick}
     set {-uf::sess::%{_f}%::seen} to {-uf::tick}
     set {-uf::sess::%{_f}%::alive} to 0
+    uf_gateclose({_f}, "mid")
+    uf_gateclose({_f}, "exit")
     loop {_mem::*}:
         if loop-value is online:
             set {-uf::sess::%{_f}%::mem::%uuid of loop-value%} to loop-value
             set {-uf::insess::%uuid of loop-value%} to {_f}
             delete {-uf::down::%uuid of loop-value%}
-            teleport loop-value to {uf::floor::%{_f}%::start}
-            send title "&c%{_f}%階" with subtitle "&7敵を倒して進め。中ボスの部屋を探せ" to loop-value for 3 seconds
+            if {_teleport} is true:
+                teleport loop-value to {uf::floor::%{_f}%::start}
+            else if uf_inbox(location of loop-value, {uf::floor::%{_f}%::p1}, {uf::floor::%{_f}%::p2}) is false:
+                teleport loop-value to {uf::floor::%{_f}%::start}
+                uf_msg(loop-value, "&7パーティーに合流しました")
+            send title "&c%{_f}%階" with subtitle "&7中ボスの壁を突破し、反対側の階段を目指せ" to loop-value for 3 seconds
     uf_log("dungeon", "floor start f=%{_f}%")
     uf_placechests({_f})
     uf_spawnwave({_f})
@@ -197,8 +209,6 @@ function uf_spawnwave(f: number):
         loop uf_dcount({_f}, {_tier}) times:
             set {_l} to random element out of {uf::floor::%{_f}%::spawn::*}
             uf_spawnmob({_f}, {_tier}, {_l})
-    if {-uf::sess::%{_f}%::alive} <= 0:
-        uf_dfloorcleared({_f})
 
 function uf_spawnmob(f: number, tier: text, l: location):
     set {_r} to random integer between 1 and 3
@@ -286,34 +296,111 @@ function uf_dmoveall(f: number, l: location):
                 teleport {_p} to {_l}
 
 # ------------------------------------------------------------
-# 中ボス戦（中ボスの部屋に入ると始まる）
+# 壁（ゲート）
+#   mid   = 階の途中にある中ボスの壁（クリック → 中ボス闘技場 → 勝つと消える）
+#   exit  = 出口側の上り階段をふさぐボスの壁（中ボスを倒した後にクリック → ボス闘技場 → 勝つと階段が戻る）
+#   block = 使わない上り階段をふさぐ壁（ずっと閉じたまま）
+#   閉じるときに元のブロックを {uf::gateorig::<場所>} に保存し、開くときに戻す
 # ------------------------------------------------------------
-every 10 ticks:
-    uf_on("dungeon") is true
-    loop integers between 2 and 9:
-        set {_f} to loop-value-1
-        if {-uf::sess::%{_f}%::on} is true:
-            if {-uf::sess::%{_f}%::phase} is "explore":
-                if {-uf::sess::%{_f}%::middone} is not true:
-                    if {uf::floor::%{_f}%::midroom::a} is set:
-                        loop {-uf::sess::%{_f}%::mem::*}:
-                            if loop-value-2 is online:
-                                if uf_inbox(location of loop-value-2, {uf::floor::%{_f}%::midroom::a}, {uf::floor::%{_f}%::midroom::b}) is true:
-                                    if {-uf::sess::%{_f}%::phase} is "explore":
-                                        uf_dmidstart({_f})
+function uf_gateblock(kind: text) :: item:
+    if {_kind} is "mid":
+        return crying obsidian
+    if {_kind} is "exit":
+        return reinforced deepslate
+    return white concrete
 
+function uf_gateclose(f: number, kind: text):
+    if {uf::gatestate::%{_f}%::%{_kind}%} is "closed":
+        stop
+    set {_b} to uf_gateblock({_kind})
+    loop {uf::gatecells::%{_f}%::%{_kind}%::*}:
+        set {_k} to uf_lockey(loop-value)
+        if block at loop-value is not {_b}:
+            set {uf::gateorig::%{_k}%} to "%block data of block at loop-value%"
+        set block at loop-value to {_b}
+    set {uf::gatestate::%{_f}%::%{_kind}%} to "closed"
+
+function uf_gateopen(f: number, kind: text):
+    loop {uf::gatecells::%{_f}%::%{_kind}%::*}:
+        set {_k} to uf_lockey(loop-value)
+        if {uf::gateorig::%{_k}%} is set:
+            set block at loop-value to ({uf::gateorig::%{_k}%} parsed as block data)
+        else:
+            set block at loop-value to air
+    set {uf::gatestate::%{_f}%::%{_kind}%} to "open"
+
+# 壁のそばに人がいるか（閉じるときに人を埋めないため）
+function uf_gatenear(f: number, kind: text) :: boolean:
+    loop {uf::gatecells::%{_f}%::%{_kind}%::*}:
+        loop all players:
+            if "%world of loop-player%" is "%world of loop-value-1%":
+                if distance between loop-player and loop-value-1 < 2.5:
+                    return true
+    return false
+
+on click on crying obsidian or reinforced deepslate or white concrete:
+    set {_g} to {uf::gatekind::%uf_lockey(location of event-block)%}
+    {_g} is set
+    cancel event
+    set {_x::*} to split {_g} at ":"
+    set {_f} to {_x::1} parsed as number
+    set {_kind} to {_x::2}
+    if {_kind} is "block":
+        uf_msg(player, "&7この階段は崩れていて通れない。反対側の階段を探そう")
+        stop
+    if uf_on("dungeon") is false:
+        stop
+    if {-uf::sess::%{_f}%::mem::%uuid of player%} is not set:
+        uf_msg(player, "&cこの壁は、挑戦中のパーティーだけが調べられる。1 階の受付から挑戦しよう")
+        stop
+    set {_ph} to {-uf::sess::%{_f}%::phase}
+    if {_kind} is "mid":
+        if {_ph} is "explore":
+            if {-uf::sess::%{_f}%::middone} is not true:
+                uf_dmidstart({_f})
+    else if {_kind} is "exit":
+        if {-uf::sess::%{_f}%::middone} is not true:
+            uf_msg(player, "&7固く閉ざされている…。この階の途中にある中ボスの壁を先に突破しよう")
+        else if {_ph} is "explore":
+            uf_dbossstart({_f})
+        else if {_ph} is "waiting":
+            uf_msg(player, "&e上の階はほかのパーティーが挑戦中。空くまで待とう")
+
+# 壁は壊せない
+on break:
+    {uf::gatekind::%uf_lockey(location of event-block)%} is set
+    cancel event
+
+# 戻り先として、全員の今いる場所を覚える
+function uf_dsaveret(f: number):
+    loop {-uf::sess::%{_f}%::mem::*}:
+        if loop-value is online:
+            if loop-value is alive:
+                set {-uf::sess::%{_f}%::ret::%uuid of loop-value%} to location of loop-value
+
+# 全員を覚えておいた場所へ戻す（覚えていなければ開始地点）
+function uf_dreturnall(f: number):
+    loop {-uf::sess::%{_f}%::mem::*}:
+        set {_p} to loop-value
+        if {_p} is online:
+            if {_p} is alive:
+                uf_soulclear({_p})
+                set {_r} to {-uf::sess::%{_f}%::ret::%uuid of {_p}%}
+                if {_r} is set:
+                    teleport {_p} to {_r}
+                else:
+                    teleport {_p} to {uf::floor::%{_f}%::start}
+    delete {-uf::sess::%{_f}%::ret::*}
+
+# ------------------------------------------------------------
+# 中ボス戦（中ボスの壁をクリック）
+# ------------------------------------------------------------
 function uf_dmidstart(f: number):
     if {-uf::sess::%{_f}%::phase} is not "explore":
         stop
     uf_dsetphase({_f}, "mid")
-    # 戻り先は中ボスの部屋の中央
-    if {uf::floor::%{_f}%::midroom::a} is set:
-        set {_a} to {uf::floor::%{_f}%::midroom::a}
-        set {_b} to {uf::floor::%{_f}%::midroom::b}
-        set {-uf::sess::%{_f}%::ret} to location((x-coordinate of {_a} + x-coordinate of {_b}) / 2 + 0.5, y-coordinate of {_a}, (z-coordinate of {_a} + z-coordinate of {_b}) / 2 + 0.5, world of {_a})
-    else:
-        set {-uf::sess::%{_f}%::ret} to {uf::floor::%{_f}%::start}
-    uf_dsay({_f}, "&6中ボスの気配…！")
+    uf_dsaveret({_f})
+    uf_dsay({_f}, "&6壁の向こうから何かが来る…！")
     if {uf::floor::%{_f}%::marena::player} is set:
         uf_dmoveall({_f}, {uf::floor::%{_f}%::marena::player})
         uf_spawnmob({_f}, "mid", {uf::floor::%{_f}%::marena::boss})
@@ -326,7 +413,7 @@ function uf_dmidwin(f: number):
         stop
     set {-uf::sess::%{_f}%::middone} to true
     uf_dsetphase({_f}, "midwin")
-    uf_dsay({_f}, "&a中ボス撃破！ まもなくフロアに戻ります")
+    uf_dsay({_f}, "&a中ボス撃破！ まもなく元の場所に戻ります")
     wait 3 seconds
     uf_dmidreturn({_f})
 
@@ -335,31 +422,20 @@ function uf_dmidreturn(f: number):
         stop
     uf_dsetphase({_f}, "explore")
     if {uf::floor::%{_f}%::marena::player} is set:
-        uf_dmoveall({_f}, {-uf::sess::%{_f}%::ret})
-    if {-uf::sess::%{_f}%::alive} <= 0:
-        uf_dfloorcleared({_f})
-    else:
-        uf_dsay({_f}, "&7残りの敵: %{-uf::sess::%{_f}%::alive}%体。全滅させるとボスの間が開く")
+        uf_dreturnall({_f})
+    uf_gateopen({_f}, "mid")
+    uf_dsay({_f}, "&a中ボスの壁が消えた！ 階段の壁を目指せ")
 
 # ------------------------------------------------------------
-# ボス戦（階の敵を全滅させると始まる）
+# ボス戦（中ボスを倒した後、出口側の階段の壁をクリック）
 # ------------------------------------------------------------
-function uf_dfloorcleared(f: number):
+function uf_dbossstart(f: number):
     if {-uf::sess::%{_f}%::phase} is not "explore":
         stop
-    # 中ボスの部屋に入らずに全滅させた場合は、先に中ボス戦
     if {-uf::sess::%{_f}%::middone} is not true:
-        uf_dmidstart({_f})
-        stop
-    uf_dsetphase({_f}, "bossprep")
-    uf_dsay({_f}, "&c階の敵を全滅させた！ 5秒後にボスの間へ")
-    wait 5 seconds
-    uf_dbossstart({_f})
-
-function uf_dbossstart(f: number):
-    if {-uf::sess::%{_f}%::phase} is not "bossprep":
         stop
     uf_dsetphase({_f}, "boss")
+    uf_dsaveret({_f})
     uf_dsay({_f}, "&4%uncolored uf_bossname({_f})% が現れた！")
     if {uf::floor::%{_f}%::barena::player} is set:
         uf_dmoveall({_f}, {uf::floor::%{_f}%::barena::player})
@@ -371,7 +447,7 @@ function uf_dbossstart(f: number):
 function uf_dbosswin(f: number):
     if {-uf::sess::%{_f}%::phase} is not "boss":
         stop
-    uf_dsetphase({_f}, "cleared")
+    uf_dsetphase({_f}, "bosswin")
     uf_log("dungeon", "clear f=%{_f}%")
     loop {-uf::sess::%{_f}%::mem::*}:
         set {_p} to loop-value
@@ -379,24 +455,27 @@ function uf_dbosswin(f: number):
             if {-uf::sess::%{_f}%::active::%uuid of {_p}%} is true:
                 uf_dreward({_p}, {_f})
             else:
-                uf_msg({_p}, "&7戦闘への参加が確認できなかったため、クリア報酬はありません")
+                uf_msg({_p}, "&7戦闘への参加が確認できなかったため、突破報酬はありません")
     if {_f} < 9:
-        uf_dsay({_f}, "&a%{_f}%階 突破！ 5秒後に%{_f} + 1%階へ進みます")
+        uf_dsay({_f}, "&a%{_f}%階 突破！ まもなく元の場所に戻ります")
     else:
         uf_dsay({_f}, "&615号館 制覇！ おめでとう！")
-    wait 5 seconds
-    uf_dafterclear({_f})
+    wait 3 seconds
+    uf_dbossreturn({_f})
 
-function uf_dafterclear(f: number):
-    if {-uf::sess::%{_f}%::phase} is not "cleared":
+function uf_dbossreturn(f: number):
+    if {-uf::sess::%{_f}%::phase} is not "bosswin":
         stop
     if {_f} >= 9:
+        uf_dsetphase({_f}, "cleared")
         uf_dend({_f}, "complete")
         stop
-    uf_dnext({_f})
+    if {uf::floor::%{_f}%::barena::player} is set:
+        uf_dreturnall({_f})
+    uf_dopenexit({_f})
 
-# 次の階へ。使用中なら待つ（定期チェックで再試行）
-function uf_dnext(f: number):
+# 次の階が空いていれば階段の壁を開ける。使用中なら待つ（定期チェックで再試行）
+function uf_dopenexit(f: number):
     set {_nf} to {_f} + 1
     if {uf::floor::%{_nf}%::start} is not set:
         uf_dsay({_f}, "&e%{_nf}%階は準備中です。ここで挑戦を終了します")
@@ -405,14 +484,25 @@ function uf_dnext(f: number):
     if {-uf::sess::%{_nf}%::on} is true:
         if {-uf::sess::%{_f}%::phase} is not "waiting":
             uf_dsetphase({_f}, "waiting")
-            uf_dsay({_f}, "&e%{_nf}%階はほかのパーティーが挑戦中。空き次第進みます")
+            uf_dsay({_f}, "&e%{_nf}%階はほかのパーティーが挑戦中。空き次第、階段の壁が開きます")
+        stop
+    uf_gateopen({_f}, "exit")
+    uf_dsetphase({_f}, "cleared")
+    uf_dsay({_f}, "&a階段の壁が消えた！ 階段を上って%{_nf}%階へ進め")
+
+# 次の階のフロアに誰かが入ったら、その階を始める（遅れている人は合流させる）
+function uf_dadvance(f: number):
+    if {-uf::sess::%{_f}%::phase} is not "cleared":
+        stop
+    set {_nf} to {_f} + 1
+    if {-uf::sess::%{_nf}%::on} is true:
         stop
     loop {-uf::sess::%{_f}%::mem::*}:
         if loop-value is online:
             add loop-value to {_mem::*}
-    uf_dend({_f}, "next", false)
+    uf_dend({_f}, "advance", false)
     if size of {_mem::*} > 0:
-        uf_dbegin({_nf}, {_mem::*})
+        uf_dbegin({_nf}, {_mem::*}, false)
 
 function uf_dreward(p: player, f: number):
     set {_u} to uuid of {_p}
@@ -461,20 +551,34 @@ on damage:
     set {-uf::dmg::%{_mid}%::%uuid of {_a}%} to {_a}
     set {-uf::sess::%{_f}%::active::%uuid of {_a}%} to true
 
-# 挑戦中でない人が階段やエレベーターでフロアに入ったら、ロビーへ戻す（管理者は除く）
+# フロアへの出入りの管理（1 秒ごと）
+#   ・階段を上って次の階のフロアに入った → その階を始める
+#   ・挑戦中の人がエレベーターなどで別の階に入った → 自分の階の開始地点へ戻す
+#   ・挑戦中でない人がフロアに入った → ロビーへ戻す（管理者は除く）
 every 1 second:
     uf_on("dungeon") is true
     {uf::cfg::lobby} is set
     loop all players:
         set {_p} to loop-player
         if uf_inworld(location of {_p}, "dungeon") is true:
-            if uf_admin({_p}) is false:
-                loop integers between 2 and 9:
-                    set {_f} to loop-value-2
-                    if {uf::floor::%{_f}%::p1} is set:
-                        if {uf::floor::%{_f}%::p2} is set:
-                            if uf_inbox(location of {_p}, {uf::floor::%{_f}%::p1}, {uf::floor::%{_f}%::p2}) is true:
-                                if {-uf::sess::%{_f}%::mem::%uuid of {_p}%} is not set:
+            set {_mine} to {-uf::insess::%uuid of {_p}%}
+            loop integers between 2 and 9:
+                set {_f} to loop-value-2
+                if {uf::floor::%{_f}%::p1} is set:
+                    if {uf::floor::%{_f}%::p2} is set:
+                        if uf_inbox(location of {_p}, {uf::floor::%{_f}%::p1}, {uf::floor::%{_f}%::p2}) is true:
+                            if {-uf::sess::%{_f}%::mem::%uuid of {_p}%} is not set:
+                                if {_mine} is set:
+                                    if {_f} is {_mine} + 1:
+                                        if {-uf::sess::%{_mine}%::phase} is "cleared":
+                                            uf_dadvance({_mine})
+                                        else:
+                                            teleport {_p} to {uf::floor::%{_mine}%::cp}
+                                            uf_msg({_p}, "&cまだ%{_mine}%階を突破していません")
+                                    else:
+                                        teleport {_p} to {uf::floor::%{_mine}%::cp}
+                                        uf_msg({_p}, "&c挑戦中の%{_mine}%階に戻ります")
+                                else if uf_admin({_p}) is false:
                                     teleport {_p} to {uf::cfg::lobby}
                                     uf_msg({_p}, "&c%{_f}%階は、挑戦中のパーティーだけが入れます。1 階の受付から挑戦してください")
 
@@ -508,8 +612,6 @@ on death:
         uf_dbosswin({_f})
     else:
         remove 1 from {-uf::sess::%{_f}%::alive}
-        if {-uf::sess::%{_f}%::alive} <= 0:
-            uf_dfloorcleared({_f})
 
 # ------------------------------------------------------------
 # 全滅（挑戦中のメンバーが全員倒れている）→ その回は終了
@@ -583,9 +685,14 @@ function uf_dskip(f: number):
                     kill loop-value
     delete {-uf::sess::%{_f}%::skipping}
     if {_ph} is "explore":
-        set {-uf::sess::%{_f}%::alive} to 0
-        set {-uf::sess::%{_f}%::middone} to true
-        uf_dfloorcleared({_f})
+        if {-uf::sess::%{_f}%::middone} is not true:
+            # 中ボスを倒した扱いにして、中ボスの壁を開ける
+            set {-uf::sess::%{_f}%::alive} to 0
+            set {-uf::sess::%{_f}%::middone} to true
+            uf_gateopen({_f}, "mid")
+        else:
+            # 中ボスを倒した後なら、ボス戦を始める
+            uf_dbossstart({_f})
     else if {_ph} is "mid":
         uf_dmidwin({_f})
     else if {_ph} is "boss":
@@ -612,10 +719,16 @@ on quit:
     if {-uf::insess::%uuid of player%} is set:
         uf_dleave(player)
 
-# 時間切れ・全員不在・待ちの再試行・reload で中断された待ちの復旧
+# 時間切れ・全員不在・待ちの再試行・reload で中断された待ちの復旧・空いた階の壁を閉じ直す
 every 5 seconds:
     loop integers between 2 and 9:
         set {_f} to loop-value-1
+        if {-uf::sess::%{_f}%::on} is not true:
+            # だれも挑戦していない階の壁は、近くに人がいなければ閉じ直す
+            loop "mid" and "exit":
+                if {uf::gatestate::%{_f}%::%loop-value-2%} is "open":
+                    if uf_gatenear({_f}, loop-value-2) is false:
+                        uf_gateclose({_f}, loop-value-2)
         if {-uf::sess::%{_f}%::on} is true:
             set {_ph} to {-uf::sess::%{_f}%::phase}
             set {_el} to {-uf::tick} - {-uf::sess::%{_f}%::tphase}
@@ -623,14 +736,11 @@ every 5 seconds:
             if {_ph} is "midwin":
                 if {_el} > 100:
                     uf_dmidreturn({_f})
-            else if {_ph} is "bossprep":
-                if {_el} > 160:
-                    uf_dbossstart({_f})
-            else if {_ph} is "cleared":
-                if {_el} > 160:
-                    uf_dafterclear({_f})
+            else if {_ph} is "bosswin":
+                if {_el} > 100:
+                    uf_dbossreturn({_f})
             else if {_ph} is "waiting":
-                uf_dnext({_f})
+                uf_dopenexit({_f})
             if {-uf::sess::%{_f}%::on} is true:
                 if {-uf::tick} - {-uf::sess::%{_f}%::t0} > {uf::cfg::session_minutes} * 1200:
                     uf_dsay({_f}, "&c時間切れ！ 1 階へ戻ります")
@@ -739,7 +849,7 @@ command /ufd [<text>] [<number>] [<text>] [<number>]:
         if {_a} is not set:
             send "&e/ufd lobby &7: 今いる場所をロビー（1 階・退出先）にする" to player
             send "&e/ufd start|cp|p1|p2 <階> &7: 開始/復帰地点・フロアの範囲" to player
-            send "&e/ufd midroom1|midroom2 <階> &7: 中ボス戦が始まる部屋（対角）" to player
+            send "&e/ufd gateopen|gateclose <階> &7: その階の中ボスの壁・階段の壁を開ける/閉じる（点検用）" to player
             send "&e/ufd marena|marenaboss|barena|barenaboss <階> &7: 中ボス/ボス闘技場の入口・出現地点" to player
             send "&e/ufd addspawn|addchest <階> &7: 敵の出現地点/宝箱の候補地点を追加" to player
             send "&e/ufd clearspawn|clearchest <階> &7: 上の地点をすべて消す" to player
@@ -761,12 +871,14 @@ command /ufd [<text>] [<number>] [<text>] [<number>]:
         if {_a} is "start" or "cp" or "mid" or "boss" or "p1" or "p2":
             set {uf::floor::%{_f}%::%{_a}%} to location of player
             uf_msg(player, "&a%{_f}%階 の %{_a}% を設定しました")
-        else if {_a} is "midroom1":
-            set {uf::floor::%{_f}%::midroom::a} to location of player
-            uf_msg(player, "&a%{_f}%階 の中ボスの部屋（角1）を設定しました")
-        else if {_a} is "midroom2":
-            set {uf::floor::%{_f}%::midroom::b} to location of player
-            uf_msg(player, "&a%{_f}%階 の中ボスの部屋（角2）を設定しました")
+        else if {_a} is "gateopen":
+            uf_gateopen({_f}, "mid")
+            uf_gateopen({_f}, "exit")
+            uf_msg(player, "&e%{_f}%階 の壁を開けました（だれも挑戦していなければ、近くに人がいなくなると自動で閉じます）")
+        else if {_a} is "gateclose":
+            uf_gateclose({_f}, "mid")
+            uf_gateclose({_f}, "exit")
+            uf_msg(player, "&a%{_f}%階 の壁を閉じました")
         else if {_a} is "marena":
             set {uf::floor::%{_f}%::marena::player} to location of player
             uf_msg(player, "&a%{_f}%階 の中ボス闘技場の入口を設定しました")
@@ -805,7 +917,7 @@ command /ufd [<text>] [<number>] [<text>] [<number>]:
             uf_msg(player, "&a%{_f}%階 の %arg-3% を %floor(arg-4)% 体にしました")
         else if {_a} is "info":
             uf_msg(player, "&e%{_f}%階 の設定")
-            loop "start", "cp", "p1", "p2", "midroom::a", "midroom::b", "marena::player", "marena::boss", "barena::player" and "barena::boss":
+            loop "start", "cp", "p1", "p2", "marena::player", "marena::boss", "barena::player" and "barena::boss":
                 if {uf::floor::%{_f}%::%loop-value%} is set:
                     send "&7%loop-value%: &f%uf_fmtloc({uf::floor::%{_f}%::%loop-value%})%" to player
                 else:

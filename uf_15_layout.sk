@@ -1,8 +1,9 @@
 # ============================================================
-# uf_15_layout.sk : 15号館 2〜9 階の内装と闘技場に合わせたダンジョン設定（自動生成）
-#   tools/gen.js で生成した内装の座標を、管理者ツールのボタン 1 つで登録する。
-#   座標は「15号館（ダンジョン）」として登録したワールドに対して設定される。
-#   内装を作り直したら、このファイルも作り直すこと（手で編集しない）。
+# uf_15_layout.sk : 15号館 2〜9 階の内装・階段・闘技場に合わせたダンジョン設定（自動生成）
+#   tools/dungeon の gen.js / gen_arena.js / preset.js で生成。手で編集しない。
+#   管理者ツールの「15号館の内装に合わせて全階を設定」で登録される。
+#   偶数階は西の階段から入って東の階段へ、奇数階は東から入って西へ進む。
+#   壁（ゲート）の種類: mid = 中ボスの壁 / exit = ボスの壁（上り階段）/ block = 使わない上り階段をふさぐ壁
 # ============================================================
 
 function uf_layout_loc(x: number, y: number, z: number) :: location:
@@ -11,322 +12,1174 @@ function uf_layout_loc(x: number, y: number, z: number) :: location:
 function uf_layout_apply() :: boolean:
     if {uf::cfg::world::dungeon} is not set:
         return false
-    # 2F 教室棟
+    delete {uf::gatekind::*}
+    # 2F 教室棟（入口 W → 出口 E）
     delete {uf::floor::2::spawn::*}
     delete {uf::floor::2::chest::*}
+    delete {uf::floor::2::midroom::*}
+    delete {uf::gatecells::2::mid::*}
+    delete {uf::gatecells::2::exit::*}
+    delete {uf::gatecells::2::block::*}
     set {uf::floor::2::start} to uf_layout_loc(-264.5, 73, 93.5)
     set {uf::floor::2::cp} to uf_layout_loc(-264.5, 73, 93.5)
-    set {uf::floor::2::mid} to uf_layout_loc(-227.5, 73, 93.5)
-    set {uf::floor::2::boss} to uf_layout_loc(-209.5, 73, 118.5)
     set {uf::floor::2::p1} to uf_layout_loc(-267, 73, 87)
     set {uf::floor::2::p2} to uf_layout_loc(-204, 76, 125)
-    set {uf::floor::2::midroom::a} to uf_layout_loc(-234, 73, 87)
-    set {uf::floor::2::midroom::b} to uf_layout_loc(-222, 76, 100)
     set {uf::floor::2::marena::player} to uf_layout_loc(-286.5, 201, -36.5)
     set {uf::floor::2::marena::boss} to uf_layout_loc(-286.5, 201, -51.5)
     set {uf::floor::2::barena::player} to uf_layout_loc(-282.5, 201, 16.5)
     set {uf::floor::2::barena::boss} to uf_layout_loc(-282.5, 201, -3.5)
-    add uf_layout_loc(-261.5, 73, 113.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-262.5, 73, 123.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-248.5, 73, 97.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-253.5, 73, 117.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-241.5, 73, 89.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-242.5, 73, 109.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-232.5, 73, 89.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-223.5, 73, 99.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-232.5, 73, 108.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-224.5, 73, 105.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-216.5, 73, 91.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-214.5, 73, 89.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-214.5, 73, 102.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-211.5, 73, 100.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-240.5, 73, 113.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-239.5, 73, 118.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-228.5, 73, 118.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-228.5, 73, 123.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-221.5, 73, 113.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-218.5, 73, 124.5) to {uf::floor::2::spawn::*}
-    add uf_layout_loc(-234, 73, 99) to {uf::floor::2::chest::*}
-    add uf_layout_loc(-218, 73, 125) to {uf::floor::2::chest::*}
-    add uf_layout_loc(-230, 73, 102) to {uf::floor::2::chest::*}
-    add uf_layout_loc(-238, 73, 121) to {uf::floor::2::chest::*}
-    add uf_layout_loc(-228, 73, 121) to {uf::floor::2::chest::*}
-    # 3F 図書室
+    add uf_layout_loc(-258.5, 73, 108.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-259.5, 73, 111.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-247.5, 73, 96.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-241.5, 73, 97.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-260.5, 73, 123.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-244.5, 73, 120.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-236.5, 73, 92.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-233.5, 73, 99.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-231.5, 73, 119.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-231.5, 73, 116.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-222.5, 73, 89.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-214.5, 73, 98.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-222.5, 73, 108.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-220.5, 73, 109.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-217.5, 73, 116.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-217.5, 73, 123.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-208.5, 73, 107.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-207.5, 73, 112.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-208.5, 73, 122.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-206.5, 73, 124.5) to {uf::floor::2::spawn::*}
+    add uf_layout_loc(-205, 73, 123) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-212, 73, 106) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-214, 73, 120) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-226, 73, 108) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-221, 73, 87) to {uf::floor::2::chest::*}
+    add uf_layout_loc(-240, 73, 98) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 73, 98))%} to "2:mid"
+    add uf_layout_loc(-240, 74, 98) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 74, 98))%} to "2:mid"
+    add uf_layout_loc(-240, 75, 98) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 75, 98))%} to "2:mid"
+    add uf_layout_loc(-240, 73, 99) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 73, 99))%} to "2:mid"
+    add uf_layout_loc(-240, 74, 99) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 74, 99))%} to "2:mid"
+    add uf_layout_loc(-240, 75, 99) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 75, 99))%} to "2:mid"
+    add uf_layout_loc(-240, 73, 100) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 73, 100))%} to "2:mid"
+    add uf_layout_loc(-240, 74, 100) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 74, 100))%} to "2:mid"
+    add uf_layout_loc(-240, 75, 100) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 75, 100))%} to "2:mid"
+    add uf_layout_loc(-240, 73, 119) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 73, 119))%} to "2:mid"
+    add uf_layout_loc(-240, 74, 119) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 74, 119))%} to "2:mid"
+    add uf_layout_loc(-240, 75, 119) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 75, 119))%} to "2:mid"
+    add uf_layout_loc(-240, 73, 120) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 73, 120))%} to "2:mid"
+    add uf_layout_loc(-240, 74, 120) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 74, 120))%} to "2:mid"
+    add uf_layout_loc(-240, 75, 120) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 75, 120))%} to "2:mid"
+    add uf_layout_loc(-240, 73, 121) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 73, 121))%} to "2:mid"
+    add uf_layout_loc(-240, 74, 121) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 74, 121))%} to "2:mid"
+    add uf_layout_loc(-240, 75, 121) to {uf::gatecells::2::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-240, 75, 121))%} to "2:mid"
+    add uf_layout_loc(-202, 73, 91) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 73, 91))%} to "2:exit"
+    add uf_layout_loc(-202, 74, 91) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 74, 91))%} to "2:exit"
+    add uf_layout_loc(-202, 75, 91) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 75, 91))%} to "2:exit"
+    add uf_layout_loc(-202, 73, 92) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 73, 92))%} to "2:exit"
+    add uf_layout_loc(-202, 74, 92) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 74, 92))%} to "2:exit"
+    add uf_layout_loc(-202, 75, 92) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 75, 92))%} to "2:exit"
+    add uf_layout_loc(-202, 73, 93) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 73, 93))%} to "2:exit"
+    add uf_layout_loc(-202, 74, 93) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 74, 93))%} to "2:exit"
+    add uf_layout_loc(-202, 75, 93) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 75, 93))%} to "2:exit"
+    add uf_layout_loc(-201, 73, 91) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 73, 91))%} to "2:exit"
+    add uf_layout_loc(-201, 74, 91) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 74, 91))%} to "2:exit"
+    add uf_layout_loc(-201, 75, 91) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 75, 91))%} to "2:exit"
+    add uf_layout_loc(-201, 73, 92) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 73, 92))%} to "2:exit"
+    add uf_layout_loc(-201, 74, 92) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 74, 92))%} to "2:exit"
+    add uf_layout_loc(-201, 75, 92) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 75, 92))%} to "2:exit"
+    add uf_layout_loc(-201, 73, 93) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 73, 93))%} to "2:exit"
+    add uf_layout_loc(-201, 74, 93) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 74, 93))%} to "2:exit"
+    add uf_layout_loc(-201, 75, 93) to {uf::gatecells::2::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 75, 93))%} to "2:exit"
+    add uf_layout_loc(-273, 73, 90) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 73, 90))%} to "2:block"
+    add uf_layout_loc(-273, 74, 90) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 74, 90))%} to "2:block"
+    add uf_layout_loc(-273, 75, 90) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 75, 90))%} to "2:block"
+    add uf_layout_loc(-273, 73, 91) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 73, 91))%} to "2:block"
+    add uf_layout_loc(-273, 74, 91) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 74, 91))%} to "2:block"
+    add uf_layout_loc(-273, 75, 91) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 75, 91))%} to "2:block"
+    add uf_layout_loc(-273, 73, 92) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 73, 92))%} to "2:block"
+    add uf_layout_loc(-273, 74, 92) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 74, 92))%} to "2:block"
+    add uf_layout_loc(-273, 75, 92) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 75, 92))%} to "2:block"
+    add uf_layout_loc(-272, 73, 90) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 73, 90))%} to "2:block"
+    add uf_layout_loc(-272, 74, 90) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 74, 90))%} to "2:block"
+    add uf_layout_loc(-272, 75, 90) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 75, 90))%} to "2:block"
+    add uf_layout_loc(-272, 73, 91) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 73, 91))%} to "2:block"
+    add uf_layout_loc(-272, 74, 91) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 74, 91))%} to "2:block"
+    add uf_layout_loc(-272, 75, 91) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 75, 91))%} to "2:block"
+    add uf_layout_loc(-272, 73, 92) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 73, 92))%} to "2:block"
+    add uf_layout_loc(-272, 74, 92) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 74, 92))%} to "2:block"
+    add uf_layout_loc(-272, 75, 92) to {uf::gatecells::2::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 75, 92))%} to "2:block"
+    # 3F 図書室（入口 E → 出口 W）
     delete {uf::floor::3::spawn::*}
     delete {uf::floor::3::chest::*}
-    set {uf::floor::3::start} to uf_layout_loc(-264.5, 78, 93.5)
-    set {uf::floor::3::cp} to uf_layout_loc(-264.5, 78, 93.5)
-    set {uf::floor::3::mid} to uf_layout_loc(-231.5, 78, 107.5)
-    set {uf::floor::3::boss} to uf_layout_loc(-209.5, 78, 118.5)
+    delete {uf::floor::3::midroom::*}
+    delete {uf::gatecells::3::mid::*}
+    delete {uf::gatecells::3::exit::*}
+    delete {uf::gatecells::3::block::*}
+    set {uf::floor::3::start} to uf_layout_loc(-205.5, 78, 95.5)
+    set {uf::floor::3::cp} to uf_layout_loc(-205.5, 78, 95.5)
     set {uf::floor::3::p1} to uf_layout_loc(-267, 78, 87)
     set {uf::floor::3::p2} to uf_layout_loc(-204, 81, 125)
-    set {uf::floor::3::midroom::a} to uf_layout_loc(-239, 78, 99)
-    set {uf::floor::3::midroom::b} to uf_layout_loc(-225, 81, 115)
     set {uf::floor::3::marena::player} to uf_layout_loc(-246.5, 201, -36.5)
     set {uf::floor::3::marena::boss} to uf_layout_loc(-246.5, 201, -51.5)
     set {uf::floor::3::barena::player} to uf_layout_loc(-242.5, 201, 16.5)
     set {uf::floor::3::barena::boss} to uf_layout_loc(-242.5, 201, -3.5)
-    add uf_layout_loc(-248.5, 78, 104.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-241.5, 78, 95.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-257.5, 78, 123.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-257.5, 78, 113.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-245.5, 78, 123.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-242.5, 78, 114.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-216.5, 78, 89.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-226.5, 78, 90.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-237.5, 78, 113.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-236.5, 78, 108.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-225.5, 78, 119.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-225.5, 78, 123.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-219.5, 78, 102.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-221.5, 78, 103.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-206.5, 78, 106.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-208.5, 78, 109.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-221.5, 78, 116.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-220.5, 78, 123.5) to {uf::floor::3::spawn::*}
-    add uf_layout_loc(-233, 78, 125) to {uf::floor::3::chest::*}
-    add uf_layout_loc(-205, 78, 107) to {uf::floor::3::chest::*}
-    add uf_layout_loc(-266, 78, 125) to {uf::floor::3::chest::*}
-    add uf_layout_loc(-223, 78, 114) to {uf::floor::3::chest::*}
-    add uf_layout_loc(-225, 78, 108) to {uf::floor::3::chest::*}
-    # 4F 化学実験室
+    add uf_layout_loc(-264.5, 78, 92.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-263.5, 78, 96.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-251.5, 78, 95.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-254.5, 78, 93.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-238.5, 78, 97.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-241.5, 78, 93.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-257.5, 78, 106.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-260.5, 78, 111.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-239.5, 78, 110.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-239.5, 78, 104.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-260.5, 78, 117.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-252.5, 78, 115.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-223.5, 78, 99.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-222.5, 78, 92.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-223.5, 78, 106.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-232.5, 78, 111.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-231.5, 78, 116.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-234.5, 78, 121.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-212.5, 78, 89.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-210.5, 78, 91.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-208.5, 78, 104.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-209.5, 78, 105.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-216.5, 78, 120.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-216.5, 78, 115.5) to {uf::floor::3::spawn::*}
+    add uf_layout_loc(-222, 78, 112) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-256, 78, 112) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-248, 78, 102) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-219, 78, 121) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-228, 78, 87) to {uf::floor::3::chest::*}
+    add uf_layout_loc(-237, 78, 96) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 78, 96))%} to "3:mid"
+    add uf_layout_loc(-237, 79, 96) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 79, 96))%} to "3:mid"
+    add uf_layout_loc(-237, 80, 96) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 80, 96))%} to "3:mid"
+    add uf_layout_loc(-237, 78, 97) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 78, 97))%} to "3:mid"
+    add uf_layout_loc(-237, 79, 97) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 79, 97))%} to "3:mid"
+    add uf_layout_loc(-237, 80, 97) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 80, 97))%} to "3:mid"
+    add uf_layout_loc(-237, 78, 98) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 78, 98))%} to "3:mid"
+    add uf_layout_loc(-237, 79, 98) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 79, 98))%} to "3:mid"
+    add uf_layout_loc(-237, 80, 98) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 80, 98))%} to "3:mid"
+    add uf_layout_loc(-237, 78, 111) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 78, 111))%} to "3:mid"
+    add uf_layout_loc(-237, 79, 111) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 79, 111))%} to "3:mid"
+    add uf_layout_loc(-237, 80, 111) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 80, 111))%} to "3:mid"
+    add uf_layout_loc(-237, 78, 112) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 78, 112))%} to "3:mid"
+    add uf_layout_loc(-237, 79, 112) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 79, 112))%} to "3:mid"
+    add uf_layout_loc(-237, 80, 112) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 80, 112))%} to "3:mid"
+    add uf_layout_loc(-237, 78, 113) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 78, 113))%} to "3:mid"
+    add uf_layout_loc(-237, 79, 113) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 79, 113))%} to "3:mid"
+    add uf_layout_loc(-237, 80, 113) to {uf::gatecells::3::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 80, 113))%} to "3:mid"
+    add uf_layout_loc(-273, 78, 90) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 78, 90))%} to "3:exit"
+    add uf_layout_loc(-273, 79, 90) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 79, 90))%} to "3:exit"
+    add uf_layout_loc(-273, 80, 90) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 80, 90))%} to "3:exit"
+    add uf_layout_loc(-273, 78, 91) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 78, 91))%} to "3:exit"
+    add uf_layout_loc(-273, 79, 91) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 79, 91))%} to "3:exit"
+    add uf_layout_loc(-273, 80, 91) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 80, 91))%} to "3:exit"
+    add uf_layout_loc(-273, 78, 92) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 78, 92))%} to "3:exit"
+    add uf_layout_loc(-273, 79, 92) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 79, 92))%} to "3:exit"
+    add uf_layout_loc(-273, 80, 92) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 80, 92))%} to "3:exit"
+    add uf_layout_loc(-272, 78, 90) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 78, 90))%} to "3:exit"
+    add uf_layout_loc(-272, 79, 90) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 79, 90))%} to "3:exit"
+    add uf_layout_loc(-272, 80, 90) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 80, 90))%} to "3:exit"
+    add uf_layout_loc(-272, 78, 91) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 78, 91))%} to "3:exit"
+    add uf_layout_loc(-272, 79, 91) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 79, 91))%} to "3:exit"
+    add uf_layout_loc(-272, 80, 91) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 80, 91))%} to "3:exit"
+    add uf_layout_loc(-272, 78, 92) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 78, 92))%} to "3:exit"
+    add uf_layout_loc(-272, 79, 92) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 79, 92))%} to "3:exit"
+    add uf_layout_loc(-272, 80, 92) to {uf::gatecells::3::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 80, 92))%} to "3:exit"
+    add uf_layout_loc(-202, 78, 91) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 78, 91))%} to "3:block"
+    add uf_layout_loc(-202, 79, 91) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 79, 91))%} to "3:block"
+    add uf_layout_loc(-202, 80, 91) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 80, 91))%} to "3:block"
+    add uf_layout_loc(-202, 78, 92) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 78, 92))%} to "3:block"
+    add uf_layout_loc(-202, 79, 92) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 79, 92))%} to "3:block"
+    add uf_layout_loc(-202, 80, 92) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 80, 92))%} to "3:block"
+    add uf_layout_loc(-202, 78, 93) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 78, 93))%} to "3:block"
+    add uf_layout_loc(-202, 79, 93) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 79, 93))%} to "3:block"
+    add uf_layout_loc(-202, 80, 93) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 80, 93))%} to "3:block"
+    add uf_layout_loc(-201, 78, 91) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 78, 91))%} to "3:block"
+    add uf_layout_loc(-201, 79, 91) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 79, 91))%} to "3:block"
+    add uf_layout_loc(-201, 80, 91) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 80, 91))%} to "3:block"
+    add uf_layout_loc(-201, 78, 92) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 78, 92))%} to "3:block"
+    add uf_layout_loc(-201, 79, 92) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 79, 92))%} to "3:block"
+    add uf_layout_loc(-201, 80, 92) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 80, 92))%} to "3:block"
+    add uf_layout_loc(-201, 78, 93) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 78, 93))%} to "3:block"
+    add uf_layout_loc(-201, 79, 93) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 79, 93))%} to "3:block"
+    add uf_layout_loc(-201, 80, 93) to {uf::gatecells::3::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 80, 93))%} to "3:block"
+    # 4F 化学実験室（入口 W → 出口 E）
     delete {uf::floor::4::spawn::*}
     delete {uf::floor::4::chest::*}
+    delete {uf::floor::4::midroom::*}
+    delete {uf::gatecells::4::mid::*}
+    delete {uf::gatecells::4::exit::*}
+    delete {uf::gatecells::4::block::*}
     set {uf::floor::4::start} to uf_layout_loc(-264.5, 83, 93.5)
     set {uf::floor::4::cp} to uf_layout_loc(-264.5, 83, 93.5)
-    set {uf::floor::4::mid} to uf_layout_loc(-217.5, 83, 93.5)
-    set {uf::floor::4::boss} to uf_layout_loc(-212.5, 83, 120.5)
     set {uf::floor::4::p1} to uf_layout_loc(-267, 83, 87)
     set {uf::floor::4::p2} to uf_layout_loc(-204, 86, 125)
-    set {uf::floor::4::midroom::a} to uf_layout_loc(-221, 83, 87)
-    set {uf::floor::4::midroom::b} to uf_layout_loc(-214, 86, 100)
     set {uf::floor::4::marena::player} to uf_layout_loc(-206.5, 201, -36.5)
     set {uf::floor::4::marena::boss} to uf_layout_loc(-206.5, 201, -51.5)
     set {uf::floor::4::barena::player} to uf_layout_loc(-202.5, 201, 16.5)
     set {uf::floor::4::barena::boss} to uf_layout_loc(-202.5, 201, -3.5)
-    add uf_layout_loc(-246.5, 83, 90.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-242.5, 83, 96.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-226.5, 83, 94.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-229.5, 83, 92.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-255.5, 83, 110.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-251.5, 83, 102.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-253.5, 83, 117.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-259.5, 83, 118.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-239.5, 83, 109.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-239.5, 83, 102.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-234.5, 83, 108.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-230.5, 83, 108.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-214.5, 83, 90.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-218.5, 83, 97.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-208.5, 83, 92.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-207.5, 83, 96.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-215.5, 83, 109.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-215.5, 83, 113.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-209.5, 83, 110.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-207.5, 83, 106.5) to {uf::floor::4::spawn::*}
-    add uf_layout_loc(-245, 83, 101) to {uf::floor::4::chest::*}
-    add uf_layout_loc(-221, 83, 90) to {uf::floor::4::chest::*}
-    add uf_layout_loc(-212, 83, 102) to {uf::floor::4::chest::*}
-    add uf_layout_loc(-220, 83, 114) to {uf::floor::4::chest::*}
-    add uf_layout_loc(-253, 83, 125) to {uf::floor::4::chest::*}
-    # 5F サーバールーム
+    add uf_layout_loc(-262.5, 83, 104.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-258.5, 83, 106.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-243.5, 83, 107.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-246.5, 83, 88.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-264.5, 83, 123.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-259.5, 83, 116.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-246.5, 83, 120.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-246.5, 83, 115.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-237.5, 83, 98.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-239.5, 83, 99.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-237.5, 83, 103.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-233.5, 83, 108.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-239.5, 83, 118.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-239.5, 83, 117.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-214.5, 83, 93.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-211.5, 83, 89.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-223.5, 83, 108.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-224.5, 83, 102.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-219.5, 83, 124.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-222.5, 83, 120.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-208.5, 83, 109.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-208.5, 83, 101.5) to {uf::floor::4::spawn::*}
+    add uf_layout_loc(-227, 83, 125) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-255, 83, 119) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-266, 83, 105) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-231, 83, 89) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-231, 83, 103) to {uf::floor::4::chest::*}
+    add uf_layout_loc(-232, 83, 98) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 83, 98))%} to "4:mid"
+    add uf_layout_loc(-232, 84, 98) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 84, 98))%} to "4:mid"
+    add uf_layout_loc(-232, 85, 98) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 85, 98))%} to "4:mid"
+    add uf_layout_loc(-232, 83, 99) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 83, 99))%} to "4:mid"
+    add uf_layout_loc(-232, 84, 99) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 84, 99))%} to "4:mid"
+    add uf_layout_loc(-232, 85, 99) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 85, 99))%} to "4:mid"
+    add uf_layout_loc(-232, 83, 100) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 83, 100))%} to "4:mid"
+    add uf_layout_loc(-232, 84, 100) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 84, 100))%} to "4:mid"
+    add uf_layout_loc(-232, 85, 100) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 85, 100))%} to "4:mid"
+    add uf_layout_loc(-232, 83, 107) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 83, 107))%} to "4:mid"
+    add uf_layout_loc(-232, 84, 107) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 84, 107))%} to "4:mid"
+    add uf_layout_loc(-232, 85, 107) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 85, 107))%} to "4:mid"
+    add uf_layout_loc(-232, 83, 108) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 83, 108))%} to "4:mid"
+    add uf_layout_loc(-232, 84, 108) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 84, 108))%} to "4:mid"
+    add uf_layout_loc(-232, 85, 108) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 85, 108))%} to "4:mid"
+    add uf_layout_loc(-232, 83, 109) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 83, 109))%} to "4:mid"
+    add uf_layout_loc(-232, 84, 109) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 84, 109))%} to "4:mid"
+    add uf_layout_loc(-232, 85, 109) to {uf::gatecells::4::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-232, 85, 109))%} to "4:mid"
+    add uf_layout_loc(-202, 83, 91) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 83, 91))%} to "4:exit"
+    add uf_layout_loc(-202, 84, 91) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 84, 91))%} to "4:exit"
+    add uf_layout_loc(-202, 85, 91) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 85, 91))%} to "4:exit"
+    add uf_layout_loc(-202, 83, 92) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 83, 92))%} to "4:exit"
+    add uf_layout_loc(-202, 84, 92) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 84, 92))%} to "4:exit"
+    add uf_layout_loc(-202, 85, 92) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 85, 92))%} to "4:exit"
+    add uf_layout_loc(-202, 83, 93) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 83, 93))%} to "4:exit"
+    add uf_layout_loc(-202, 84, 93) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 84, 93))%} to "4:exit"
+    add uf_layout_loc(-202, 85, 93) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 85, 93))%} to "4:exit"
+    add uf_layout_loc(-201, 83, 91) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 83, 91))%} to "4:exit"
+    add uf_layout_loc(-201, 84, 91) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 84, 91))%} to "4:exit"
+    add uf_layout_loc(-201, 85, 91) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 85, 91))%} to "4:exit"
+    add uf_layout_loc(-201, 83, 92) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 83, 92))%} to "4:exit"
+    add uf_layout_loc(-201, 84, 92) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 84, 92))%} to "4:exit"
+    add uf_layout_loc(-201, 85, 92) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 85, 92))%} to "4:exit"
+    add uf_layout_loc(-201, 83, 93) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 83, 93))%} to "4:exit"
+    add uf_layout_loc(-201, 84, 93) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 84, 93))%} to "4:exit"
+    add uf_layout_loc(-201, 85, 93) to {uf::gatecells::4::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 85, 93))%} to "4:exit"
+    add uf_layout_loc(-273, 83, 90) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 83, 90))%} to "4:block"
+    add uf_layout_loc(-273, 84, 90) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 84, 90))%} to "4:block"
+    add uf_layout_loc(-273, 85, 90) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 85, 90))%} to "4:block"
+    add uf_layout_loc(-273, 83, 91) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 83, 91))%} to "4:block"
+    add uf_layout_loc(-273, 84, 91) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 84, 91))%} to "4:block"
+    add uf_layout_loc(-273, 85, 91) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 85, 91))%} to "4:block"
+    add uf_layout_loc(-273, 83, 92) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 83, 92))%} to "4:block"
+    add uf_layout_loc(-273, 84, 92) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 84, 92))%} to "4:block"
+    add uf_layout_loc(-273, 85, 92) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 85, 92))%} to "4:block"
+    add uf_layout_loc(-272, 83, 90) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 83, 90))%} to "4:block"
+    add uf_layout_loc(-272, 84, 90) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 84, 90))%} to "4:block"
+    add uf_layout_loc(-272, 85, 90) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 85, 90))%} to "4:block"
+    add uf_layout_loc(-272, 83, 91) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 83, 91))%} to "4:block"
+    add uf_layout_loc(-272, 84, 91) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 84, 91))%} to "4:block"
+    add uf_layout_loc(-272, 85, 91) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 85, 91))%} to "4:block"
+    add uf_layout_loc(-272, 83, 92) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 83, 92))%} to "4:block"
+    add uf_layout_loc(-272, 84, 92) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 84, 92))%} to "4:block"
+    add uf_layout_loc(-272, 85, 92) to {uf::gatecells::4::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 85, 92))%} to "4:block"
+    # 5F サーバールーム（入口 E → 出口 W）
     delete {uf::floor::5::spawn::*}
     delete {uf::floor::5::chest::*}
-    set {uf::floor::5::start} to uf_layout_loc(-264.5, 88, 93.5)
-    set {uf::floor::5::cp} to uf_layout_loc(-264.5, 88, 93.5)
-    set {uf::floor::5::mid} to uf_layout_loc(-223.5, 88, 103.5)
-    set {uf::floor::5::boss} to uf_layout_loc(-208.5, 88, 106.5)
+    delete {uf::floor::5::midroom::*}
+    delete {uf::gatecells::5::mid::*}
+    delete {uf::gatecells::5::exit::*}
+    delete {uf::gatecells::5::block::*}
+    set {uf::floor::5::start} to uf_layout_loc(-205.5, 88, 95.5)
+    set {uf::floor::5::cp} to uf_layout_loc(-205.5, 88, 95.5)
     set {uf::floor::5::p1} to uf_layout_loc(-267, 88, 87)
     set {uf::floor::5::p2} to uf_layout_loc(-204, 91, 125)
-    set {uf::floor::5::midroom::a} to uf_layout_loc(-233, 88, 99)
-    set {uf::floor::5::midroom::b} to uf_layout_loc(-215, 91, 108)
     set {uf::floor::5::marena::player} to uf_layout_loc(-166.5, 201, -36.5)
     set {uf::floor::5::marena::boss} to uf_layout_loc(-166.5, 201, -51.5)
     set {uf::floor::5::barena::player} to uf_layout_loc(-162.5, 201, 16.5)
     set {uf::floor::5::barena::boss} to uf_layout_loc(-162.5, 201, -3.5)
-    add uf_layout_loc(-256.5, 88, 99.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-263.5, 88, 100.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-261.5, 88, 123.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-255.5, 88, 118.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-240.5, 88, 92.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-241.5, 88, 92.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-236.5, 88, 104.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-242.5, 88, 104.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-228.5, 88, 96.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-225.5, 88, 93.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-216.5, 88, 93.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-215.5, 88, 96.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-219.5, 88, 105.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-230.5, 88, 100.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-238.5, 88, 115.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-236.5, 88, 112.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-229.5, 88, 118.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-228.5, 88, 121.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-222.5, 88, 122.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-215.5, 88, 119.5) to {uf::floor::5::spawn::*}
-    add uf_layout_loc(-233, 88, 89) to {uf::floor::5::chest::*}
-    add uf_layout_loc(-224, 88, 124) to {uf::floor::5::chest::*}
-    add uf_layout_loc(-226, 88, 120) to {uf::floor::5::chest::*}
-    add uf_layout_loc(-251, 88, 117) to {uf::floor::5::chest::*}
-    add uf_layout_loc(-236, 88, 108) to {uf::floor::5::chest::*}
-    # 6F 資材倉庫
+    add uf_layout_loc(-254.5, 88, 89.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-261.5, 88, 91.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-256.5, 88, 98.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-260.5, 88, 100.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-264.5, 88, 108.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-254.5, 88, 107.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-240.5, 88, 89.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-244.5, 88, 89.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-241.5, 88, 105.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-248.5, 88, 100.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-240.5, 88, 124.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-249.5, 88, 120.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-229.5, 88, 102.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-235.5, 88, 101.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-236.5, 88, 113.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-232.5, 88, 106.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-221.5, 88, 123.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-227.5, 88, 116.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-206.5, 88, 105.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-213.5, 88, 105.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-208.5, 88, 123.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-216.5, 88, 114.5) to {uf::floor::5::spawn::*}
+    add uf_layout_loc(-251, 88, 87) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-234, 88, 87) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-266, 88, 125) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-219, 88, 120) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-205, 88, 104) to {uf::floor::5::chest::*}
+    add uf_layout_loc(-239, 88, 89) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 88, 89))%} to "5:mid"
+    add uf_layout_loc(-239, 89, 89) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 89, 89))%} to "5:mid"
+    add uf_layout_loc(-239, 90, 89) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 90, 89))%} to "5:mid"
+    add uf_layout_loc(-239, 88, 90) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 88, 90))%} to "5:mid"
+    add uf_layout_loc(-239, 89, 90) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 89, 90))%} to "5:mid"
+    add uf_layout_loc(-239, 90, 90) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 90, 90))%} to "5:mid"
+    add uf_layout_loc(-239, 88, 91) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 88, 91))%} to "5:mid"
+    add uf_layout_loc(-239, 89, 91) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 89, 91))%} to "5:mid"
+    add uf_layout_loc(-239, 90, 91) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 90, 91))%} to "5:mid"
+    add uf_layout_loc(-239, 88, 113) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 88, 113))%} to "5:mid"
+    add uf_layout_loc(-239, 89, 113) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 89, 113))%} to "5:mid"
+    add uf_layout_loc(-239, 90, 113) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 90, 113))%} to "5:mid"
+    add uf_layout_loc(-239, 88, 114) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 88, 114))%} to "5:mid"
+    add uf_layout_loc(-239, 89, 114) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 89, 114))%} to "5:mid"
+    add uf_layout_loc(-239, 90, 114) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 90, 114))%} to "5:mid"
+    add uf_layout_loc(-239, 88, 115) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 88, 115))%} to "5:mid"
+    add uf_layout_loc(-239, 89, 115) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 89, 115))%} to "5:mid"
+    add uf_layout_loc(-239, 90, 115) to {uf::gatecells::5::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-239, 90, 115))%} to "5:mid"
+    add uf_layout_loc(-273, 88, 90) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 88, 90))%} to "5:exit"
+    add uf_layout_loc(-273, 89, 90) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 89, 90))%} to "5:exit"
+    add uf_layout_loc(-273, 90, 90) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 90, 90))%} to "5:exit"
+    add uf_layout_loc(-273, 88, 91) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 88, 91))%} to "5:exit"
+    add uf_layout_loc(-273, 89, 91) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 89, 91))%} to "5:exit"
+    add uf_layout_loc(-273, 90, 91) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 90, 91))%} to "5:exit"
+    add uf_layout_loc(-273, 88, 92) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 88, 92))%} to "5:exit"
+    add uf_layout_loc(-273, 89, 92) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 89, 92))%} to "5:exit"
+    add uf_layout_loc(-273, 90, 92) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 90, 92))%} to "5:exit"
+    add uf_layout_loc(-272, 88, 90) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 88, 90))%} to "5:exit"
+    add uf_layout_loc(-272, 89, 90) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 89, 90))%} to "5:exit"
+    add uf_layout_loc(-272, 90, 90) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 90, 90))%} to "5:exit"
+    add uf_layout_loc(-272, 88, 91) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 88, 91))%} to "5:exit"
+    add uf_layout_loc(-272, 89, 91) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 89, 91))%} to "5:exit"
+    add uf_layout_loc(-272, 90, 91) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 90, 91))%} to "5:exit"
+    add uf_layout_loc(-272, 88, 92) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 88, 92))%} to "5:exit"
+    add uf_layout_loc(-272, 89, 92) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 89, 92))%} to "5:exit"
+    add uf_layout_loc(-272, 90, 92) to {uf::gatecells::5::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 90, 92))%} to "5:exit"
+    add uf_layout_loc(-202, 88, 91) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 88, 91))%} to "5:block"
+    add uf_layout_loc(-202, 89, 91) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 89, 91))%} to "5:block"
+    add uf_layout_loc(-202, 90, 91) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 90, 91))%} to "5:block"
+    add uf_layout_loc(-202, 88, 92) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 88, 92))%} to "5:block"
+    add uf_layout_loc(-202, 89, 92) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 89, 92))%} to "5:block"
+    add uf_layout_loc(-202, 90, 92) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 90, 92))%} to "5:block"
+    add uf_layout_loc(-202, 88, 93) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 88, 93))%} to "5:block"
+    add uf_layout_loc(-202, 89, 93) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 89, 93))%} to "5:block"
+    add uf_layout_loc(-202, 90, 93) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 90, 93))%} to "5:block"
+    add uf_layout_loc(-201, 88, 91) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 88, 91))%} to "5:block"
+    add uf_layout_loc(-201, 89, 91) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 89, 91))%} to "5:block"
+    add uf_layout_loc(-201, 90, 91) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 90, 91))%} to "5:block"
+    add uf_layout_loc(-201, 88, 92) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 88, 92))%} to "5:block"
+    add uf_layout_loc(-201, 89, 92) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 89, 92))%} to "5:block"
+    add uf_layout_loc(-201, 90, 92) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 90, 92))%} to "5:block"
+    add uf_layout_loc(-201, 88, 93) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 88, 93))%} to "5:block"
+    add uf_layout_loc(-201, 89, 93) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 89, 93))%} to "5:block"
+    add uf_layout_loc(-201, 90, 93) to {uf::gatecells::5::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 90, 93))%} to "5:block"
+    # 6F 資材倉庫（入口 W → 出口 E）
     delete {uf::floor::6::spawn::*}
     delete {uf::floor::6::chest::*}
+    delete {uf::floor::6::midroom::*}
+    delete {uf::gatecells::6::mid::*}
+    delete {uf::gatecells::6::exit::*}
+    delete {uf::gatecells::6::block::*}
     set {uf::floor::6::start} to uf_layout_loc(-264.5, 93, 93.5)
     set {uf::floor::6::cp} to uf_layout_loc(-264.5, 93, 93.5)
-    set {uf::floor::6::mid} to uf_layout_loc(-239.5, 93, 120.5)
-    set {uf::floor::6::boss} to uf_layout_loc(-211.5, 93, 115.5)
     set {uf::floor::6::p1} to uf_layout_loc(-267, 93, 87)
     set {uf::floor::6::p2} to uf_layout_loc(-204, 96, 125)
-    set {uf::floor::6::midroom::a} to uf_layout_loc(-246, 93, 116)
-    set {uf::floor::6::midroom::b} to uf_layout_loc(-234, 96, 125)
     set {uf::floor::6::marena::player} to uf_layout_loc(-126.5, 201, -36.5)
     set {uf::floor::6::marena::boss} to uf_layout_loc(-126.5, 201, -51.5)
     set {uf::floor::6::barena::player} to uf_layout_loc(-122.5, 201, 16.5)
     set {uf::floor::6::barena::boss} to uf_layout_loc(-122.5, 201, -3.5)
-    add uf_layout_loc(-247.5, 93, 93.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-245.5, 93, 96.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-237.5, 93, 96.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-239.5, 93, 91.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-258.5, 93, 102.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-254.5, 93, 110.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-253.5, 93, 121.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-250.5, 93, 122.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-241.5, 93, 106.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-234.5, 93, 105.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-243.5, 93, 122.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-239.5, 93, 124.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-230.5, 93, 99.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-220.5, 93, 94.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-209.5, 93, 103.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-211.5, 93, 101.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-226.5, 93, 108.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-230.5, 93, 108.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-222.5, 93, 118.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-225.5, 93, 120.5) to {uf::floor::6::spawn::*}
-    add uf_layout_loc(-215, 93, 89) to {uf::floor::6::chest::*}
-    add uf_layout_loc(-205, 93, 91) to {uf::floor::6::chest::*}
-    add uf_layout_loc(-250, 93, 87) to {uf::floor::6::chest::*}
-    add uf_layout_loc(-234, 93, 87) to {uf::floor::6::chest::*}
-    add uf_layout_loc(-236, 93, 125) to {uf::floor::6::chest::*}
-    # 7F 研究室・教授室
+    add uf_layout_loc(-255.5, 93, 108.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-261.5, 93, 109.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-246.5, 93, 91.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-239.5, 93, 99.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-247.5, 93, 105.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-242.5, 93, 105.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-264.5, 93, 115.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-258.5, 93, 117.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-242.5, 93, 119.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-243.5, 93, 121.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-231.5, 93, 93.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-230.5, 93, 88.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-210.5, 93, 94.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-215.5, 93, 97.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-229.5, 93, 112.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-232.5, 93, 114.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-222.5, 93, 107.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-220.5, 93, 106.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-227.5, 93, 121.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-225.5, 93, 121.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-208.5, 93, 121.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-208.5, 93, 113.5) to {uf::floor::6::spawn::*}
+    add uf_layout_loc(-213, 93, 87) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-249, 93, 110) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-234, 93, 124) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-247, 93, 87) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-232, 93, 115) to {uf::floor::6::chest::*}
+    add uf_layout_loc(-235, 93, 95) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 93, 95))%} to "6:mid"
+    add uf_layout_loc(-235, 94, 95) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 94, 95))%} to "6:mid"
+    add uf_layout_loc(-235, 95, 95) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 95, 95))%} to "6:mid"
+    add uf_layout_loc(-235, 93, 96) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 93, 96))%} to "6:mid"
+    add uf_layout_loc(-235, 94, 96) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 94, 96))%} to "6:mid"
+    add uf_layout_loc(-235, 95, 96) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 95, 96))%} to "6:mid"
+    add uf_layout_loc(-235, 93, 97) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 93, 97))%} to "6:mid"
+    add uf_layout_loc(-235, 94, 97) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 94, 97))%} to "6:mid"
+    add uf_layout_loc(-235, 95, 97) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 95, 97))%} to "6:mid"
+    add uf_layout_loc(-235, 93, 108) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 93, 108))%} to "6:mid"
+    add uf_layout_loc(-235, 94, 108) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 94, 108))%} to "6:mid"
+    add uf_layout_loc(-235, 95, 108) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 95, 108))%} to "6:mid"
+    add uf_layout_loc(-235, 93, 109) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 93, 109))%} to "6:mid"
+    add uf_layout_loc(-235, 94, 109) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 94, 109))%} to "6:mid"
+    add uf_layout_loc(-235, 95, 109) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 95, 109))%} to "6:mid"
+    add uf_layout_loc(-235, 93, 110) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 93, 110))%} to "6:mid"
+    add uf_layout_loc(-235, 94, 110) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 94, 110))%} to "6:mid"
+    add uf_layout_loc(-235, 95, 110) to {uf::gatecells::6::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-235, 95, 110))%} to "6:mid"
+    add uf_layout_loc(-202, 93, 91) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 93, 91))%} to "6:exit"
+    add uf_layout_loc(-202, 94, 91) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 94, 91))%} to "6:exit"
+    add uf_layout_loc(-202, 95, 91) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 95, 91))%} to "6:exit"
+    add uf_layout_loc(-202, 93, 92) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 93, 92))%} to "6:exit"
+    add uf_layout_loc(-202, 94, 92) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 94, 92))%} to "6:exit"
+    add uf_layout_loc(-202, 95, 92) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 95, 92))%} to "6:exit"
+    add uf_layout_loc(-202, 93, 93) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 93, 93))%} to "6:exit"
+    add uf_layout_loc(-202, 94, 93) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 94, 93))%} to "6:exit"
+    add uf_layout_loc(-202, 95, 93) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 95, 93))%} to "6:exit"
+    add uf_layout_loc(-201, 93, 91) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 93, 91))%} to "6:exit"
+    add uf_layout_loc(-201, 94, 91) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 94, 91))%} to "6:exit"
+    add uf_layout_loc(-201, 95, 91) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 95, 91))%} to "6:exit"
+    add uf_layout_loc(-201, 93, 92) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 93, 92))%} to "6:exit"
+    add uf_layout_loc(-201, 94, 92) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 94, 92))%} to "6:exit"
+    add uf_layout_loc(-201, 95, 92) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 95, 92))%} to "6:exit"
+    add uf_layout_loc(-201, 93, 93) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 93, 93))%} to "6:exit"
+    add uf_layout_loc(-201, 94, 93) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 94, 93))%} to "6:exit"
+    add uf_layout_loc(-201, 95, 93) to {uf::gatecells::6::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 95, 93))%} to "6:exit"
+    add uf_layout_loc(-273, 93, 90) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 93, 90))%} to "6:block"
+    add uf_layout_loc(-273, 94, 90) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 94, 90))%} to "6:block"
+    add uf_layout_loc(-273, 95, 90) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 95, 90))%} to "6:block"
+    add uf_layout_loc(-273, 93, 91) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 93, 91))%} to "6:block"
+    add uf_layout_loc(-273, 94, 91) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 94, 91))%} to "6:block"
+    add uf_layout_loc(-273, 95, 91) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 95, 91))%} to "6:block"
+    add uf_layout_loc(-273, 93, 92) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 93, 92))%} to "6:block"
+    add uf_layout_loc(-273, 94, 92) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 94, 92))%} to "6:block"
+    add uf_layout_loc(-273, 95, 92) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 95, 92))%} to "6:block"
+    add uf_layout_loc(-272, 93, 90) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 93, 90))%} to "6:block"
+    add uf_layout_loc(-272, 94, 90) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 94, 90))%} to "6:block"
+    add uf_layout_loc(-272, 95, 90) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 95, 90))%} to "6:block"
+    add uf_layout_loc(-272, 93, 91) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 93, 91))%} to "6:block"
+    add uf_layout_loc(-272, 94, 91) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 94, 91))%} to "6:block"
+    add uf_layout_loc(-272, 95, 91) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 95, 91))%} to "6:block"
+    add uf_layout_loc(-272, 93, 92) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 93, 92))%} to "6:block"
+    add uf_layout_loc(-272, 94, 92) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 94, 92))%} to "6:block"
+    add uf_layout_loc(-272, 95, 92) to {uf::gatecells::6::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 95, 92))%} to "6:block"
+    # 7F 研究室・教授室（入口 E → 出口 W）
     delete {uf::floor::7::spawn::*}
     delete {uf::floor::7::chest::*}
-    set {uf::floor::7::start} to uf_layout_loc(-264.5, 98, 93.5)
-    set {uf::floor::7::cp} to uf_layout_loc(-264.5, 98, 93.5)
-    set {uf::floor::7::mid} to uf_layout_loc(-241.5, 98, 118.5)
-    set {uf::floor::7::boss} to uf_layout_loc(-208.5, 98, 90.5)
+    delete {uf::floor::7::midroom::*}
+    delete {uf::gatecells::7::mid::*}
+    delete {uf::gatecells::7::exit::*}
+    delete {uf::gatecells::7::block::*}
+    set {uf::floor::7::start} to uf_layout_loc(-205.5, 98, 95.5)
+    set {uf::floor::7::cp} to uf_layout_loc(-205.5, 98, 95.5)
     set {uf::floor::7::p1} to uf_layout_loc(-267, 98, 87)
     set {uf::floor::7::p2} to uf_layout_loc(-204, 101, 125)
-    set {uf::floor::7::midroom::a} to uf_layout_loc(-248, 98, 111)
-    set {uf::floor::7::midroom::b} to uf_layout_loc(-235, 101, 125)
     set {uf::floor::7::marena::player} to uf_layout_loc(-86.5, 201, -36.5)
     set {uf::floor::7::marena::boss} to uf_layout_loc(-86.5, 201, -51.5)
     set {uf::floor::7::barena::player} to uf_layout_loc(-82.5, 201, 16.5)
     set {uf::floor::7::barena::boss} to uf_layout_loc(-82.5, 201, -3.5)
-    add uf_layout_loc(-263.5, 98, 106.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-264.5, 98, 120.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-237.5, 98, 97.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-263.5, 98, 93.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-262.5, 98, 93.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-251.5, 98, 92.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-250.5, 98, 88.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-264.5, 98, 102.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-259.5, 98, 107.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-250.5, 98, 101.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-252.5, 98, 104.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-243.5, 98, 99.5) to {uf::floor::7::spawn::*}
     add uf_layout_loc(-238.5, 98, 91.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-243.5, 98, 102.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-243.5, 98, 108.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-231.5, 98, 93.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-232.5, 98, 89.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-226.5, 98, 106.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-230.5, 98, 97.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-221.5, 98, 89.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-221.5, 98, 102.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-242.5, 98, 115.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-244.5, 98, 118.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-227.5, 98, 121.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-224.5, 98, 121.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-219.5, 98, 112.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-220.5, 98, 115.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-205.5, 98, 117.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-205.5, 98, 123.5) to {uf::floor::7::spawn::*}
-    add uf_layout_loc(-218, 98, 125) to {uf::floor::7::chest::*}
-    add uf_layout_loc(-250, 98, 122) to {uf::floor::7::chest::*}
-    add uf_layout_loc(-205, 98, 110) to {uf::floor::7::chest::*}
-    add uf_layout_loc(-233, 98, 111) to {uf::floor::7::chest::*}
-    add uf_layout_loc(-218, 98, 87) to {uf::floor::7::chest::*}
-    # 8F 封鎖区画
+    add uf_layout_loc(-256.5, 98, 112.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-254.5, 98, 120.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-249.5, 98, 113.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-248.5, 98, 118.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-222.5, 98, 93.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-225.5, 98, 92.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-223.5, 98, 103.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-224.5, 98, 107.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-207.5, 98, 106.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-207.5, 98, 107.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-217.5, 98, 115.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-226.5, 98, 118.5) to {uf::floor::7::spawn::*}
+    add uf_layout_loc(-257, 98, 125) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-250, 98, 108) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-205, 98, 125) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-249, 98, 125) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-244, 98, 87) to {uf::floor::7::chest::*}
+    add uf_layout_loc(-231, 98, 91) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 98, 91))%} to "7:mid"
+    add uf_layout_loc(-231, 99, 91) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 99, 91))%} to "7:mid"
+    add uf_layout_loc(-231, 100, 91) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 100, 91))%} to "7:mid"
+    add uf_layout_loc(-231, 98, 92) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 98, 92))%} to "7:mid"
+    add uf_layout_loc(-231, 99, 92) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 99, 92))%} to "7:mid"
+    add uf_layout_loc(-231, 100, 92) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 100, 92))%} to "7:mid"
+    add uf_layout_loc(-231, 98, 93) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 98, 93))%} to "7:mid"
+    add uf_layout_loc(-231, 99, 93) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 99, 93))%} to "7:mid"
+    add uf_layout_loc(-231, 100, 93) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 100, 93))%} to "7:mid"
+    add uf_layout_loc(-231, 98, 118) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 98, 118))%} to "7:mid"
+    add uf_layout_loc(-231, 99, 118) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 99, 118))%} to "7:mid"
+    add uf_layout_loc(-231, 100, 118) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 100, 118))%} to "7:mid"
+    add uf_layout_loc(-231, 98, 119) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 98, 119))%} to "7:mid"
+    add uf_layout_loc(-231, 99, 119) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 99, 119))%} to "7:mid"
+    add uf_layout_loc(-231, 100, 119) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 100, 119))%} to "7:mid"
+    add uf_layout_loc(-231, 98, 120) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 98, 120))%} to "7:mid"
+    add uf_layout_loc(-231, 99, 120) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 99, 120))%} to "7:mid"
+    add uf_layout_loc(-231, 100, 120) to {uf::gatecells::7::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-231, 100, 120))%} to "7:mid"
+    add uf_layout_loc(-273, 98, 90) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 98, 90))%} to "7:exit"
+    add uf_layout_loc(-273, 99, 90) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 99, 90))%} to "7:exit"
+    add uf_layout_loc(-273, 100, 90) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 100, 90))%} to "7:exit"
+    add uf_layout_loc(-273, 98, 91) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 98, 91))%} to "7:exit"
+    add uf_layout_loc(-273, 99, 91) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 99, 91))%} to "7:exit"
+    add uf_layout_loc(-273, 100, 91) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 100, 91))%} to "7:exit"
+    add uf_layout_loc(-273, 98, 92) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 98, 92))%} to "7:exit"
+    add uf_layout_loc(-273, 99, 92) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 99, 92))%} to "7:exit"
+    add uf_layout_loc(-273, 100, 92) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 100, 92))%} to "7:exit"
+    add uf_layout_loc(-272, 98, 90) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 98, 90))%} to "7:exit"
+    add uf_layout_loc(-272, 99, 90) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 99, 90))%} to "7:exit"
+    add uf_layout_loc(-272, 100, 90) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 100, 90))%} to "7:exit"
+    add uf_layout_loc(-272, 98, 91) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 98, 91))%} to "7:exit"
+    add uf_layout_loc(-272, 99, 91) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 99, 91))%} to "7:exit"
+    add uf_layout_loc(-272, 100, 91) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 100, 91))%} to "7:exit"
+    add uf_layout_loc(-272, 98, 92) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 98, 92))%} to "7:exit"
+    add uf_layout_loc(-272, 99, 92) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 99, 92))%} to "7:exit"
+    add uf_layout_loc(-272, 100, 92) to {uf::gatecells::7::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 100, 92))%} to "7:exit"
+    add uf_layout_loc(-202, 98, 91) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 98, 91))%} to "7:block"
+    add uf_layout_loc(-202, 99, 91) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 99, 91))%} to "7:block"
+    add uf_layout_loc(-202, 100, 91) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 100, 91))%} to "7:block"
+    add uf_layout_loc(-202, 98, 92) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 98, 92))%} to "7:block"
+    add uf_layout_loc(-202, 99, 92) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 99, 92))%} to "7:block"
+    add uf_layout_loc(-202, 100, 92) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 100, 92))%} to "7:block"
+    add uf_layout_loc(-202, 98, 93) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 98, 93))%} to "7:block"
+    add uf_layout_loc(-202, 99, 93) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 99, 93))%} to "7:block"
+    add uf_layout_loc(-202, 100, 93) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 100, 93))%} to "7:block"
+    add uf_layout_loc(-201, 98, 91) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 98, 91))%} to "7:block"
+    add uf_layout_loc(-201, 99, 91) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 99, 91))%} to "7:block"
+    add uf_layout_loc(-201, 100, 91) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 100, 91))%} to "7:block"
+    add uf_layout_loc(-201, 98, 92) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 98, 92))%} to "7:block"
+    add uf_layout_loc(-201, 99, 92) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 99, 92))%} to "7:block"
+    add uf_layout_loc(-201, 100, 92) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 100, 92))%} to "7:block"
+    add uf_layout_loc(-201, 98, 93) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 98, 93))%} to "7:block"
+    add uf_layout_loc(-201, 99, 93) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 99, 93))%} to "7:block"
+    add uf_layout_loc(-201, 100, 93) to {uf::gatecells::7::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 100, 93))%} to "7:block"
+    # 8F 封鎖区画（入口 W → 出口 E）
     delete {uf::floor::8::spawn::*}
     delete {uf::floor::8::chest::*}
+    delete {uf::floor::8::midroom::*}
+    delete {uf::gatecells::8::mid::*}
+    delete {uf::gatecells::8::exit::*}
+    delete {uf::gatecells::8::block::*}
     set {uf::floor::8::start} to uf_layout_loc(-264.5, 103, 93.5)
     set {uf::floor::8::cp} to uf_layout_loc(-264.5, 103, 93.5)
-    set {uf::floor::8::mid} to uf_layout_loc(-237.5, 103, 121.5)
-    set {uf::floor::8::boss} to uf_layout_loc(-209.5, 103, 118.5)
     set {uf::floor::8::p1} to uf_layout_loc(-267, 103, 87)
     set {uf::floor::8::p2} to uf_layout_loc(-204, 106, 125)
-    set {uf::floor::8::midroom::a} to uf_layout_loc(-242, 103, 117)
-    set {uf::floor::8::midroom::b} to uf_layout_loc(-233, 106, 125)
     set {uf::floor::8::marena::player} to uf_layout_loc(-46.5, 201, -36.5)
     set {uf::floor::8::marena::boss} to uf_layout_loc(-46.5, 201, -51.5)
     set {uf::floor::8::barena::player} to uf_layout_loc(-42.5, 201, 16.5)
     set {uf::floor::8::barena::boss} to uf_layout_loc(-42.5, 201, -3.5)
-    add uf_layout_loc(-262.5, 103, 103.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-260.5, 103, 99.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-253.5, 103, 99.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-251.5, 103, 101.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-256.5, 103, 122.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-260.5, 103, 120.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-244.5, 103, 122.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-245.5, 103, 122.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-240.5, 103, 106.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-239.5, 103, 98.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-220.5, 103, 90.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-225.5, 103, 91.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-217.5, 103, 107.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-228.5, 103, 109.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-237.5, 103, 121.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-233.5, 103, 124.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-222.5, 103, 122.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-217.5, 103, 124.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-210.5, 103, 105.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-208.5, 103, 98.5) to {uf::floor::8::spawn::*}
-    add uf_layout_loc(-266, 103, 123) to {uf::floor::8::chest::*}
-    add uf_layout_loc(-244, 103, 121) to {uf::floor::8::chest::*}
-    add uf_layout_loc(-257, 103, 110) to {uf::floor::8::chest::*}
-    add uf_layout_loc(-229, 103, 115) to {uf::floor::8::chest::*}
-    add uf_layout_loc(-214, 103, 98) to {uf::floor::8::chest::*}
-    # 9F 最上階・大講堂
+    add uf_layout_loc(-258.5, 103, 101.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-259.5, 103, 101.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-256.5, 103, 109.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-264.5, 103, 114.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-244.5, 103, 97.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-245.5, 103, 102.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-238.5, 103, 119.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-247.5, 103, 119.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-231.5, 103, 91.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-232.5, 103, 93.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-227.5, 103, 97.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-224.5, 103, 100.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-233.5, 103, 108.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-232.5, 103, 108.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-224.5, 103, 123.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-227.5, 103, 122.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-211.5, 103, 89.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-206.5, 103, 89.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-217.5, 103, 109.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-216.5, 103, 107.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-208.5, 103, 115.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-205.5, 103, 121.5) to {uf::floor::8::spawn::*}
+    add uf_layout_loc(-236, 103, 106) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-219, 103, 120) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-227, 103, 87) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-266, 103, 102) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-264, 103, 125) to {uf::floor::8::chest::*}
+    add uf_layout_loc(-237, 103, 94) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 103, 94))%} to "8:mid"
+    add uf_layout_loc(-237, 104, 94) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 104, 94))%} to "8:mid"
+    add uf_layout_loc(-237, 105, 94) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 105, 94))%} to "8:mid"
+    add uf_layout_loc(-237, 103, 95) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 103, 95))%} to "8:mid"
+    add uf_layout_loc(-237, 104, 95) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 104, 95))%} to "8:mid"
+    add uf_layout_loc(-237, 105, 95) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 105, 95))%} to "8:mid"
+    add uf_layout_loc(-237, 103, 96) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 103, 96))%} to "8:mid"
+    add uf_layout_loc(-237, 104, 96) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 104, 96))%} to "8:mid"
+    add uf_layout_loc(-237, 105, 96) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 105, 96))%} to "8:mid"
+    add uf_layout_loc(-237, 103, 115) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 103, 115))%} to "8:mid"
+    add uf_layout_loc(-237, 104, 115) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 104, 115))%} to "8:mid"
+    add uf_layout_loc(-237, 105, 115) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 105, 115))%} to "8:mid"
+    add uf_layout_loc(-237, 103, 116) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 103, 116))%} to "8:mid"
+    add uf_layout_loc(-237, 104, 116) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 104, 116))%} to "8:mid"
+    add uf_layout_loc(-237, 105, 116) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 105, 116))%} to "8:mid"
+    add uf_layout_loc(-237, 103, 117) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 103, 117))%} to "8:mid"
+    add uf_layout_loc(-237, 104, 117) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 104, 117))%} to "8:mid"
+    add uf_layout_loc(-237, 105, 117) to {uf::gatecells::8::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-237, 105, 117))%} to "8:mid"
+    add uf_layout_loc(-202, 103, 91) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 103, 91))%} to "8:exit"
+    add uf_layout_loc(-202, 104, 91) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 104, 91))%} to "8:exit"
+    add uf_layout_loc(-202, 105, 91) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 105, 91))%} to "8:exit"
+    add uf_layout_loc(-202, 103, 92) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 103, 92))%} to "8:exit"
+    add uf_layout_loc(-202, 104, 92) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 104, 92))%} to "8:exit"
+    add uf_layout_loc(-202, 105, 92) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 105, 92))%} to "8:exit"
+    add uf_layout_loc(-202, 103, 93) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 103, 93))%} to "8:exit"
+    add uf_layout_loc(-202, 104, 93) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 104, 93))%} to "8:exit"
+    add uf_layout_loc(-202, 105, 93) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-202, 105, 93))%} to "8:exit"
+    add uf_layout_loc(-201, 103, 91) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 103, 91))%} to "8:exit"
+    add uf_layout_loc(-201, 104, 91) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 104, 91))%} to "8:exit"
+    add uf_layout_loc(-201, 105, 91) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 105, 91))%} to "8:exit"
+    add uf_layout_loc(-201, 103, 92) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 103, 92))%} to "8:exit"
+    add uf_layout_loc(-201, 104, 92) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 104, 92))%} to "8:exit"
+    add uf_layout_loc(-201, 105, 92) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 105, 92))%} to "8:exit"
+    add uf_layout_loc(-201, 103, 93) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 103, 93))%} to "8:exit"
+    add uf_layout_loc(-201, 104, 93) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 104, 93))%} to "8:exit"
+    add uf_layout_loc(-201, 105, 93) to {uf::gatecells::8::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-201, 105, 93))%} to "8:exit"
+    add uf_layout_loc(-273, 103, 90) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 103, 90))%} to "8:block"
+    add uf_layout_loc(-273, 104, 90) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 104, 90))%} to "8:block"
+    add uf_layout_loc(-273, 105, 90) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 105, 90))%} to "8:block"
+    add uf_layout_loc(-273, 103, 91) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 103, 91))%} to "8:block"
+    add uf_layout_loc(-273, 104, 91) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 104, 91))%} to "8:block"
+    add uf_layout_loc(-273, 105, 91) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 105, 91))%} to "8:block"
+    add uf_layout_loc(-273, 103, 92) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 103, 92))%} to "8:block"
+    add uf_layout_loc(-273, 104, 92) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 104, 92))%} to "8:block"
+    add uf_layout_loc(-273, 105, 92) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 105, 92))%} to "8:block"
+    add uf_layout_loc(-272, 103, 90) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 103, 90))%} to "8:block"
+    add uf_layout_loc(-272, 104, 90) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 104, 90))%} to "8:block"
+    add uf_layout_loc(-272, 105, 90) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 105, 90))%} to "8:block"
+    add uf_layout_loc(-272, 103, 91) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 103, 91))%} to "8:block"
+    add uf_layout_loc(-272, 104, 91) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 104, 91))%} to "8:block"
+    add uf_layout_loc(-272, 105, 91) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 105, 91))%} to "8:block"
+    add uf_layout_loc(-272, 103, 92) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 103, 92))%} to "8:block"
+    add uf_layout_loc(-272, 104, 92) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 104, 92))%} to "8:block"
+    add uf_layout_loc(-272, 105, 92) to {uf::gatecells::8::block::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 105, 92))%} to "8:block"
+    # 9F 最上階・大講堂（入口 E → 出口 W）
     delete {uf::floor::9::spawn::*}
     delete {uf::floor::9::chest::*}
-    set {uf::floor::9::start} to uf_layout_loc(-264.5, 108, 93.5)
-    set {uf::floor::9::cp} to uf_layout_loc(-264.5, 108, 93.5)
-    set {uf::floor::9::mid} to uf_layout_loc(-213.5, 108, 94.5)
-    set {uf::floor::9::boss} to uf_layout_loc(-208.5, 108, 121.5)
+    delete {uf::floor::9::midroom::*}
+    delete {uf::gatecells::9::mid::*}
+    delete {uf::gatecells::9::exit::*}
+    delete {uf::gatecells::9::block::*}
+    set {uf::floor::9::start} to uf_layout_loc(-205.5, 108, 95.5)
+    set {uf::floor::9::cp} to uf_layout_loc(-205.5, 108, 95.5)
     set {uf::floor::9::p1} to uf_layout_loc(-267, 108, 87)
     set {uf::floor::9::p2} to uf_layout_loc(-204, 111, 125)
-    set {uf::floor::9::midroom::a} to uf_layout_loc(-222, 108, 87)
-    set {uf::floor::9::midroom::b} to uf_layout_loc(-205, 111, 101)
     set {uf::floor::9::marena::player} to uf_layout_loc(-6.5, 201, -36.5)
     set {uf::floor::9::marena::boss} to uf_layout_loc(-6.5, 201, -51.5)
     set {uf::floor::9::barena::player} to uf_layout_loc(-2.5, 201, 16.5)
     set {uf::floor::9::barena::boss} to uf_layout_loc(-2.5, 201, -3.5)
-    add uf_layout_loc(-242.5, 108, 88.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-245.5, 108, 98.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-228.5, 108, 88.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-232.5, 108, 94.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-246.5, 108, 111.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-254.5, 108, 110.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-259.5, 108, 116.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-244.5, 108, 120.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-232.5, 108, 103.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-224.5, 108, 104.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-226.5, 108, 118.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-233.5, 108, 124.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-216.5, 108, 91.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-211.5, 108, 88.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-217.5, 108, 109.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-216.5, 108, 105.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-207.5, 108, 112.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-206.5, 108, 112.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-218.5, 108, 124.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-220.5, 108, 122.5) to {uf::floor::9::spawn::*}
-    add uf_layout_loc(-239, 108, 115) to {uf::floor::9::chest::*}
-    add uf_layout_loc(-221, 108, 125) to {uf::floor::9::chest::*}
-    add uf_layout_loc(-222, 108, 105) to {uf::floor::9::chest::*}
-    add uf_layout_loc(-224, 108, 96) to {uf::floor::9::chest::*}
-    add uf_layout_loc(-224, 108, 106) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-258.5, 108, 89.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-259.5, 108, 91.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-250.5, 108, 89.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-252.5, 108, 93.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-234.5, 108, 92.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-243.5, 108, 98.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-263.5, 108, 118.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-262.5, 108, 102.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-250.5, 108, 110.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-252.5, 108, 123.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-239.5, 108, 124.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-236.5, 108, 119.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-224.5, 108, 89.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-230.5, 108, 97.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-230.5, 108, 109.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-227.5, 108, 104.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-227.5, 108, 114.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-227.5, 108, 124.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-213.5, 108, 105.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-213.5, 108, 113.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-213.5, 108, 119.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-215.5, 108, 123.5) to {uf::floor::9::spawn::*}
+    add uf_layout_loc(-210, 108, 102) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-232, 108, 107) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-236, 108, 125) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-256, 108, 111) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-265, 108, 87) to {uf::floor::9::chest::*}
+    add uf_layout_loc(-233, 108, 97) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 108, 97))%} to "9:mid"
+    add uf_layout_loc(-233, 109, 97) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 109, 97))%} to "9:mid"
+    add uf_layout_loc(-233, 110, 97) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 110, 97))%} to "9:mid"
+    add uf_layout_loc(-233, 108, 98) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 108, 98))%} to "9:mid"
+    add uf_layout_loc(-233, 109, 98) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 109, 98))%} to "9:mid"
+    add uf_layout_loc(-233, 110, 98) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 110, 98))%} to "9:mid"
+    add uf_layout_loc(-233, 108, 99) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 108, 99))%} to "9:mid"
+    add uf_layout_loc(-233, 109, 99) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 109, 99))%} to "9:mid"
+    add uf_layout_loc(-233, 110, 99) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 110, 99))%} to "9:mid"
+    add uf_layout_loc(-233, 108, 110) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 108, 110))%} to "9:mid"
+    add uf_layout_loc(-233, 109, 110) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 109, 110))%} to "9:mid"
+    add uf_layout_loc(-233, 110, 110) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 110, 110))%} to "9:mid"
+    add uf_layout_loc(-233, 108, 111) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 108, 111))%} to "9:mid"
+    add uf_layout_loc(-233, 109, 111) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 109, 111))%} to "9:mid"
+    add uf_layout_loc(-233, 110, 111) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 110, 111))%} to "9:mid"
+    add uf_layout_loc(-233, 108, 112) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 108, 112))%} to "9:mid"
+    add uf_layout_loc(-233, 109, 112) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 109, 112))%} to "9:mid"
+    add uf_layout_loc(-233, 110, 112) to {uf::gatecells::9::mid::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-233, 110, 112))%} to "9:mid"
+    add uf_layout_loc(-273, 108, 90) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 108, 90))%} to "9:exit"
+    add uf_layout_loc(-273, 109, 90) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 109, 90))%} to "9:exit"
+    add uf_layout_loc(-273, 110, 90) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 110, 90))%} to "9:exit"
+    add uf_layout_loc(-273, 108, 91) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 108, 91))%} to "9:exit"
+    add uf_layout_loc(-273, 109, 91) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 109, 91))%} to "9:exit"
+    add uf_layout_loc(-273, 110, 91) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 110, 91))%} to "9:exit"
+    add uf_layout_loc(-273, 108, 92) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 108, 92))%} to "9:exit"
+    add uf_layout_loc(-273, 109, 92) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 109, 92))%} to "9:exit"
+    add uf_layout_loc(-273, 110, 92) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-273, 110, 92))%} to "9:exit"
+    add uf_layout_loc(-272, 108, 90) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 108, 90))%} to "9:exit"
+    add uf_layout_loc(-272, 109, 90) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 109, 90))%} to "9:exit"
+    add uf_layout_loc(-272, 110, 90) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 110, 90))%} to "9:exit"
+    add uf_layout_loc(-272, 108, 91) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 108, 91))%} to "9:exit"
+    add uf_layout_loc(-272, 109, 91) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 109, 91))%} to "9:exit"
+    add uf_layout_loc(-272, 110, 91) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 110, 91))%} to "9:exit"
+    add uf_layout_loc(-272, 108, 92) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 108, 92))%} to "9:exit"
+    add uf_layout_loc(-272, 109, 92) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 109, 92))%} to "9:exit"
+    add uf_layout_loc(-272, 110, 92) to {uf::gatecells::9::exit::*}
+    set {uf::gatekind::%uf_lockey(uf_layout_loc(-272, 110, 92))%} to "9:exit"
+    # 使わない上り階段は、ここでふさいでおく（以後ずっと閉じたまま）
+    loop integers between 2 and 9:
+        uf_gateclose(loop-value, "block")
+        uf_gateclose(loop-value, "exit")
+        uf_gateclose(loop-value, "mid")
     return true

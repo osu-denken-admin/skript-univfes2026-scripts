@@ -7,7 +7,10 @@ const out = process.argv[2];
 const AREA = { x1: -267, x2: -204, z1: 87, z2: 125 };
 const IN = { x1: -266, x2: -205, z1: 87, z2: 125 }; // 部屋を作る範囲
 const W = IN.x2 - IN.x1 + 1, D = IN.z2 - IN.z1 + 1;
-const DOOR_W = { z1: 92, z2: 94 }; // 西側（階段側）の入口
+const DOOR_W = { z1: 92, z2: 94 }; // 西の階段へ続く出入口
+const DOOR_E = { z1: 95, z2: 96 }; // 東の階段へ続く出入口
+// 偶数階は西から入って東へ抜ける。奇数階は東から入って西へ抜ける
+const entrySide = (f) => (f % 2 === 0 ? 'W' : 'E');
 
 const FLOORS = [
   { f: 2, y: 72, theme: 'classroom', title: '教室棟', boss: '受付に残る影' },
@@ -39,17 +42,18 @@ function generate(fl, seed) {
   // grid: 0=空き 1=壁 2=飾り（通れない） 3=飾り（通れる: 絨毯・クモの巣）
   const g = Array.from({ length: W }, () => new Uint8Array(D));
   const leaves = [];
+  const midGate = [];
   const MIN = 8;
   function split(x1, z1, x2, z2, depth) {
     const w = x2 - x1 + 1, d = z2 - z1 + 1;
     const canX = w >= MIN * 2 + 1, canZ = d >= MIN * 2 + 1;
     if ((!canX && !canZ) || (depth >= 2 && r() < 0.25 && w * d < 400)) { leaves.push({ x1, z1, x2, z2 }); return; }
-    const vertical = canX && (!canZ || w > d * 1.2 || (w >= d * 0.8 && r() < 0.5));
+    const vertical = depth === 0 || (canX && (!canZ || w > d * 1.2 || (w >= d * 0.8 && r() < 0.5)));
     if (vertical) {
-      const sx = ri(r, x1 + MIN, x2 - MIN);
+      const sx = depth === 0 ? ri(r, x1 + Math.floor(w * 0.42), x2 - Math.floor(w * 0.42)) : ri(r, x1 + MIN, x2 - MIN);
       for (let z = z1; z <= z2; z++) g[sx][z] = 1;
       const doors = d > 22 ? 2 : 1;
-      for (let k = 0; k < doors; k++) { const seg = Math.floor(d / doors); const dz = ri(r, z1 + k * seg + 1, z1 + (k + 1) * seg - 4); for (let i = 0; i < 3; i++) g[sx][dz + i] = 0; }
+      for (let k = 0; k < doors; k++) { const seg = Math.floor(d / doors); const dz = ri(r, z1 + k * seg + 1, z1 + (k + 1) * seg - 4); for (let i = 0; i < 3; i++) { g[sx][dz + i] = 0; if (depth === 0) midGate.push([sx, dz + i]); } }
       split(x1, z1, sx - 1, z2, depth + 1); split(sx + 1, z1, x2, z2, depth + 1);
     } else {
       const sz = ri(r, z1 + MIN, z2 - MIN);
@@ -60,9 +64,14 @@ function generate(fl, seed) {
     }
   }
   split(0, 0, W - 1, D - 1, 0);
-  // 入口付近は必ず空ける
-  for (let x = 0; x <= 2; x++) for (let z = DOOR_W.z1 - IN.z1; z <= DOOR_W.z2 - IN.z1; z++) g[x][z] = 0;
-  const startCell = [1, DOOR_W.z1 - IN.z1 + 1];
+  // 両端の出入口付近は必ず空ける（中ボスの壁の出入口は除く）
+  const isGate = (x, z) => midGate.some(([a, b]) => a === x && b === z);
+  for (let x = 0; x <= 2; x++) for (let z = DOOR_W.z1 - IN.z1 - 1; z <= DOOR_W.z2 - IN.z1 + 1; z++) g[x][z] = 0;
+  for (let x = W - 3; x < W; x++) for (let z = DOOR_E.z1 - IN.z1 - 1; z <= DOOR_E.z2 - IN.z1 + 1; z++) g[x][z] = 0;
+  const westCell = [0, DOOR_W.z1 - IN.z1 + 1], eastCell = [W - 1, DOOR_E.z1 - IN.z1];
+  const side = entrySide(fl.f);
+  const startCell = side === 'W' ? [1, DOOR_W.z1 - IN.z1 + 1] : [W - 2, DOOR_E.z1 - IN.z1];
+  const exitCell = side === 'W' ? eastCell : westCell;
   const leafOf = (x, z) => leaves.findIndex((l) => x >= l.x1 && x <= l.x2 && z >= l.z1 && z <= l.z2);
 
   const walk = (x, z) => x >= 0 && z >= 0 && x < W && z < D && (g[x][z] === 0 || g[x][z] === 3);
@@ -76,12 +85,9 @@ function generate(fl, seed) {
   // 部屋の中心までの距離で、開始・中ボス・ボスの部屋を決める
   const center = (l) => [Math.floor((l.x1 + l.x2) / 2), Math.floor((l.z1 + l.z2) / 2)];
   const startLeaf = leafOf(...startCell);
-  const ranked = leaves.map((l, i) => ({ i, d: dist[center(l)[0]][center(l)[1]] })).filter((o) => o.i !== startLeaf);
-  if (ranked.some((o) => o.d < 0)) return null;
-  ranked.sort((a, b) => a.d - b.d);
-  const bossLeaf = ranked[ranked.length - 1].i;
-  const midLeaf = ranked[Math.floor(ranked.length * 0.5)].i;
-  if (midLeaf === bossLeaf || leaves.length < 6 || leaves.length > 12) return null;
+  if (leaves.some((l) => dist[center(l)[0]][center(l)[1]] < 0)) return null;
+  if (leaves.length < 6 || leaves.length > 12 || midGate.length === 0) return null;
+  const bossLeaf = -1, midLeaf = -1;
 
   // 通路として空けておくセル（扉の前後 2 マスと、扉どうし・中心を結ぶ通り道）
   const keep = Array.from({ length: W }, () => new Uint8Array(D));
@@ -95,7 +101,8 @@ function generate(fl, seed) {
         if (g[nx][nz] === 0 && leafOf(nx, nz) !== i && leafOf(nx, nz) === -1) doors.push([x, z]);
       }
     }
-    if (i === startLeaf) doors.push([0, startCell[1]]);
+    if (leafOf(...westCell) === i) doors.push(westCell);
+    if (leafOf(...eastCell) === i) doors.push(eastCell);
     const [cx, cz] = center(l);
     for (const [x, z] of doors) {
       for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) mark(x + a, z + b);
@@ -111,7 +118,7 @@ function generate(fl, seed) {
   const reserve = Array.from({ length: W }, () => new Uint8Array(D));
   leaves.forEach((l, i) => {
     if (i === startLeaf) return;
-    const n = (i === bossLeaf) ? 0 : 2;
+    const n = 2;
     for (let k = 0; k < n; k++) {
       for (let t = 0; t < 40; t++) {
         const x = ri(r, l.x1 + 1, l.x2 - 1), z = ri(r, l.z1 + 1, l.z2 - 1);
@@ -119,7 +126,7 @@ function generate(fl, seed) {
       }
     }
   });
-  const chestRooms = leaves.map((l, i) => i).filter((i) => i !== startLeaf && i !== bossLeaf).sort(() => r() - 0.5).slice(0, 5);
+  const chestRooms = leaves.map((l, i) => i).filter((i) => i !== startLeaf).sort(() => r() - 0.5).slice(0, 5);
   for (const i of chestRooms) {
     const l = leaves[i];
     for (let t = 0; t < 60; t++) {
@@ -135,7 +142,7 @@ function generate(fl, seed) {
   const can = (x, z) => x >= 0 && z >= 0 && x < W && z < D && g[x][z] === 0 && !keep[x][z] && !reserve[x][z];
   leaves.forEach((l, i) => {
     if (i === startLeaf) return;
-    const boss = i === bossLeaf;
+    const boss = false;
     for (let x = l.x1 + 1; x <= l.x2 - 1; x++) for (let z = l.z1 + 1; z <= l.z2 - 1; z++) {
       if (!can(x, z)) continue;
       const lx = x - l.x1, lz = z - l.z1;
@@ -173,11 +180,10 @@ function generate(fl, seed) {
       }
     }
   });
-  // 最上階はボス部屋まで赤い絨毯
+  // 最上階は入口から出口（ボスの壁）まで赤い絨毯
   if (fl.theme === 'final') {
     dist = bfs();
-    const [bx, bz] = center(leaves[bossLeaf]);
-    let [x, z] = [bx, bz];
+    let [x, z] = exitCell;
     while (dist[x][z] > 0) {
       if (g[x][z] === 0) { deco.push([x, z, 1, 'minecraft:red_carpet']); g[x][z] = 3; }
       const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dz]) => [x + dx, z + dz]).filter(([nx, nz]) => nx >= 0 && nz >= 0 && nx < W && nz < D && dist[nx][nz] === dist[x][z] - 1);
@@ -187,11 +193,11 @@ function generate(fl, seed) {
 
   // 全部屋・出現地点・宝箱・ボスに入口から行けるか確認
   dist = bfs();
-  const targets = [...spawns, ...chests, center(leaves[bossLeaf]), center(leaves[midLeaf])];
+  const targets = [...spawns, ...chests, exitCell, ...leaves.map(center)];
   if (targets.some(([x, z]) => dist[x][z] < 0)) return null;
   for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) if (g[x][z] === 0 && dist[x][z] < 0) return null; // 閉じた空間を作らない
 
-  return { g, leaves, startLeaf, midLeaf, bossLeaf, spawns, chests, deco, startCell, seed };
+  return { g, leaves, startLeaf, midLeaf, bossLeaf, spawns, chests, deco, startCell, exitCell, midGate, side, seed };
 }
 
 function emit(fl, res) {
@@ -201,9 +207,10 @@ function emit(fl, res) {
   const cmds = [];
   // 1. 床の上 4 段を空気に戻す（light も消える）→ 明かりは天井側に置き直す
   cmds.push(`fill ${AREA.x1} ${Y1} ${AREA.z1} ${AREA.x2} ${Y4} ${AREA.z2} minecraft:air`);
-  // 2. 外周の西壁・東壁（西壁に入口）
+  // 2. 外周の西壁・東壁（両方に階段へ続く出入口）
   for (const x of [AREA.x1, AREA.x2]) for (let z = AREA.z1; z <= AREA.z2; z++) for (let yy = Y1; yy <= Y4; yy++) {
-    const isDoor = x === AREA.x1 && z >= DOOR_W.z1 && z <= DOOR_W.z2 && yy <= y + 3;
+    const d = x === AREA.x1 ? DOOR_W : DOOR_E;
+    const isDoor = z >= d.z1 && z <= d.z2 && yy <= y + 3;
     if (!isDoor) cmds.push(`setblock ${x} ${yy} ${z} ${WALL[fl.theme](r)}`);
   }
   // 3. 部屋の壁（扉の上は梁を残す）
@@ -223,7 +230,8 @@ function emit(fl, res) {
   for (const [x, z, dy, b] of res.deco) cmds.push(`setblock ${wx(x)} ${y + dy} ${wz(z)} ${b}`);
   // 5. 明かり（天井の 1 段下に light を格子状に。ホラー寄りに少し暗め）
   const lightLevel = { classroom: 13, library: 10, lab: 13, server: 9, storage: 10, office: 12, ruin: 7, final: 8 }[fl.theme];
-  for (let x = 0; x < W; x += 4) for (let z = 1; z < D; z += 4) if (res.g[x][z] === 0) cmds.push(`setblock ${wx(x)} ${Y4} ${wz(z)} minecraft:light[level=${lightLevel}]`);
+  const inLeaf = (x, z) => res.leaves.some((l) => x >= l.x1 && x <= l.x2 && z >= l.z1 && z <= l.z2);
+  for (let x = 0; x < W; x += 4) for (let z = 1; z < D; z += 4) if (res.g[x][z] === 0 && inLeaf(x, z)) cmds.push(`setblock ${wx(x)} ${Y4} ${wz(z)} minecraft:light[level=${lightLevel}]`);
   // 6. 開始部屋の目印
   const [sx, sz] = res.startCell;
   cmds.push(`setblock ${wx(sx)} ${Y1} ${wz(sz + 2)} minecraft:lantern`);
@@ -232,10 +240,12 @@ function emit(fl, res) {
   const C = (l) => L(Math.floor((l.x1 + l.x2) / 2), Math.floor((l.z1 + l.z2) / 2));
   const meta = {
     floor: fl.f, y, theme: fl.theme, title: fl.title, boss: fl.boss, seed: res.seed,
-    start: L(sx, sz), cp: L(sx, sz), mid: C(res.leaves[res.midLeaf]), bossLoc: C(res.leaves[res.bossLeaf]),
+    start: L(sx, sz), cp: L(sx, sz), side: res.side, exit: res.side === 'W' ? 'E' : 'W',
+    midGate: res.midGate.flatMap(([x, z]) => [1, 2, 3].map((dy) => ({ x: wx(x), y: y + dy, z: wz(z) }))),
+    exitCell: L(...res.exitCell),
     p1: { x: AREA.x1, y: Y1, z: AREA.z1 }, p2: { x: AREA.x2, y: Y4, z: AREA.z2 },
     spawns: res.spawns.map(([x, z]) => L(x, z)), chests: res.chests.map(([x, z]) => ({ x: wx(x), y: Y1, z: wz(z) })),
-    rooms: res.leaves.map((l, i) => ({ x1: wx(l.x1), z1: wz(l.z1), x2: wx(l.x2), z2: wz(l.z2), role: i === res.startLeaf ? 'start' : i === res.bossLeaf ? 'boss' : i === res.midLeaf ? 'mid' : 'room' })),
+    rooms: res.leaves.map((l, i) => ({ x1: wx(l.x1), z1: wz(l.z1), x2: wx(l.x2), z2: wz(l.z2), role: i === res.startLeaf ? 'start' : 'room' })),
     grid: res.g.map((col) => Array.from(col)), area: AREA, inner: IN,
   };
   return { cmds, meta };
