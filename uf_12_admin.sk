@@ -30,6 +30,11 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             uf_adminopen(player, "hub")
             stop
 
+        # 管理者ツールの本の項目が押されたとき（手で打つものではない）
+        if {_a} is "ui":
+            uf_bkclick(player, "%arg-2%", "%arg-3%")
+            stop
+
         if {_a} is "tool":
             uf_give(player, uf_item("admin_tool"))
             uf_msg(player, "&a管理者ツールを渡しました")
@@ -391,6 +396,10 @@ function uf_confirm(p: player, action: text, label: text):
     set slot 11 of {_g} to lime wool named "&a実行する" with lore colored {_label}
     set slot 15 of {_g} to red wool named "&cやめる"
     set {-uf::guictx::%uuid of {_p}%::action} to {_action}
+    # Java 版は本で確認する（統合版はチェスト画面）
+    if uf_bedrock({_p}) is false:
+        uf_bkconfirm({_p}, {_label})
+        stop
     uf_gui({_p}, "confirm", {_g})
 
 on inventory click:

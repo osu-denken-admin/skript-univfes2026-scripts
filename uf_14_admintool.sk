@@ -1,8 +1,10 @@
 # ============================================================
 # uf_14_admintool.sk : 管理者ツール（本）から開く管理メニュー
-#   コマンドを使わずに、GUI だけで設定を変えられるようにする。
+#   コマンドを使わずに、本の画面だけで設定を変えられるようにする。
 #   - 管理者ツールを右クリック / 左クリック / 捨てる（Q）と開く
-#     （統合版はタップ、または捨てる操作）
+#   - Java 版は本の画面。項目をクリックすると操作し、本を開き直して結果を見せる
+#     （項目にマウスを合わせると説明が出る）
+#   - 統合版は本のクリックが使えないので、同じ内容をチェスト画面で開く（タップ、または捨てる操作）
 #   - 権限 univfes.admin は、開くときとボタンを押すたびに確認する
 #   - 数値は「＋／－ボタン → 決定」で変える（チャット入力は使わない）
 #   - 消去・強制終了などの重要な操作は確認画面を通す
@@ -49,16 +51,31 @@ on join:
 
 # ------------------------------------------------------------
 # 部品
+#   ボタンは uf_abtn で置く。チェスト画面のスロットと本の項目の両方を作っておき、
+#   uf_ashow で Java 版には本、統合版にはチェスト画面を開く。
+#   本の項目は「/ufadmin ui <画面番号> <スロット>」を実行する。
+#   画面番号が今のものと違う（古い本を押した）ときは、操作せずに開き直す。
 # ------------------------------------------------------------
 # lore は "|" 区切り
 function uf_abtn(p: player, g: inventory, s: number, icon: item, name: text, lore: text, action: text):
     set {_l::*} to split {_lore} at "|"
     set slot {_s} of {_g} to ({_icon} named {_name}) with lore {_l::*}
+    uf_abook({_p}, {_s}, {_name}, {_lore}, {_action})
+
+# 本の項目だけを登録する（チェスト画面のスロットは呼び出し側で置く）
+function uf_abook(p: player, s: number, name: text, lore: text, action: text):
+    set {_u} to uuid of {_p}
+    set {-uf::bkn::%{_u}%::%{_s}%} to {_name}
+    set {-uf::bkl::%{_u}%::%{_s}%} to {_lore}
     if {_action} is not "":
-        set {-uf::guictx::%uuid of {_p}%::%{_s}%} to {_action}
+        set {-uf::guictx::%{_u}%::%{_s}%} to {_action}
 
 function uf_apage(p: player, title: text) :: inventory:
     uf_guiclear({_p})
+    set {_u} to uuid of {_p}
+    delete {-uf::bkn::%{_u}%::*}
+    delete {-uf::bkl::%{_u}%::*}
+    set {-uf::bktitle::%{_u}%} to {_title}
     return chest inventory with 6 rows named {_title}
 
 # 戻るボタン（49）と閉じるボタン（53）を置いて開く
@@ -66,7 +83,182 @@ function uf_ashow(p: player, g: inventory, back: text):
     if {_back} is not "":
         uf_abtn({_p}, {_g}, 49, arrow, "&f戻る", "&7前の画面へ", "open/%{_back}%")
     uf_abtn({_p}, {_g}, 53, barrier, "&c閉じる", "&7メニューを閉じる", "close")
-    uf_gui({_p}, "atool", {_g})
+    if uf_bedrock({_p}) is true:
+        uf_gui({_p}, "atool", {_g})
+    else:
+        uf_bkshow({_p})
+
+# 統合版（Floodgate）のプレイヤーか
+function uf_bedrock(p: player) :: boolean:
+    if "%uuid of {_p}%" starts with "00000000-0000-0000-":
+        return true
+    return false
+
+# ------------------------------------------------------------
+# 本の画面
+# ------------------------------------------------------------
+# 紙の上で読みやすい色に変える（黄・黄緑・白・灰は紙の上で見えにくい）
+function uf_bkc(t: text) :: text:
+    set {_r} to {_t}
+    loop "e:6", "a:2", "f:0", "7:8" and "b:3":
+        set {_x::*} to split loop-value at ":"
+        replace all "&%{_x::1}%" with "&%{_x::2}%" in {_r}
+        replace all "§%{_x::1}%" with "§%{_x::2}%" in {_r}
+    return {_r}
+
+# クリックできる文字。押すと /ufadmin ui <画面番号> <s> を実行し、マウスを合わせると hover（"|" で改行）を出す
+#   説明に色記号（&7 など）があると説明として読まれないので、色は外す。
+#   半角の「:」から後ろは説明から消え、「<」「>」は記号として読まれるので、全角にする
+function uf_bklink(p: player, s: text, label: text, hover: text) :: text:
+    set {_h} to uncolored {_hover}
+    replace all ":" with "：" in {_h}
+    replace all "<" with "＜" in {_h}
+    replace all ">" with "＞" in {_h}
+    replace all "|" with nl in {_h}
+    return "<cmd:/ufadmin ui %{-uf::bkid::%uuid of {_p}%}% %{_s}%><tooltip:%{_h}%>%{_label}%<reset>"
+
+# 本で何行になるかの目安。1 行は全角でおよそ 12.6 文字、半角は全角の 2/3 の幅
+function uf_bklines(t: text) :: number:
+    set {_s} to uncolored (colored {_t})
+    set {_w} to 0
+    loop length of {_s} times:
+        set {_c} to subtext of {_s} from characters loop-number to loop-number
+        if "abcdefghijklmnopqrstuvwxyz0123456789 .,:;!?()[]-+/*=_'<>~|@#^" contains {_c}:
+            add 0.67 to {_w}
+        else:
+            add 1 to {_w}
+    return max(1, ceil({_w} / 12.6))
+
+# 説明（lore）の 1 行目を項目の下にも出すか。現在の値・状態だけを出し、ただの説明は出さない
+function uf_bkshowlore(l: text) :: boolean:
+    if {_l} starts with "&e":
+        return false
+    if {_l} starts with "&7":
+        if {_l} contains "現在":
+            return true
+        return false
+    return true
+
+# 本を開く。<cmd:…> や <tooltip:…> は formatted にしたときだけクリック・説明になる
+function uf_bkopen(p: player, pages: texts):
+    set {_b} to written book
+    loop {_pages::*}:
+        add (formatted loop-value) to {_f::*}
+    set book pages of {_b} to {_f::*}
+    open book {_b} to {_p}
+
+function uf_bkshow(p: player):
+    set {_u} to uuid of {_p}
+    add 1 to {-uf::bkid::%{_u}%}
+    if {-uf::apage::%{_u}%} is "editor":
+        uf_bkeditor({_p})
+        stop
+    set {_title} to "&4&l%uncolored {-uf::bktitle::%{_u}%}%"
+    set {_foot} to uf_bklink({_p}, "53", "&4× 閉じる", "&7メニューを閉じる")
+    if {-uf::bkn::%{_u}%::49} is set:
+        set {_back} to uf_bklink({_p}, "49", "&1« 戻る", "&7前の画面へ")
+        set {_foot} to "%{_back}%　%{_foot}%"
+    # 見出し（＋空行）と、下の空行＋戻る・閉じるを除いた行数
+    set {_cap} to 14 - uf_bklines({_title}) - 3
+    set {_page} to ""
+    set {_used} to 0
+    loop integers between 0 and 52:
+        set {_s} to loop-value
+        if {_s} is not 49:
+            set {_name} to {-uf::bkn::%{_u}%::%{_s}%}
+            if {_name} is set:
+                set {_lore} to {-uf::bkl::%{_u}%::%{_s}%}
+                set {_l::*} to split {_lore} at "|"
+                if {-uf::guictx::%{_u}%::%{_s}%} is set:
+                    set {_e} to uf_bklink({_p}, "%{_s}%", "&8▶ %uf_bkc({_name})%", {_lore})
+                    set {_n} to uf_bklines("▶ %{_name}%")
+                    if {_l::1} is set:
+                        if uf_bkshowlore({_l::1}) is true:
+                            set {_e} to "%{_e}%%nl%　&8%uf_bkc({_l::1})%"
+                            add uf_bklines("　%{_l::1}%") to {_n}
+                else:
+                    # 押せない項目（情報だけ）は説明もすべて出す
+                    set {_e} to uf_bkc({_name})
+                    set {_n} to uf_bklines({_name})
+                    loop {_l::*}:
+                        if loop-value-2 is not "":
+                            set {_e} to "%{_e}%%nl%　&8%uf_bkc(loop-value-2)%"
+                            add uf_bklines("　%loop-value-2%") to {_n}
+                if {_used} > 0:
+                    if {_used} + {_n} > {_cap}:
+                        add "%{_title}%%nl%%nl%%{_page}%%nl%%nl%%{_foot}%" to {_pages::*}
+                        set {_page} to ""
+                        set {_used} to 0
+                if {_used} > 0:
+                    set {_page} to "%{_page}%%nl%"
+                set {_page} to "%{_page}%%{_e}%"
+                add {_n} to {_used}
+    add "%{_title}%%nl%%nl%%{_page}%%nl%%nl%%{_foot}%" to {_pages::*}
+    uf_bkopen({_p}, {_pages::*})
+
+# 数値エディタの本（＋／－を横に並べる）
+function uf_bkeditor(p: player):
+    set {_u} to uuid of {_p}
+    set {_t} to "&4&l数値の変更%nl%%nl%&6%{-uf::ed::%{_u}%::label}%"
+    set {_t} to "%{_t}%%nl%&8元の値: &0%{-uf::ed::%{_u}%::orig}%"
+    set {_t} to "%{_t}%%nl%&8変更後: &2&l%{-uf::ed::%{_u}%::val}%"
+    set {_t} to "%{_t}%%nl%&8範囲: %{-uf::ed::%{_u}%::min}%〜%{-uf::ed::%{_u}%::max}%%nl%"
+    loop 2 times:
+        set {_row} to ""
+        if loop-value is 1:
+            set {_from} to 18
+        else:
+            set {_from} to 23
+        loop integers between {_from} and {_from} + 3:
+            set {_s} to loop-value-2
+            set {_a} to {-uf::guictx::%{_u}%::%{_s}%}
+            if {_a} is set:
+                set {_d} to last (length of {_a} - 3) characters of {_a}
+                if {_d} starts with "-":
+                    set {_lb} to "&4%{_d}%"
+                else:
+                    set {_lb} to "&2+%{_d}%"
+                set {_k} to uf_bklink({_p}, "%{_s}%", {_lb}, "&7クリックで %{_d}%")
+                set {_row} to "%{_row}%%{_k}% "
+        set {_t} to "%{_t}%%nl%%{_row}%"
+    set {_k1} to uf_bklink({_p}, "40", "&2▶ 決定", "&7%{-uf::ed::%{_u}%::orig}% → %{-uf::ed::%{_u}%::val}%")
+    set {_k2} to uf_bklink({_p}, "38", "&6▶ 元の値に戻す", "&7%{-uf::ed::%{_u}%::orig}%")
+    set {_k3} to uf_bklink({_p}, "42", "&4▶ やめる", "&7変更せずに戻る")
+    set {_t} to "%{_t}%%nl%%nl%%{_k1}%%nl%%{_k2}%%nl%%{_k3}%"
+    uf_bkopen({_p}, {_t})
+
+# 確認の本（uf_confirm から使う）。「実行する」「やめる」は /ufadmin ui <画面番号> yes|no
+function uf_bkconfirm(p: player, label: text):
+    add 1 to {-uf::bkid::%uuid of {_p}%}
+    set {_k1} to uf_bklink({_p}, "yes", "&2▶ 実行する", "&7%{_label}%")
+    set {_k2} to uf_bklink({_p}, "no", "&4▶ やめる", "&7取り消す")
+    set {_t} to "&4&l確認%nl%%nl%&0%uf_bkc({_label})%%nl%%nl%%{_k1}%%nl%%nl%%{_k2}%"
+    uf_bkopen({_p}, {_t})
+
+# 本の項目が押されたとき（/ufadmin ui <画面番号> <スロット|yes|no>）
+function uf_bkclick(p: player, id: text, s: text):
+    if uf_admin({_p}) is false:
+        stop
+    set {_u} to uuid of {_p}
+    if {_id} is not "%{-uf::bkid::%{_u}%}%":
+        uf_msg({_p}, "&7古い画面が押されたので、今の画面を開き直しました")
+        uf_adminopen({_p}, {-uf::apage::%{_u}%})
+        stop
+    if {_s} is "yes" or "no":
+        set {_action} to {-uf::guictx::%{_u}%::action}
+        if {_action} is not set:
+            stop
+        delete {-uf::guictx::%{_u}%::action}
+        if {_s} is "yes":
+            uf_doaction({_p}, {_action})
+        else:
+            uf_msg({_p}, "&7取り消しました")
+            if {_action} starts with "x/":
+                uf_adminopen({_p}, {-uf::apage::%{_u}%})
+        stop
+    set {_a} to {-uf::guictx::%{_u}%::%{_s}%}
+    if {_a} is set:
+        uf_aact({_p}, {_a})
 
 function uf_onoff(b: object) :: text:
     if {_b} is true:
@@ -691,7 +883,7 @@ function uf_ap_items(p: player):
         set {_it} to uf_item(loop-value)
         if {_it} is set:
             set slot {_s} of {_g} to {_it}
-            set {-uf::guictx::%uuid of {_p}%::%{_s}%} to "give/%loop-value%"
+            uf_abook({_p}, {_s}, "%name of {_it}%", "&7%loop-value%|&eクリックで1個受け取る", "give/%loop-value%")
             add 1 to {_s}
     uf_ashow({_p}, {_g}, "hub")
 

@@ -9,7 +9,19 @@ const con = (c) => fs.appendFileSync(CMD, c + '\n');
 const results = [];
 const check = (n, c, d = '') => { results.push([c ? 'PASS' : 'FAIL', n, d]); log(c ? 'PASS' : 'FAIL', n, d); return c; };
 const text = (x) => { try { return JSON.stringify(typeof x === 'string' ? JSON.parse(x) : x); } catch { return String(x); } };
-function mk(name) { return new Promise((res) => { const b = mineflayer.createBot({ host: '127.0.0.1', port: 25599, username: name, auth: 'offline' }); b.msgs = []; b.on('messagestr', (m) => { b.msgs.push(m); if (m.includes('[電研]')) log(`[${name}] ${m}`); }); b.once('spawn', () => res(b)); }); }
+function mk(name) { return new Promise((res) => { const b = mineflayer.createBot({ host: '127.0.0.1', port: 25599, username: name, auth: 'offline' }); b.msgs = []; b.on('messagestr', (m) => { b.msgs.push(m); if (m.includes('[電研]')) log(`[${name}] ${m}`); }); trackBook(b); b.once('spawn', () => res(b)); }); }
+// 管理者ツールの本：開いた本の項目（/ufadmin ui <画面番号> <スロット>）を覚えておき、スロット番号で押す
+function trackBook(b) {
+  let links = {}; b.book = {}; b.nbooks = 0;
+  b._client.on('packet', (d, meta) => {
+    if (meta.name === 'set_slot' && d.item && d.item.components && d.item.components.some((c) => c.type === 'written_book_content')) {
+      links = {}; for (const m of JSON.stringify(d.item).matchAll(/\/ufadmin ui \d+ (\w+)/g)) links[m[1]] = m[0];
+    }
+    if (meta.name === 'open_book') { b.book = links; b.nbooks++; }
+  });
+}
+async function waitBook(b, n, ms = 4000) { const end = Date.now() + ms; while (Date.now() < end) { if (b.nbooks > n) return true; await sleep(50); } return false; }
+async function clickBook(b, s) { const c = b.book[String(s)]; if (!c) return false; const n = b.nbooks; b.chat(c); return waitBook(b, n); }
 async function waitMsg(b, from, re, ms = 6000) { const end = Date.now() + ms; while (Date.now() < end) { for (let i = from; i < b.msgs.length; i++) if (re.test(b.msgs[i])) return b.msgs[i]; await sleep(100); } return null; }
 const seen = (b, from, re) => b.msgs.slice(from).some((m) => re.test(m));
 const waitWindow = (b, ms = 5000) => new Promise((res) => { const t = setTimeout(() => res(null), ms); b.once('windowOpen', (w) => { clearTimeout(t); res(w); }); });
@@ -55,12 +67,12 @@ const STAIR = { W: { cell: (L) => ({ x: -273, y: L + 1, z: 92 }), stand: (L) => 
   A.chat('/ufd lobby'); await sleep(400);
   const tool = A.inventory.items().find((it) => text(it).includes('管理者ツール'));
   if (tool) { await A.equip(tool, 'hand'); await sleep(300); }
-  let p = waitWindow(A); A.activateItem(); let w = await p;
-  w = await clickWin(A, 12); w = await clickWin(A, 40);
-  let from = A.msgs.length; await clickWin(A, 11);
+  let n = A.nbooks; A.activateItem(); await waitBook(A, n); A.deactivateItem();
+  await clickBook(A, 12); await clickBook(A, 40);
+  let from = A.msgs.length; await clickBook(A, 'yes');
   check('layout + gates applied', !!(await waitMsg(A, from, /内装に合わせて登録しました/)));
-  if (A.currentWindow) A.closeWindow(A.currentWindow);
   await sleep(1500);
+  let p, w;
   // 壁の状態
   const l2 = JSON.parse(fs.readFileSync(`${LAYOUT}/floor_2.json`));
   con('tp UfAdmin -240 74 100'); await sleep(1500);

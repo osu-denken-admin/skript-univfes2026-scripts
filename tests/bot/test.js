@@ -4,6 +4,7 @@
 // 注意: ワールドを書き換え（fill / kill / gamerule など）、OP を付けるため、
 //       必ずローカルのテストサーバー（127.0.0.1:25599）だけで実行すること。本番には絶対につながない。
 const mineflayer = require('mineflayer');
+const nbt = require('prismarine-nbt');
 const { Vec3 } = require('vec3');
 const fs = require('fs');
 
@@ -37,6 +38,13 @@ function mk(name) {
     b.on('kicked', (r) => log(`[${name}] kicked`, text(r)));
     b.on('error', (e) => log(`[${name}] error`, e.message));
     b.on('death', () => { log(`[${name}] died`); });
+    // サーバーが開いた本（管理者ツール）を記録する
+    b.book = null; b.nbooks = 0;
+    let slotBook = null;
+    b._client.on('packet', (d, meta) => {
+      if (meta.name === 'set_slot' && d.item && d.item.components) { const r = readBook(d.item); if (r) slotBook = r; }
+      if (meta.name === 'open_book') { b.book = slotBook; b.nbooks++; }
+    });
     b.once('spawn', () => res(b));
     setTimeout(() => rej(new Error('spawn timeout ' + name)), 30000);
   });
@@ -69,6 +77,48 @@ function findSlot(w, needle) {
   return -1;
 }
 function closeWin(b) { if (b.currentWindow) b.closeWindow(b.currentWindow); }
+
+// ---- 管理者ツールの本 ----
+// 本の文字を「表示文字列」と「押せる項目」にする。項目は /ufadmin ui <画面番号> <スロット|yes|no>
+function flattenText(node, click, hover, out) {
+  if (node == null) return;
+  if (typeof node === 'string') { out.text += node; return; }
+  if (Array.isArray(node)) { node.forEach((n) => flattenText(n, click, hover, out)); return; }
+  const c = node.clickEvent ? node.clickEvent.value : click;
+  const h = node.hoverEvent ? JSON.stringify(node.hoverEvent.contents) : (node.clickEvent ? '' : hover);
+  const t = node.text ?? node[''] ?? '';
+  out.text += t;
+  if (c && t.trim()) {
+    const key = c.split(' ').pop();
+    if (out.links[key]) out.links[key].text += t; else out.links[key] = { text: t, cmd: c, hover: h };
+  }
+  if (node.extra) flattenText(node.extra, c, h, out);
+}
+function readBook(item) {
+  const comp = item.components.find((x) => x.type === 'written_book_content');
+  if (!comp) return null;
+  const out = { text: '', links: {} };
+  comp.data.pages.forEach((p) => { flattenText(p.content.type ? nbt.simplify(p.content) : p.content, null, '', out); out.text += '\n'; });
+  return out;
+}
+// チェスト画面の代わりに、本を { title: 本の文字, links: スロット → 項目 } で返す
+const bookWin = (bk) => (bk ? { title: bk.text, links: bk.links } : null);
+async function waitBook(b, n, ms = 4000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { if (b.nbooks > n) return bookWin(b.book); await sleep(50); }
+  return null;
+}
+async function openTool(b) {
+  if (!(await hold(b, '管理者ツール'))) return null;
+  const n = b.nbooks; b.activateItem(); const w = await waitBook(b, n); b.deactivateItem(); return w;
+}
+// 本の項目を押す（slot はスロット番号、確認の本では 'yes' / 'no'）
+async function clickBook(b, slot) {
+  const l = b.book && b.book.links[String(slot)];
+  if (!l) { log('no book link', slot); return null; }
+  const n = b.nbooks; b.chat(l.cmd); return waitBook(b, n, 3000);
+}
+const modOn = (w, s) => !!(w && w.links[s] && w.links[s].hover.includes('クリックで無効'));
 function invFind(b, needle) { return b.inventory.items().find((it) => itemText(it).includes(needle)); }
 function invCount(b, needle) { return b.inventory.items().filter((it) => itemText(it).includes(needle)).reduce((a, it) => a + it.count, 0); }
 async function hold(b, needle) { const it = invFind(b, needle); if (!it) return false; try { b.deactivateItem(); } catch {} await b.equip(it, 'hand'); await sleep(300); return true; }
@@ -109,41 +159,50 @@ const T = {};
 // ---------------------------------------------------------------
 T.admintool = async ({ A }) => {
   check('admin tool delivered on first join', !!invFind(A, '管理者ツール'));
-  await hold(A, '管理者ツール');
-  let p = waitWindow(A); A.activateItem(); let w = await p;
-  check('admin tool opens hub', titleOf(w).includes('管理者ツール'), titleOf(w));
+  let w = await openTool(A);
+  check('admin tool opens hub', titleOf(w).includes('管理者ツール'), titleOf(w).slice(0, 80));
+  check('hub links have hover text', !!w && Object.values(w.links).every((l) => l.hover.length > 2));
   // モジュールを全部有効化
-  w = await clickWin(A, 10);
-  check('modules page', titleOf(w).includes('モジュール'), titleOf(w));
+  w = await clickBook(A, 10);
+  check('modules page', titleOf(w).includes('モジュール'), titleOf(w).slice(0, 80));
   const slots = [10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22];
   for (const s of slots) {
-    if (w && w.slots[s] && w.slots[s].name === 'red_concrete') w = await clickWin(A, s);
+    if (w && w.links[s] && !modOn(w, s)) w = await clickBook(A, s);
   }
-  const allOn = w && slots.every((s) => w.slots[s] && w.slots[s].name === 'lime_concrete');
-  check('all modules enabled via GUI', allOn);
+  check('all modules enabled via GUI', !!w && slots.every((s) => modOn(w, s)));
   // ワールドとロビー
-  w = await clickWin(A, 49);
+  w = await clickBook(A, 49);
   check('back to hub', titleOf(w).includes('管理者ツール'));
-  w = await clickWin(A, 11);
+  w = await clickBook(A, 11);
   let from = A.msgs.length;
-  w = await clickWin(A, 11);
+  w = await clickBook(A, 11);
   check('set survival world', !!(await waitMsg(A, from, /survival ワールドを world/)));
   from = A.msgs.length;
-  w = await clickWin(A, 13);
+  w = await clickBook(A, 13);
   check('set dungeon world', !!(await waitMsg(A, from, /dungeon ワールドを world/)));
   con(`tp ${A.username} 0 -60 0`); await sleep(1600);
   from = A.msgs.length;
-  w = await clickWin(A, 31);
+  w = await clickBook(A, 31);
   check('set lobby', !!(await waitMsg(A, from, /ロビーを今いる場所/)));
+  // 古い本を押しても操作されない
+  const stale = A.book.links['31'].cmd.replace(/ui (\d+)/, (m, id) => `ui ${Number(id) - 1}`);
+  from = A.msgs.length; A.chat(stale);
+  check('stale book click only reopens', !!(await waitMsg(A, from, /古い画面/)) && !A.msgs.slice(from).some((m) => /ロビーを今いる場所/.test(m)));
+  await sleep(500);
   // 2階の設定
-  w = await clickWin(A, 49);
-  w = await clickWin(A, 12);
-  check('floors page', titleOf(w).includes('ダンジョンの各階'), titleOf(w));
-  w = await clickWin(A, 19);
-  check('floor 2 page', titleOf(w).includes('2階の設定'), titleOf(w));
+  w = await clickBook(A, 49);
+  w = await clickBook(A, 12);
+  check('floors page', titleOf(w).includes('ダンジョンの各階'), titleOf(w).slice(0, 80));
+  w = await clickBook(A, 19);
+  check('floor 2 page', titleOf(w).includes('2階の設定'), titleOf(w).slice(0, 80));
+  // 前の設定（15号館の内装に合わせた登録など）が残っていても数えられるよう、先に消す（確認の本で実行）
+  await clickBook(A, 20); w = await clickBook(A, 'yes');
+  await clickBook(A, 23); w = await clickBook(A, 'yes');
+  // 説明（ホバー）の「:」は全角になる
+  check('floor 2 spawns/chests cleared via confirm book', /登録数： 0/.test(JSON.stringify(w && w.links['19'])) && /登録数： 0/.test(JSON.stringify(w && w.links['22'])));
   const at = async (x, y, z, slot, re, name) => {
     con(`tp ${A.username} ${x} ${y} ${z}`); await sleep(1600);
-    const f = A.msgs.length; w = await clickWin(A, slot);
+    const f = A.msgs.length; w = await clickBook(A, slot);
     check(name, !!(await waitMsg(A, f, re)));
   };
   await at(5, -60, 5, 10, /2階の start/, 'floor2 start');
@@ -152,21 +211,24 @@ T.admintool = async ({ A }) => {
   await at(3, -60, 8, 22, /宝箱の候補地点を追加/, 'floor2 chest 1');
   await at(4, -60, 12, 22, /計 2/, 'floor2 chest 2');
   // 敵の数を 1 / 0 / 0 にする（数値エディタ）
-  w = await clickWin(A, 28);
-  check('editor opens', titleOf(w).includes('数値の変更'), titleOf(w));
-  for (let i = 0; i < 5; i++) w = await clickWin(A, 21);
-  check('editor value shows 1', itemText(w && w.slots[22]).includes('"1"') || itemText(w && w.slots[22]).includes('1'), itemText(w && w.slots[22]).slice(0, 120));
+  w = await clickBook(A, 28);
+  check('editor opens', titleOf(w).includes('数値の変更'), titleOf(w).slice(0, 80));
+  // 前の値に関係なく 1 にする（-1000 で下限の 0、+1 で 1）
+  w = await clickBook(A, 18); w = await clickBook(A, 23);
+  check('editor value shows 1', /変更後: 1\b/.test(w ? w.title : ''), w ? w.title.slice(0, 120) : '');
   from = A.msgs.length;
-  w = await clickWin(A, 40);
-  check('editor apply returns to floor page', titleOf(w).includes('2階の設定'), titleOf(w));
-  check('editor apply message', !!(await waitMsg(A, from, /normal の数: 6 → 1/)));
-  w = await clickWin(A, 29); w = await clickWin(A, 21); w = await clickWin(A, 40);
+  w = await clickBook(A, 40);
+  check('editor apply returns to floor page', titleOf(w).includes('2階の設定'), titleOf(w).slice(0, 80));
+  check('editor apply message', !!(await waitMsg(A, from, /normal の数: \d+ → 1/)));
+  w = await clickBook(A, 29); w = await clickBook(A, 18); w = await clickBook(A, 40);
   // 範囲外にならない（0 からさらに減らす）
-  w = await clickWin(A, 30); w = await clickWin(A, 18);
-  check('editor clamps at min 0', itemText(w && w.slots[22]).includes('0'));
-  w = await clickWin(A, 42);
+  w = await clickBook(A, 30); w = await clickBook(A, 18); w = await clickBook(A, 18);
+  check('editor clamps at min 0', /変更後: 0\b/.test(w ? w.title : ''));
+  w = await clickBook(A, 40);
+  // やめると変わらない
+  w = await clickBook(A, 28); w = await clickBook(A, 26);
+  w = await clickBook(A, 42);
   check('editor cancel returns', titleOf(w).includes('2階の設定'));
-  closeWin(A);
   from = A.msgs.length; A.chat('/ufd info 2');
   const info = await waitMsg(A, from, /出現数: 通常 1 \/ 強化 0 \/ エリート 0/);
   check('floor 2 counts saved', !!info, info || '');
@@ -418,41 +480,44 @@ T.guns = async ({ A }) => {
 // ---------------------------------------------------------------
 T.admingui2 = async ({ A }) => {
   con(`gamemode creative ${A.username}`); await sleep(300);
-  check('admin still has tool', await hold(A, '管理者ツール'));
-  let p = waitWindow(A); A.activateItem(); let w = await p;
-  check('hub opens again', titleOf(w).includes('管理者ツール'), titleOf(w));
-  w = await clickWin(A, 31);
-  check('event page', titleOf(w).includes('大学祭イベント'), titleOf(w));
-  w = await clickWin(A, 20);
-  check('confirm screen', titleOf(w).includes('確認'), titleOf(w));
-  w = await clickWin(A, 15);
-  check('confirm cancel returns to page', titleOf(w).includes('大学祭イベント'), titleOf(w));
-  w = await clickWin(A, 20);
+  check('admin still has tool', !!invFind(A, '管理者ツール'));
+  let w = await openTool(A);
+  check('hub opens again', titleOf(w).includes('管理者ツール'), titleOf(w).slice(0, 80));
+  w = await clickBook(A, 31);
+  check('event page', titleOf(w).includes('大学祭イベント'), titleOf(w).slice(0, 80));
+  w = await clickBook(A, 20);
+  check('confirm screen', titleOf(w).includes('確認'), titleOf(w).slice(0, 80));
+  w = await clickBook(A, 'no');
+  check('confirm cancel returns to page', titleOf(w).includes('大学祭イベント'), titleOf(w).slice(0, 80));
+  w = await clickBook(A, 20);
   const from = A.msgs.length;
-  w = await clickWin(A, 11);
+  w = await clickBook(A, 'yes');
   check('event start broadcast', !!(await waitMsg(A, from, /大学祭イベントが始まりました/)));
   // すべてのページを開く（エラーが出ないか）
-  const pages = [[49, 10], [49, 11], [49, 12], [49, 13], [49, 14], [49, 15], [49, 16], [49, 28], [49, 29], [49, 30], [49, 33], [49, 34]];
-  w = await clickWin(A, 49);
+  const pages = [10, 11, 12, 13, 14, 15, 16, 28, 29, 30, 33, 34];
+  w = await clickBook(A, 49);
   let opened = 0;
-  for (const [, s] of pages) {
-    w = await clickWin(A, s); if (w) opened++;
-    w = await clickWin(A, 49);
+  for (const s of pages) {
+    w = await clickBook(A, s); if (w) opened++;
+    w = await clickBook(A, 49);
   }
   check('all hub pages open', opened === pages.length, `${opened}/${pages.length}`);
   // 各種設定 → 武器 → 1 項目を開いて閉じる
-  w = await clickWin(A, 16); w = await clickWin(A, 23);
-  check('cfg weapons page', titleOf(w).includes('特殊武器'), titleOf(w));
-  w = await clickWin(A, 1);
+  w = await clickBook(A, 16); w = await clickBook(A, 23);
+  check('cfg weapons page', titleOf(w).includes('特殊武器'), titleOf(w).slice(0, 80));
+  w = await clickBook(A, 1);
   check('cfg editor opens', titleOf(w).includes('数値の変更'));
-  w = await clickWin(A, 42);
-  closeWin(A);
+  w = await clickBook(A, 42);
+  const n = A.nbooks;
+  await clickBook(A, 53);
+  check('close does not reopen the book', A.nbooks === n);
 };
 
 T.security = async ({ P }) => {
-  const from = P.msgs.length; P.chat('/ufadmin');
+  const n = P.nbooks;
+  P.chat('/ufadmin'); P.chat('/ufadmin ui 1 10');
   await sleep(1000);
-  check('non-admin cannot open /ufadmin', !P.currentWindow || !titleOf(P.currentWindow).includes('管理者ツール'));
+  check('non-admin cannot open /ufadmin', P.nbooks === n && (!P.currentWindow || !titleOf(P.currentWindow).includes('管理者ツール')));
   closeWin(P);
 };
 
