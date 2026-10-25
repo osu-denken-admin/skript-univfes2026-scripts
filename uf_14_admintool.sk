@@ -83,16 +83,24 @@ function uf_ashow(p: player, g: inventory, back: text):
     if {_back} is not "":
         uf_abtn({_p}, {_g}, 49, arrow, "&f戻る", "&7前の画面へ", "open/%{_back}%")
     uf_abtn({_p}, {_g}, 53, barrier, "&c閉じる", "&7メニューを閉じる", "close")
-    if uf_bedrock({_p}) is true:
-        uf_gui({_p}, "atool", {_g})
-    else:
+    if uf_usebook({_p}) is true:
         uf_bkshow({_p})
+    else:
+        uf_gui({_p}, "atool", {_g})
 
 # 統合版（Floodgate）のプレイヤーか
 function uf_bedrock(p: player) :: boolean:
     if "%uuid of {_p}%" starts with "00000000-0000-0000-":
         return true
     return false
+
+# 本の画面で開くか。管理者ごとにハブの「表示の切り替え」で選べる（統合版は本が使えないので常にチェスト画面）
+function uf_usebook(p: player) :: boolean:
+    if uf_bedrock({_p}) is true:
+        return false
+    if {uf::atoolview::%uuid of {_p}%} is "chest":
+        return false
+    return true
 
 # ------------------------------------------------------------
 # 本の画面
@@ -145,6 +153,9 @@ function uf_bkopen(p: player, pages: texts):
     loop {_pages::*}:
         add (formatted loop-value) to {_f::*}
     set book pages of {_b} to {_f::*}
+    # チェスト画面から本に切り替えたときは、先にチェスト画面を閉じる
+    if {-uf::gui::%uuid of {_p}%} is set:
+        close inventory of {_p}
     open book {_b} to {_p}
 
 function uf_bkshow(p: player):
@@ -358,6 +369,11 @@ function uf_ap_hub(p: player):
         uf_abtn({_p}, {_g}, 32, iron door, "&7メンテナンス: 停止中", "&eクリックで開始（管理者以外をキック）", "ask/メンテナンスモードにする（管理者以外をキック）|act/maint_on")
     uf_abtn({_p}, {_g}, 33, chest, "&e特殊アイテムを受け取る", "&7テスト用", "open/items")
     uf_abtn({_p}, {_g}, 34, book, "&e操作履歴", "&7管理者の操作の記録", "open/logs")
+    if uf_bedrock({_p}) is false:
+        if uf_usebook({_p}) is true:
+            uf_abtn({_p}, {_g}, 45, chest, "&e表示: 本 → チェストにする", "&7このメニューをチェスト画面で開くようにする|&7自分だけの設定", "view")
+        else:
+            uf_abtn({_p}, {_g}, 45, written book, "&e表示: チェスト → 本にする", "&7このメニューを本の画面で開くようにする|&7自分だけの設定", "view")
     uf_ashow({_p}, {_g}, "")
 
 function uf_ap_modules(p: player):
@@ -1260,6 +1276,13 @@ function uf_aact(p: player, a: text):
             uf_msg({_p}, "&a2〜9階の設定を15号館の内装に合わせて登録しました")
         else:
             uf_msg({_p}, "&c先に「ワールドとロビー」で15号館（ダンジョン）のワールドを登録してください")
+    else if {_c} is "view":
+        if uf_usebook({_p}) is true:
+            set {uf::atoolview::%{_u}%} to "chest"
+            uf_msg({_p}, "&a管理メニューをチェスト画面で開くようにしました")
+        else:
+            delete {uf::atoolview::%{_u}%}
+            uf_msg({_p}, "&a管理メニューを本の画面で開くようにしました")
     else if {_c} is "pleave":
         set {_t} to {-uf::apl::%{_x::2}%}
         if {_t} is online:

@@ -396,8 +396,8 @@ function uf_confirm(p: player, action: text, label: text):
     set slot 11 of {_g} to lime wool named "&a実行する" with lore colored {_label}
     set slot 15 of {_g} to red wool named "&cやめる"
     set {-uf::guictx::%uuid of {_p}%::action} to {_action}
-    # Java 版は本で確認する（統合版はチェスト画面）
-    if uf_bedrock({_p}) is false:
+    # 本の画面で開いている人は本で確認する（統合版・チェスト表示の人はチェスト画面）
+    if uf_usebook({_p}) is true:
         uf_bkconfirm({_p}, {_label})
         stop
     uf_gui({_p}, "confirm", {_g})
