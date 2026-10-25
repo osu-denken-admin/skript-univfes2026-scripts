@@ -249,14 +249,14 @@ function uf_spawnmob(f: number, tier: text, l: location):
         set {_e} to last spawned entity
         equip {_e} with diamond helmet
         equip {_e} with diamond chestplate
-        equip {_e} with iron sword
+        set tool of {_e} to iron sword
         set {_hp} to 40 + {_f} * 5
         set {_name} to "&6◆ 中ボス「夜警」"
     else:
         spawn a wither skeleton at {_l}
         set {_e} to last spawned entity
         equip {_e} with netherite chestplate
-        equip {_e} with netherite sword
+        set tool of {_e} to netherite sword
         set {_hp} to 80 + {_f} * 15
         set {_name} to uf_bossname({_f})
     set display name of {_e} to {_name}

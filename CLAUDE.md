@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 大阪産業大学 電子計算研究部の Minecraft サーバー（大学祭展示＋常設）用の Skript 一式。
-`main.sk` が元からあるスクリプト、`uf_*.sk` が設計書 第2版で追加した機能。
+`main.sk` が元からあるスクリプト（今は画面下にポイントを出すだけ。前のモンスター討伐スコア `{score::*}` は使わないので 2026-10-26 にやめた）、`uf_*.sk` が設計書 第2版で追加した機能。
 
 ## 作業のルール
 
@@ -81,7 +81,7 @@ screen -S playit -d -m playit
 - `node test.js <cmds.txt のパス>`: **変数が空（`plugins/Skript/variables.csv` なし）で始める**。15号館の設定が残っているとダンジョンの項目が失敗する
 - `node drun.js <cmds.txt のパス> ../../tools/dungeon/layout`: 15号館（本番から取った建物）を再現したワールドで、2→9 階を通しで登る
 - `node lights.js <cmds.txt のパス>`: 管理者ツールの「15号館のライトを置き直す」を平らなワールドで確かめる
-- 2026-10-25 の結果: `test.js` 87/87、`drun.js` 93/93、`lights.js` 29/29
+- 2026-10-25 の結果: `drun.js` 93/93。2026-10-26: `test.js` 89/89、`lights.js` 29/29
 - この PC（Windows）のテストサーバーは `F:\Claude\testserver-1214`（15号館のワールドはないので `drun.js` は動かせない）。git の作者はこのリポジトリだけ `jtoxyz` に設定済み
 - mineflayer の注意: 1.21.4 のしゃがみはパケットを直接送る（`test.js` の `sneak`）。アイテムを使う前に `deactivateItem`
 

@@ -35,6 +35,10 @@ function mk(name) {
     b.titles = [];
     b.on('messagestr', (m) => { b.msgs.push(m); if (!/^\[.*?\] .*: /.test(m)) log(`[${name}] ${m}`); });
     b.on('title', (t) => { b.titles.push(text(t)); });
+    // アクションバー（1.21.4 では action_bar パケットで届き、mineflayer はイベントにしないので文字だけ取り出す）
+    b.actionbar = '';
+    const plain = (n) => (n == null ? '' : typeof n === 'string' ? n : Array.isArray(n) ? n.map(plain).join('') : (n.text ?? n[''] ?? '') + plain(n.extra));
+    b._client.on('action_bar', (d) => { b.actionbar = plain(d.text && d.text.type ? nbt.simplify(d.text) : d.text); });
     b.on('kicked', (r) => log(`[${name}] kicked`, text(r)));
     b.on('error', (e) => log(`[${name}] error`, e.message));
     b.on('death', () => { log(`[${name}] died`); });
@@ -249,6 +253,10 @@ T.economy = async ({ P }) => {
   check('sell all -> +30pt', !!(await waitMsg(P, from, /売却しました: \+30pt/)));
   const qb = () => P.msgs.slice(qFrom).filter((m) => m.includes('クエスト達成')).reduce((a, m) => a + Number((m.match(/\+(\d+)pt/) || [0, 0])[1]), 0);
   check('balance +158 (+quest rewards)', (await points(P)) === base + 158 + qb(), `quest bonus=${qb()}`);
+  // 画面下（アクションバー）にポイントが出る。スコアは出さない
+  await sleep(1500);
+  const bal = await points(P);
+  check('action bar shows points', P.actionbar.includes(`ポイント: ${bal}pt`) && !P.actionbar.includes('スコア'), P.actionbar);
   // ショップ
   const healBefore = invCount(P, '回復キット');
   let w = await cmdWin(P, '/buy');
@@ -298,7 +306,12 @@ T.dungeon = async ({ A, P }) => {
   A.chat('/ufd skip 2'); await sleep(800);
   A.chat('/ufd skip 2');
   check('floor boss appears', !!(await waitMsg(P, from, /受付に残る影 が現れた/, 6000)));
-  await sleep(800); await killAll(P, 60000);
+  await sleep(800);
+  // 剣は手に持つ（前は頭の防具の場所に入っていた）
+  const boss = Object.values(P.entities).find((e) => e.name === 'wither_skeleton' && e.position.distanceTo(P.entity.position) < 80);
+  const eq = (i) => (boss && boss.equipment && boss.equipment[i] ? boss.equipment[i].name : 'none');
+  check('boss holds the sword in hand, not on head', eq(0) === 'netherite_sword' && eq(5) === 'none', `hand=${eq(0)} head=${eq(5)}`);
+  await killAll(P, 60000);
   check('boss reward', !!(await waitMsg(P, from, /討伐報酬 \+300pt/, 8000)));
   check('first clear reward', !!(await waitMsg(P, from, /初回突破報酬 \+200pt/, 8000)));
   check('floor 3 unlocked', !!(await waitMsg(P, from, /3階 が解放された/, 5000)));

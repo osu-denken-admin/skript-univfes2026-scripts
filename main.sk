@@ -1,24 +1,5 @@
-on death of monster:
-    attacker is a player
-
-    add 1 to {score::%uuid of attacker%}
-
-    set {_score} to {score::%uuid of attacker%}
-
-    if {_score} is 10:
-        broadcast "&6&l[EVENT] &e%attacker% &6が &e&lスコア10 &6を達成しました！"
-
-    if {_score} is 50:
-        broadcast "&6&l[EVENT] &e%attacker% &6が &e&lスコア50 &6を達成しました！"
-
-    if {_score} is 100:
-        broadcast "&6&l[EVENT] &e%attacker% &6が &e&lスコア100 &6を達成しました！"
-
+# 画面下（アクションバー）に今のポイントを出す
+#   前はモンスター討伐のスコア（{score::*}）を数えて出していたが、今の構想では使わないのでやめた（2026-10-26）
 every 1 second:
     loop all players:
-        set {_score} to {score::%uuid of loop-player%}
-
-        if {_score} is not set:
-            set {_score} to 0
-
-        send action bar "&f<&e&lスコア: &6%{_score}%&f>" to loop-player
+        send action bar "&f<&e&lポイント: &6%uf_pt(loop-player)%pt&f>" to loop-player
