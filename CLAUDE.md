@@ -20,8 +20,8 @@
 
 - サーバー: Linux の `denken-mc`（ユーザー `denken`）。Paper 1.21.4（`paper-1.21.4-232.jar`）、**Skript 2.13.1**（`plugins/Skript-2.13.1.jar`。前に 2.16.2 と書いていたのは間違いで、2026-10-26 に確認）、Java 21
 - フォルダ: `/home/denken/workspace/paper1214`。スクリプトは `plugins/Skript/scripts`（このリポジトリの clone）
-- `online-mode=false`。起動時の Mojang・Modrinth などへの `Connection reset` は前からあるもので問題ない
-- プラグイン: PlugManX, Chunky, CrackShot, DiscordSRV, Elevator, FastAsyncWorldEdit, floodgate, Geyser-Spigot, GeyserExtras, GeyserSkinManager, ImageFrame, Jecon, LuckPerms, LunaChat, QuickShop-Hikari（`/shop` `/qs` を使う。こちらのショップは `/buy`）, Sit, SkinsRestorer, SkQuery（版は未確認。4.3.2 は 2.16.2 で壊れる）, Vault, ViaVersion 系, WorldEdit, worldedit-selection-viewer, WorldGuard
+- `online-mode=false`。起動時の Mojang・Modrinth などへの `Connection reset` は、サーバーのネットワークがマイクラ関係の接続先だけを切っているため（2026-10-26 に確認: minecraft-services.net・Mojang・Modrinth は TLS の最初で 0.04 秒で切断、GitHub・Google・Cloudflare・Microsoft のログインは通る）。Java 版は影響なし。**統合版は Geyser が起動できず（`Cannot setup authentication! Are you offline?`）、UDP 19132 が開いていないので入れない**
+- プラグイン: PlugManX, Chunky, CrackShot, DiscordSRV, Elevator, FastAsyncWorldEdit, floodgate, Geyser-Spigot, GeyserExtras, GeyserSkinManager, ImageFrame, Jecon, LuckPerms, LunaChat, QuickShop-Hikari（`/shop` `/qs` を使う。こちらのショップは `/buy`）, Sit, SkinsRestorer, SkQuery 4.3.2（Skript 2.13.1 では 152 個中 102 個が読み込まれる。4.3.2 は Skript 2.16.2 では壊れる）, Vault, ViaVersion 系, WorldEdit（`worldedit-bukkit-7.4.0-beta-01.jar` は FAWE と名前がかぶって読み込まれていない。FAWE が WorldEdit の代わりをしている）, worldedit-selection-viewer, WorldGuard
 
 ### 本番への反映
 
@@ -114,6 +114,7 @@ screen -S playit -d -m playit
 - 受付の区域（「受付・ショップ・カジノの区域」）は未設定（どこからでも `/dungeon` で始められる）
 - 2〜9 階の通し（`drun.js`）は 15号館のワールドがある PC でしか試せない。本番ではユーザーが遊んで確かめる
 - サーバー側の認証情報（git の取得用トークン、RCON パスワード）の作り直し（部長と相談）
-- 統合版で入れるかの確認（Geyser が起動時の認証で失敗している。前からの可能性が高い）
-- サーバーと playit の自動起動にするか
-- 未決定: Jecon とポイントを統一するか、CrackShot と独自の銃のどちらにするか、WorldGuard との連携、本番の SkQuery の版
+- 統合版で入れるようにする（上の「本番環境」。ネットワークの管理者にマイクラ関係の接続先を通してもらうか、Geyser だけ別の経路を通す。WARP は未登録で、`warp-cli connect` は playit が使えなくなるので打たない）
+- サーバーと playit の自動起動にするか。今は何も自動で起動しない。`loginctl` の Linger が no なので、再起動後に denken がログインするまで自動反映のタイマーも動かない
+- 使われていない `worldedit-bukkit-7.4.0-beta-01.jar` を片付けるか
+- 未決定: Jecon とポイントを統一するか、CrackShot と独自の銃のどちらにするか、WorldGuard との連携
