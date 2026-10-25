@@ -15,6 +15,16 @@ description: 本番の Minecraft サーバー（denken-mc）を SSH で調べた
 - 変数の中身は `plugins/Skript/variables.csv` だが、保存がまばらで古いことがある。今の状態はゲームの中（管理者ツール）で見る
 - 表示しないもの: `~/.local/bin/update-skript-scripts.sh` の中身（RCON のパスワード）、git の取得用トークン、playit のアドレス
 
+## 起動・停止（systemd のユーザーのサービス）
+
+- サーバー `mc-server.service`、playit `playit.service`、自動反映 `skript-git-pull.timer`。中身は `tools/server/`
+- `systemctl --user stop|start|restart mc-server`。再起動する前に `list` で誰がいるか見て、いれば `say` で予告する
+- コンソールの `stop` だけだと 15 秒後にまた起動する（`Restart=always`）。本当に止めるときは `systemctl --user stop mc-server`
+- `run.sh` を書き換えるときは、動いているサーバーを先に止める（動いているシェルが新しい中身の途中から読み進めて、勝手に起動し直したことがある）
+- 起動の確認: `logs/latest.log` に `Done (`、`UDP ポート 19132 で開始しました`、`All scripts loaded without errors.`。起動し直した直後は古いログの `Done (` を読まないように時刻も見る
+- 統合版の確認: このリポジトリの外で RakNet の Unconnected Ping を `denken-mc:19132` に送り、`MCPE;…` が返るか
+- WARP: `warp-cli --accept-tos status` が `Connected`、モードは `WarpProxy on port 40000`。**`mode warp` にはしない**（経路が変わって playit・Tailscale に影響する）
+
 ## コンソールに送る
 
 ```bash

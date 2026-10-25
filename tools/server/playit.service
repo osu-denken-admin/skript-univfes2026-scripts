@@ -1,0 +1,16 @@
+# playit のトンネル（~/.config/systemd/user/playit.service に置く）
+#   screen「playit」の中で動かす。画面は screen -r playit で見られる
+[Unit]
+Description=playit.gg tunnel in screen "playit"
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/screen -DmS playit /usr/local/bin/playit
+ExecStop=/usr/bin/screen -S playit -X quit
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target

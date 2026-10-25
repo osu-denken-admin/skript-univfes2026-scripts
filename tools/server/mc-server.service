@@ -1,0 +1,20 @@
+# マイクラのサーバー（~/.config/systemd/user/mc-server.service に置く）
+#   screen「mcserver」の中で run.sh を動かす。画面は今までどおり screen -r mcserver で見られる
+#   止める: systemctl --user stop mc-server（ゲームやコンソールの stop だと、15 秒後にまた起動する）
+[Unit]
+Description=Minecraft server (paper1214) in screen "mcserver"
+After=playit.service
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=/home/denken/workspace/paper1214
+ExecStart=/usr/bin/screen -DmS mcserver /bin/sh /home/denken/workspace/paper1214/run.sh
+ExecStop=/bin/sh -c '/usr/bin/screen -S mcserver -p 0 -X stuff "stop\r"; i=0; while [ $i -lt 120 ] && pgrep -f "java .*[p]aper-1.21.4-232.jar" >/dev/null; do sleep 1; i=$((i + 1)); done'
+TimeoutStopSec=150
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target

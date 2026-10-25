@@ -20,8 +20,8 @@
 
 - サーバー: Linux の `denken-mc`（ユーザー `denken`）。Paper 1.21.4（`paper-1.21.4-232.jar`）、**Skript 2.13.1**（`plugins/Skript-2.13.1.jar`。前に 2.16.2 と書いていたのは間違いで、2026-10-26 に確認）、Java 21
 - フォルダ: `/home/denken/workspace/paper1214`。スクリプトは `plugins/Skript/scripts`（このリポジトリの clone）
-- `online-mode=false`。起動時の Mojang・Modrinth などへの `Connection reset` は、サーバーのネットワークがマイクラ関係の接続先だけを切っているため（2026-10-26 に確認: minecraft-services.net・Mojang・Modrinth は TLS の最初で 0.04 秒で切断、GitHub・Google・Cloudflare・Microsoft のログインは通る）。Java 版は影響なし。**統合版は Geyser が起動できず（`Cannot setup authentication! Are you offline?`）、UDP 19132 が開いていないので入れない**
-- プラグイン: PlugManX, Chunky, CrackShot, DiscordSRV, Elevator, FastAsyncWorldEdit, floodgate, Geyser-Spigot, GeyserExtras, GeyserSkinManager, ImageFrame, Jecon, LuckPerms, LunaChat, QuickShop-Hikari（`/shop` `/qs` を使う。こちらのショップは `/buy`）, Sit, SkinsRestorer, SkQuery 4.3.2（Skript 2.13.1 では 152 個中 102 個が読み込まれる。4.3.2 は Skript 2.16.2 では壊れる）, Vault, ViaVersion 系, WorldEdit（`worldedit-bukkit-7.4.0-beta-01.jar` は FAWE と名前がかぶって読み込まれていない。FAWE が WorldEdit の代わりをしている）, worldedit-selection-viewer, WorldGuard
+- `online-mode=false`。起動時の Mojang・Modrinth などへの `Connection reset` は、サーバーのネットワークがマイクラ関係の接続先だけを切っているため（2026-10-26 に確認: minecraft-services.net・Mojang・Modrinth は TLS の最初で 0.04 秒で切断、GitHub・Google・Cloudflare・Microsoft のログインは通る）。Java 版は影響なし。統合版の Geyser は起動時に `minecraft-services.net` が要るので、WARP のプロキシを通して直した（下の「起動」）。プロキシなしだと `Cannot setup authentication! Are you offline?` で起動できない
+- プラグイン: PlugManX, Chunky, CrackShot, DiscordSRV, Elevator, FastAsyncWorldEdit, floodgate, Geyser-Spigot, GeyserExtras, GeyserSkinManager, ImageFrame, Jecon, LuckPerms, LunaChat, QuickShop-Hikari（`/shop` `/qs` を使う。こちらのショップは `/buy`）, Sit, SkinsRestorer, SkQuery 4.3.2（Skript 2.13.1 では 152 個中 102 個が読み込まれる。4.3.2 は Skript 2.16.2 では壊れる）, Vault, ViaVersion 系, WorldEdit（FAWE が代わりをしている。名前がかぶって読み込まれていなかった `worldedit-bukkit-7.4.0-beta-01.jar` は 2026-10-26 に `plugins/_unused/` へ移した）, worldedit-selection-viewer, WorldGuard
 
 ### 本番への反映
 
@@ -29,18 +29,26 @@
 - 中身: `git pull --ff-only` して、HEAD が変わったときだけ RCON（mcrcon）で `sk reload scripts`
 - 反映の確認: `cd /home/denken/workspace/paper1214/plugins/Skript/scripts && git log -1 --oneline`
 
-### 起動（再起動後は自動で起動しないので手で）
+### 起動（2026-10-26 から自動で起動する）
 
+- サーバーと playit は systemd のユーザーのサービス（`mc-server.service`、`playit.service`）。Linger を有効にしたので、再起動するとログインしなくても起動する。自動反映のタイマーも同じ
+- 中身は `tools/server/`（`run.sh` は本番の `/home/denken/workspace/paper1214/run.sh`、サービスは `~/.config/systemd/user/`）。変えたらそこも直す
+- 止める・起動する・再起動する（ゲームやコンソールの `stop` だと 15 秒後にまた起動する）:
 ```bash
-screen -S mcserver -d -m bash -c "cd /home/denken/workspace/paper1214 && sh run.sh"
+systemctl --user stop mc-server
 ```
 ```bash
-screen -S playit -d -m playit
+systemctl --user start mc-server
 ```
-
-- 画面を見る: `screen -r mcserver` / `screen -r playit`。抜けるのは `Ctrl+A` → `D`（`Ctrl+C` はサーバーが止まる）
+```bash
+systemctl --user restart mc-server
+```
+- 状態: `systemctl --user status mc-server playit`
+- 画面を見る: `screen -r mcserver` / `screen -r playit`。抜けるのは `Ctrl+A` → `D`（`Ctrl+C` はサーバーが止まる）。画面の中で `Ctrl+A` → `C` を押すと窓が増えて、`-p 0` なしではコマンドが届かなくなる（2026-10-25 にそうなっていた）
 - playit のトンネル: Java 版 → 25565、統合版 → 19132（接続先のアドレスはユーザーに聞く。**このリポジトリは公開なので、アドレスや秘密情報をここに書かない**）
-- **`warp-cli connect` は打たせない**（Cloudflare WARP は入っているが未登録。つなごうとすると playit 経由で入れなくなった。直すときは `warp-cli disconnect` して playit を起動し直す）
+- WARP（Cloudflare、無料の登録）は**プロキシのモード**（`127.0.0.1:40000`）でつないである。経路は変えないので playit と Tailscale には影響しない。`run.sh` が起動のたびに `warp-cli connect` して、Java の外向きの通信をこのプロキシに通す（この回線はマイクラ関係の接続先を切るため。通さないと Geyser が起動できず統合版が入れない）
+  - **`warp-cli mode warp`（すべての通信を WARP に通すモード）にはしない。** 前に入れられていた組織 `nyahello` の設定のままつなごうとして playit 経由で入れなくなったことがある（2026-10-26 に `settings reset` で外した）
+  - 確かめる: `warp-cli --accept-tos status` が `Connected`、`warp-cli --accept-tos settings | grep Mode` が `WarpProxy on port 40000`
 - 2026-10-25 に SSD の省電力が原因でフリーズ → 省電力を切って再起動した。このときスクリプトが読めず `main.sk` しか読まれていなかった
 
 ## ファイル
@@ -103,6 +111,7 @@ screen -S playit -d -m playit
 - Litematica で内装と闘技場を貼った（Prism Launcher のインスタンス「1.21.11」、中身は 1.21.4 + Litematica 0.21.7）。ただしライトブロックが置かれず、もとのライトも消えなかった → 管理者ツールに「15号館のライトを置き直す」を追加（ブランチ `fix-dungeon-lights`）
 - Litematica は読み込まれたチャンクにしか貼れない。闘技場の 8・9 階（x -60〜14）が貼れていなかった
 
+- 2026-10-26: 統合版が入れるようにした（WARP のプロキシ）。サーバーと playit を自動で起動するようにした（systemd、Linger）。
 - 2026-10-26: ボスの剣を手に持たせた。画面下をスコアからポイントにした。管理者ツールに「OP の一覧」とプレイヤーごとの OP の付け外しを足した（OP の人にだけ出る）
 
 - 2026-10-26 に ClaudeBot で確認: 闘技場 2〜9 階は貼れている、ライトは置き直し済み、15号館のワールド・ロビー・全階の設定済み、モジュールは dungeon・party・death がオン（ほかはオフ）。ユーザーが 2 階の中ボス・ボスまで遊べた
@@ -114,7 +123,6 @@ screen -S playit -d -m playit
 - 受付の区域（「受付・ショップ・カジノの区域」）は未設定（どこからでも `/dungeon` で始められる）
 - 2〜9 階の通し（`drun.js`）は 15号館のワールドがある PC でしか試せない。本番ではユーザーが遊んで確かめる
 - サーバー側の認証情報（git の取得用トークン、RCON パスワード）の作り直し（部長と相談）
-- 統合版で入れるようにする（上の「本番環境」。ネットワークの管理者にマイクラ関係の接続先を通してもらうか、Geyser だけ別の経路を通す。WARP は未登録で、`warp-cli connect` は playit が使えなくなるので打たない）
-- サーバーと playit の自動起動にするか。今は何も自動で起動しない。`loginctl` の Linger が no なので、再起動後に denken がログインするまで自動反映のタイマーも動かない
-- 使われていない `worldedit-bukkit-7.4.0-beta-01.jar` を片付けるか
+- 本当にマシンを再起動して、サーバー・playit・WARP・自動反映が全部自動で上がるかは、まだ試していない（サービスの止める・起動するは試した）
+- 統合版の実機で入れるかは、まだ試していない（19132 への問い合わせに Geyser が返事することは確かめた）
 - 未決定: Jecon とポイントを統一するか、CrackShot と独自の銃のどちらにするか、WorldGuard との連携
