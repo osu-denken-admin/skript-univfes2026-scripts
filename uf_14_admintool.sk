@@ -328,6 +328,8 @@ function uf_adminopen(p: player, page: text):
         uf_ap_cfgcat({_p}, {_q::2})
     else if {_k} is "players":
         uf_ap_players({_p})
+    else if {_k} is "ops":
+        uf_ap_ops({_p})
     else if {_k} is "player":
         uf_ap_player({_p}, {_q::2})
     else if {_k} is "areas":
@@ -369,6 +371,9 @@ function uf_ap_hub(p: player):
         uf_abtn({_p}, {_g}, 32, iron door, "&7メンテナンス: 停止中", "&eクリックで開始（管理者以外をキック）", "ask/メンテナンスモードにする（管理者以外をキック）|act/maint_on")
     uf_abtn({_p}, {_g}, 33, chest, "&e特殊アイテムを受け取る", "&7テスト用", "open/items")
     uf_abtn({_p}, {_g}, 34, book, "&e操作履歴", "&7管理者の操作の記録", "open/logs")
+    # OP の付け外しは OP の人だけ（univfes.admin だけの人が自分に OP を付けられないように）
+    if {_p} is op:
+        uf_abtn({_p}, {_g}, 35, nether star, "&eOP の一覧", "&7オフラインの人も含めて表示|&7開発用のボット（ClaudeBot）の OP もここで外せる", "open/ops")
     if uf_bedrock({_p}) is false:
         if uf_usebook({_p}) is true:
             uf_abtn({_p}, {_g}, 45, chest, "&e表示: 本 → チェストにする", "&7このメニューをチェスト画面で開くようにする|&7自分だけの設定", "view")
@@ -843,7 +848,36 @@ function uf_ap_player(p: player, u: text):
     uf_abtn({_p}, {_g}, 24, oak door, "&e挑戦できる最上階", "&7現在: %uf_unlock({_t})%階|&eクリックで変更", "edit/unlock/%{_u}%")
     if {-uf::insess::%{_u}%} is set:
         uf_abtn({_p}, {_g}, 31, barrier, "&cダンジョンから退出させる", "&7確認画面が出ます", "ask/%{_t}% をダンジョンから退出させる|pleave/%{_u}%")
+    if {_p} is op:
+        if {_t} is {_p}:
+            uf_abtn({_p}, {_g}, 33, nether star, "&7OP: あり（自分）", "&7自分の OP はここでは外せません", "")
+        else if {_t} is op:
+            uf_abtn({_p}, {_g}, 33, nether star, "&cOP を外す", "&7今は OP あり|&7確認画面が出ます", "ask/%{_t}% の OP を外す|opset/%{_u}%/off")
+        else:
+            uf_abtn({_p}, {_g}, 33, nether star, "&eOP を付ける", "&7今は OP なし|&7すべてのコマンドと管理者ツールが使えるようになる|&7確認画面が出ます", "ask/%{_t}% に OP を付ける|opset/%{_u}%/on")
     uf_ashow({_p}, {_g}, "players")
+
+# OP の一覧（オフラインの人も含む）。OP の人だけが開ける
+function uf_ap_ops(p: player):
+    if {_p} is not op:
+        uf_ap_hub({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4OP の一覧")
+    set {_s} to 0
+    loop all operators:
+        if {_s} < 45:
+            set {_u} to uuid of loop-value
+            set {-uf::aop::%{_u}%} to loop-value
+            if loop-value is online:
+                set {_st} to "&aオンライン"
+            else:
+                set {_st} to "&7オフライン"
+            if {_u} is "%uuid of {_p}%":
+                uf_abtn({_p}, {_g}, {_s}, player head, "&f%loop-value%（自分）", "%{_st}%|&7自分の OP はここでは外せません", "")
+            else:
+                uf_abtn({_p}, {_g}, {_s}, player head, "&f%loop-value%", "%{_st}%|&eクリックで OP を外す|&7確認画面が出ます", "ask/%loop-value% の OP を外す|opset/%{_u}%/off")
+            add 1 to {_s}
+    uf_ashow({_p}, {_g}, "hub")
 
 function uf_ap_areas(p: player):
     set {_g} to uf_apage({_p}, "&4受付・ショップ・カジノの区域")
@@ -1290,6 +1324,25 @@ function uf_aact(p: player, a: text):
         set {_t} to {-uf::apl::%{_x::2}%}
         if {_t} is online:
             uf_dleave({_t})
+    else if {_c} is "opset":
+        if {_p} is not op:
+            uf_msg({_p}, "&cOP の付け外しは OP の人だけができます")
+            stop
+        if {_x::2} is "%uuid of {_p}%":
+            uf_msg({_p}, "&c自分の OP はここでは外せません")
+            stop
+        set {_t} to {-uf::aop::%{_x::2}%}
+        if {_t} is not set:
+            set {_t} to {-uf::apl::%{_x::2}%}
+        if {_t} is not set:
+            uf_msg({_p}, "&cそのプレイヤーが見つかりません（画面を開き直してください）")
+            stop
+        if {_x::3} is "on":
+            op {_t}
+            uf_msg({_p}, "&a%{_t}% に OP を付けました")
+        else:
+            deop {_t}
+            uf_msg({_p}, "&e%{_t}% の OP を外しました")
     else:
         uf_msg({_p}, "&c不明な操作です: %{_a}%")
         stop

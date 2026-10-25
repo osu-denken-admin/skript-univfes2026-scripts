@@ -35,8 +35,10 @@ function mk(name) {
     b.titles = [];
     b.on('messagestr', (m) => { b.msgs.push(m); if (!/^\[.*?\] .*: /.test(m)) log(`[${name}] ${m}`); });
     b.on('title', (t) => { b.titles.push(text(t)); });
-    // アクションバー（1.21.4 では action_bar パケットで届き、mineflayer はイベントにしないので文字だけ取り出す）
+    // アクションバー。Skript 2.16 は action_bar パケット（mineflayer はイベントにしないので文字だけ取り出す）、
+    // 2.13 はオーバーレイのチャット（messagestr の game_info）で届く
     b.actionbar = '';
+    b.on('messagestr', (m, pos) => { if (pos === 'game_info') b.actionbar = m; });
     const plain = (n) => (n == null ? '' : typeof n === 'string' ? n : Array.isArray(n) ? n.map(plain).join('') : (n.text ?? n[''] ?? '') + plain(n.extra));
     b._client.on('action_bar', (d) => { b.actionbar = plain(d.text && d.text.type ? nbt.simplify(d.text) : d.text); });
     b.on('kicked', (r) => log(`[${name}] kicked`, text(r)));
@@ -526,6 +528,33 @@ T.admingui2 = async ({ A }) => {
   check('close does not reopen the book', A.nbooks === n);
 };
 
+// OP の付け外し（プレイヤーの詳細で付ける → OP の一覧で外す）
+T.ops = async ({ A, P }) => {
+  closeWin(A);
+  let w = await openTool(A);
+  check('hub has ops list (op only)', !!(w && w.links['35'] && w.links['35'].text.includes('OP の一覧')));
+  w = await clickBook(A, 28);
+  const key = w && Object.keys(w.links).find((k) => w.links[k].text.includes('UfPlayer'));
+  w = key ? await clickBook(A, key) : null;
+  check('player page has OP button', !!(w && w.links['33'] && w.links['33'].text.includes('OP を付ける')), w && w.links['33'] ? w.links['33'].text : '');
+  await clickBook(A, 33);
+  let from = A.msgs.length;
+  await clickBook(A, 'yes');
+  check('op given via admin tool', !!(await waitMsg(A, from, /UfPlayer に OP を付けました/)));
+  w = await clickBook(A, 49); w = await clickBook(A, 49);
+  w = await clickBook(A, 35);
+  const pk = w && Object.keys(w.links).find((k) => w.links[k].text.includes('UfPlayer'));
+  const self = w && Object.values(w.links).find((l) => l.text.includes('UfAdmin'));
+  check('ops list shows UfPlayer, not self as removable', !!pk && !self, w ? w.title.slice(0, 120) : '');
+  await clickBook(A, pk);
+  from = A.msgs.length;
+  await clickBook(A, 'yes');
+  check('op removed via ops list', !!(await waitMsg(A, from, /UfPlayer の OP を外しました/)));
+  // 外したあとは、P は管理メニューを開けない（security でも確かめる）
+  const n = P.nbooks; P.chat('/ufadmin'); await sleep(1000);
+  check('deopped player cannot open /ufadmin', P.nbooks === n);
+};
+
 T.security = async ({ P }) => {
   const n = P.nbooks;
   P.chat('/ufadmin'); P.chat('/ufadmin ui 1 10');
@@ -551,7 +580,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

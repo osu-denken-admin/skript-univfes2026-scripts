@@ -8,6 +8,7 @@ GUI のクリック、購入、ダンジョンの戦闘と報酬、死亡と回�
 
 ## 結果
 
+- 2026-10-26（本番の Skript が 2.13.1 だとわかったので、テストサーバーも 2.13.1 にした）: `test.js` **95 / 95 PASS**（OP の付け外し `ops` を追加）、`lights.js` **29 / 29 PASS**
 - 2026-10-26（ボスの剣を手に持たせ、画面下をスコアからポイントにした後）: `test.js` **89 / 89 PASS**（ボスの剣・アクションバーの 2 項目を追加）、`lights.js` **29 / 29 PASS**
 - 2026-10-25（ライトの置き直しを追加した後）: Paper 1.21.4-232 + Skript 2.16.2 で `test.js` **87 / 87 PASS**、`lights.js` **29 / 29 PASS**（置き直しは約 1.3 秒）。`drun.js` は 15号館のワールドがない PC だったので未実行
 - 2026-10-25（管理者ツールを本の画面にした後）: 本番と同じ **Paper 1.21.4 + Skript 2.16.2** で `test.js` **87 / 87 PASS**、`drun.js` **93 / 93 PASS**
@@ -19,7 +20,7 @@ GUI のクリック、購入、ダンジョンの戦闘と報酬、死亡と回�
 ## 用意するもの
 
 - Java 21、Node.js 18 以降
-- 本番と同じ Paper 1.21.4 と Skript 2.16.2 を入れたテストサーバー（ボットはサーバーのバージョンに自動で合わせる）
+- 本番と同じ Paper 1.21.4 と Skript 2.13.1 を入れたテストサーバー（ボットはサーバーのバージョンに自動で合わせる）
 - テストサーバーの `plugins/Skript/scripts` に、このリポジトリの `main.sk` と `uf_*.sk` を入れる
 
 ## テストサーバーの設定（`server.properties`）
@@ -63,7 +64,7 @@ node test.js "テストサーバーのフォルダ/cmds.txt"
 node test.js "テストサーバーのフォルダ/cmds.txt" economy,casino
 ```
 
-テスト名: `admintool` `economy` `dungeon` `death` `revive` `casino` `rpg` `tools` `guns` `admingui2` `security`
+テスト名: `admintool` `economy` `dungeon` `death` `revive` `casino` `rpg` `tools` `guns` `admingui2` `ops` `security`
 
 ## 注意
 
@@ -91,3 +92,13 @@ node drun.js "テストサーバーのフォルダ/cmds.txt" "../../tools/dungeo
 ```
 
 各階で、中ボスの壁 → 中ボス闘技場 → 戻る → 階段の壁 → ボス闘技場 → 戻る → 階段を上る、の流れと、9 階後に 1 階へ戻ること、中ボス前は階段の壁が開かないこと、反対側の階段・エレベーターで先へ進めないことを確認します（2026-10-23: 93 / 93 PASS）。
+
+## 本番に入りっぱなしにするボット（`live.js`）
+
+テストではなく、Claude が本番のゲームの中で操作するためのボットです（名前は `ClaudeBot`、OP あり）。**入る前にユーザーに伝えます。** ワールドを勝手に書き換える操作はしません。
+
+```bash
+node live.js denken-mc 25565 ClaudeBot cmd.txt log.txt
+```
+
+`cmd.txt` に 1 行ずつ足すと実行し、チャット・本・チェスト画面の中身を `log.txt` に書きます。コマンドの一覧は `live.js` の先頭にあります（`!tool` で管理者ツールを開き、`!book <スロット>` で項目を押す、など）。開発が終わったら、管理者ツールの「OP の一覧」で `ClaudeBot` の OP を外します。
