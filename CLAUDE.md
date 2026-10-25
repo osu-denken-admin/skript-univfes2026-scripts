@@ -80,7 +80,9 @@ screen -S playit -d -m playit
 - サーバーの標準入力を `cmds.txt` につなぐ: `tail -f -s 0.2 cmds.txt | java -Xmx2G -jar paper.jar nogui > server.out 2>&1 &`
 - `node test.js <cmds.txt のパス>`: **変数が空（`plugins/Skript/variables.csv` なし）で始める**。15号館の設定が残っているとダンジョンの項目が失敗する
 - `node drun.js <cmds.txt のパス> ../../tools/dungeon/layout`: 15号館（本番から取った建物）を再現したワールドで、2→9 階を通しで登る
-- 2026-10-25 の結果: `test.js` 87/87、`drun.js` 93/93
+- `node lights.js <cmds.txt のパス>`: 管理者ツールの「15号館のライトを置き直す」を平らなワールドで確かめる
+- 2026-10-25 の結果: `test.js` 87/87、`drun.js` 93/93、`lights.js` 29/29
+- この PC（Windows）のテストサーバーは `F:\Claude\testserver-1214`（15号館のワールドはないので `drun.js` は動かせない）。git の作者はこのリポジトリだけ `jtoxyz` に設定済み
 - mineflayer の注意: 1.21.4 のしゃがみはパケットを直接送る（`test.js` の `sneak`）。アイテムを使う前に `deactivateItem`
 
 ## 今の状況（2026-10-25）
@@ -89,9 +91,13 @@ screen -S playit -d -m playit
 - 本番サーバーを復旧（スクリプト 16 個がエラーなしで読み込まれた）
 - 管理者ツールを本の画面にした。チェスト表示とも切り替えられる（main `9c0ca72`）
 
+- ワールドのバックアップ: `/home/denken/workspace/world-backup-2026-10-25`（`world`・`world_nether`・`world_the_end`。15号館は `world`）
+- Litematica で内装と闘技場を貼った（Prism Launcher のインスタンス「1.21.11」、中身は 1.21.4 + Litematica 0.21.7）。ただしライトブロックが置かれず、もとのライトも消えなかった → 管理者ツールに「15号館のライトを置き直す」を追加（ブランチ `fix-dungeon-lights`）
+- Litematica は読み込まれたチャンクにしか貼れない。闘技場の 8・9 階（x -60〜14）が貼れていなかった
+
 次にやること（ユーザーと一緒に）:
-1. ワールドのバックアップ: `cp -r /home/denken/workspace/paper1214/world /home/denken/workspace/world-backup-<日付>`（15号館のワールドが `world` か確認する）
-2. Litematica で `tools/dungeon/layout/15goukan_dungeon.litematic`（原点 `-267 73 87`）と `15goukan_arenas.litematic`（原点 `-300 200 -60`）を貼る。置き換えは「All」、回転・反転なし
+1. 闘技場の 8・9 階が貼れたか確認（だめなら `/tp @s -25 205 -20` のそばで貼り直す）
+2. `fix-dungeon-lights` を main に入れて本番に届いたら、管理者ツール →「ダンジョンの各階」→「15号館のライトを置き直す」
 3. 管理者ツールで「ワールドとロビー」→「受付・ショップ・カジノの区域」（受付）→「ダンジョンの各階」→「15号館の内装に合わせて全階を設定」→「モジュール」で dungeon・party・death をオン
 4. 1 階の受付で `/dungeon` → 2 階から試す
 
