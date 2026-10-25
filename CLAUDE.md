@@ -56,6 +56,7 @@ screen -S playit -d -m playit
 | `tools/dungeon/` | 15号館の内装・闘技場の生成と `.litematic` 書き出し。`layout/` に完成品。詳しくは同じフォルダの README |
 | `tests/bot/` | mineflayer のボットによるプレイテスト（`test.js`、`drun.js`） |
 | `docs/` | `setup.md`（導入・運用）、`decisions.md`（仮の仕様）、`test-plan.md` |
+| `.claude/skills/` | Claude Code 用の手順: `uf-localtest`（ローカルテスト）、`uf-deploy`（main に入れて本番で確かめる）、`uf-prod`（SSH・コンソール・ClaudeBot）。作業のときはこれに従う |
 
 - モジュールは初期状態ですべて無効（`{uf::mod::<名前>}`）。管理者ツールの「モジュール」でオンにする
 - 変数: 保存するものは `{uf::...}`、一時的なものは `{-uf::...}`
