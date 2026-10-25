@@ -144,6 +144,8 @@ function uf_payout(p: player, game: text, n: number):
         stop
     uf_addchip({_p}, {_n}, "win:%{_game}%")
     add {_n} to {uf::cstat::%{_game}%::out}
+    # ランキング用（当たりでもらったチップの合計）
+    add {_n} to {uf::stat::%uuid of {_p}%::chipwon}
 
 # ------------------------------------------------------------
 # スロット・ルーレット

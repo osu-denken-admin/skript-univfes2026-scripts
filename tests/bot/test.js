@@ -528,6 +528,67 @@ T.admingui2 = async ({ A }) => {
   check('close does not reopen the book', A.nbooks === n);
 };
 
+// ランキングの掲示板（壁を見ながら置く → 文字が出る → 消す）
+T.boards = async ({ A }) => {
+  closeWin(A);
+  con('fill 4 -60 -4 6 -57 -4 minecraft:stone');
+  con(`tp ${A.username} 5.5 -60 -1.5 180 0`); await sleep(1500);
+  // 壁を見て右クリックしたときと同じく、壁のブロックを右クリックして管理者ツールを開く
+  await hold(A, '管理者ツール');
+  const wall = A.blockAt(new Vec3(5, -59, -4));
+  let n = A.nbooks; await A.activateBlock(wall).catch(() => {});
+  let w = await waitBook(A, n);
+  check('admin tool opens while looking at a wall', !!w);
+  w = await clickBook(A, 37);
+  check('boards page', titleOf(w).includes('ランキングの掲示板'), titleOf(w).slice(0, 60));
+  let from = A.msgs.length;
+  w = await clickBook(A, 10);
+  check('board placed', !!(await waitMsg(A, from, /ダンジョン討伐数 の掲示板を置きました/)));
+  await sleep(1500);
+  const disp = () => Object.values(A.entities).find((e) => e.name === 'text_display' && e.position.distanceTo(new Vec3(5.5, -58, -3)) < 2);
+  const d = disp();
+  const meta = d ? JSON.stringify(d.metadata) : '';
+  check('board shows title and ranking', meta.includes('ダンジョン討伐数') && meta.includes('UfPlayer'), d ? d.position.toString() : 'no display');
+  check('board is on the wall face', !!d && Math.abs(d.position.z - (-2.99)) < 0.05, d ? d.position.toString() : '');
+  w = await clickBook(A, 19);
+  from = A.msgs.length;
+  await clickBook(A, 'yes');
+  check('board removed', !!(await waitMsg(A, from, /掲示板を消しました/)));
+  await sleep(1000);
+  check('board entity gone', !disp());
+};
+
+// NPC（置く → 話しかけると受付の画面 → 消す）
+T.npc = async ({ A, P }) => {
+  closeWin(A); closeWin(P);
+  con(`tp ${A.username} 8.5 -60 8.5 0 0`); await sleep(1500);
+  let w = await openTool(A);
+  w = await clickBook(A, 38);
+  check('npc page', titleOf(w).includes('NPC'), titleOf(w).slice(0, 60));
+  let from = A.msgs.length;
+  w = await clickBook(A, 11);
+  check('npc placed', !!(await waitMsg(A, from, /ダンジョン受付.*を置きました/)));
+  con(`tp ${A.username} 12.5 -60 8.5`);
+  con(`tp ${P.username} 8.5 -60 10.5 180 0`); await sleep(1500);
+  const v = Object.values(P.entities).find((e) => e.name === 'villager' && e.position.distanceTo(P.entity.position) < 4);
+  check('npc villager exists', !!v);
+  const pos0 = v ? v.position.clone() : null;
+  if (v) {
+    await P.lookAt(v.position.offset(0, 1.5, 0), true);
+    const p = waitWindow(P, 4000); await P.activateEntity(v).catch(() => {}); w = await p;
+    check('talking to npc opens reception', titleOf(w).includes('受付'), titleOf(w).slice(0, 60));
+    closeWin(P);
+    P.attack(v); await sleep(800);
+    check('npc does not move or die', !!P.entities[v.id] && v.position.distanceTo(pos0) < 0.1);
+  }
+  con(`tp ${P.username} 1 -60 0`);
+  con(`tp ${A.username} 8.5 -60 9.5`); await sleep(1200);
+  w = await openTool(A); w = await clickBook(A, 38); w = await clickBook(A, 31);
+  from = A.msgs.length;
+  await clickBook(A, 'yes');
+  check('npc removed', !!(await waitMsg(A, from, /近くの NPC を 1 人消しました/)));
+};
+
 // OP の付け外し（プレイヤーの詳細で付ける → OP の一覧で外す）
 T.ops = async ({ A, P }) => {
   closeWin(A);
@@ -580,7 +641,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'boards', 'npc', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

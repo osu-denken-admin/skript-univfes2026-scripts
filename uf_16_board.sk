@@ -1,0 +1,92 @@
+# ============================================================
+# uf_16_board.sk : ランキングの掲示板（壁に貼りつける浮かぶ文字）
+#   管理者ツールの「ランキングの掲示板」で、壁を見ながら種類を選ぶと、その壁に貼りつく
+#   1 種類につき 1 枚。置き直すと前のものは消える。1 分ごとに上位 10 人を書き直す
+#   浮かぶ文字（text display）には scoreboard tag「uf_board:<種類>」を付けて見分ける
+#   種類と名前は uf_11_progress.sk の uf_rankname / uf_toplines
+# ============================================================
+
+function uf_boardsrcs() :: texts:
+    return "dkills", "chipwon", "sold", "bought", "clears" and "earned"
+
+function uf_boardtext(src: text) :: text:
+    set {_t} to "&6&l★ %uf_rankname({_src})% ★"
+    set {_lines::*} to uf_toplines({_src}, 10)
+    if size of {_lines::*} is 0:
+        set {_t} to "%{_t}%%nl%&7まだ記録がありません"
+    loop {_lines::*}:
+        set {_t} to "%{_t}%%nl%%loop-value%"
+    return "%{_t}%%nl%&8（1 分ごとに更新）"
+
+# 今読み込まれている、その種類の掲示板を消す（読み込まれていない場所のものは、あとの更新で消える）
+function uf_boardremove(src: text) :: number:
+    set {_n} to 0
+    set {_tag} to "uf_board:%{_src}%"
+    loop all text displays:
+        if scoreboard tags of loop-value contains {_tag}:
+            kill loop-value
+            add 1 to {_n}
+    return {_n}
+
+# 見ている壁のブロックの、こちら側の面に貼りつける。置けたら true
+function uf_boardplace(p: player, src: text) :: boolean:
+    set {_b} to targeted block of {_p}
+    if {_b} is not set:
+        return false
+    if {_b} is air:
+        return false
+    # ブロックの座標は真ん中（5.5 など）で返るので、角に揃える
+    set {_x} to floor(x-coordinate of {_b})
+    set {_y} to floor(y-coordinate of {_b})
+    set {_z} to floor(z-coordinate of {_b})
+    set {_f} to "%horizontal facing of {_p}%"
+    # 浮かぶ文字は yaw 0 で南（+z）を向く。見ている人のほうへ向ける
+    if {_f} is "north":
+        set {_l} to location({_x} + 0.5, {_y}, {_z} + 1.01, world of {_b})
+        set {_yaw} to 0
+    else if {_f} is "south":
+        set {_l} to location({_x} + 0.5, {_y}, {_z} - 0.01, world of {_b})
+        set {_yaw} to 180
+    else if {_f} is "east":
+        set {_l} to location({_x} - 0.01, {_y}, {_z} + 0.5, world of {_b})
+        set {_yaw} to 90
+    else:
+        set {_l} to location({_x} + 1.01, {_y}, {_z} + 0.5, world of {_b})
+        set {_yaw} to 270
+    uf_boardremove({_src})
+    spawn a text display at {_l}
+    set {_e} to last spawned entity
+    set text of {_e} to uf_boardtext({_src})
+    set billboard of {_e} to fixed
+    set yaw of {_e} to {_yaw}
+    add "uf_board:%{_src}%" to scoreboard tags of {_e}
+    # 左寄せにして、名前が長くても 1 行に収まるように幅を広げる（Skript にない設定なので vanilla のコマンドで）
+    execute console command "data merge entity %uuid of {_e}% {alignment:""left"",line_width:260}"
+    set {uf::board::%{_src}%::loc} to {_l}
+    return true
+
+function uf_boarddel(src: text):
+    uf_boardremove({_src})
+    delete {uf::board::%{_src}%::loc}
+
+# 置いた場所から離れたもの（置き直したあとに残った古いもの）は消す
+function uf_boardupdate():
+    loop uf_boardsrcs():
+        set {_src} to loop-value
+        set {_l} to {uf::board::%{_src}%::loc}
+        set {_txt} to uf_boardtext({_src})
+        set {_tag} to "uf_board:%{_src}%"
+        loop all text displays:
+            if scoreboard tags of loop-value-2 contains {_tag}:
+                set {_keep} to false
+                if {_l} is set:
+                    if "%world of loop-value-2%" is "%world of {_l}%":
+                        if distance between loop-value-2 and {_l} < 1:
+                            set {_keep} to true
+                if {_keep} is true:
+                    set text of loop-value-2 to {_txt}
+                else:
+                    kill loop-value-2
+
+every 1 minute:
+    uf_boardupdate()

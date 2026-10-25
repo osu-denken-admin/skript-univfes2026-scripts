@@ -8,6 +8,7 @@ GUI のクリック、購入、ダンジョンの戦闘と報酬、死亡と回�
 
 ## 結果
 
+- 2026-10-26（ランキングの掲示板と NPC を追加）: `test.js` **108 / 108 PASS**（`boards` `npc` を追加）、`lights.js` **29 / 29 PASS**（Skript 2.13.1）
 - 2026-10-26（本番の Skript が 2.13.1 だとわかったので、テストサーバーも 2.13.1 にした）: `test.js` **95 / 95 PASS**（OP の付け外し `ops` を追加）、`lights.js` **29 / 29 PASS**
 - 2026-10-26（ボスの剣を手に持たせ、画面下をスコアからポイントにした後）: `test.js` **89 / 89 PASS**（ボスの剣・アクションバーの 2 項目を追加）、`lights.js` **29 / 29 PASS**
 - 2026-10-25（ライトの置き直しを追加した後）: Paper 1.21.4-232 + Skript 2.16.2 で `test.js` **87 / 87 PASS**、`lights.js` **29 / 29 PASS**（置き直しは約 1.3 秒）。`drun.js` は 15号館のワールドがない PC だったので未実行
@@ -64,7 +65,7 @@ node test.js "テストサーバーのフォルダ/cmds.txt"
 node test.js "テストサーバーのフォルダ/cmds.txt" economy,casino
 ```
 
-テスト名: `admintool` `economy` `dungeon` `death` `revive` `casino` `rpg` `tools` `guns` `admingui2` `ops` `security`
+テスト名: `admintool` `economy` `dungeon` `death` `revive` `casino` `rpg` `tools` `guns` `admingui2` `boards` `npc` `ops` `security`
 
 ## 注意
 

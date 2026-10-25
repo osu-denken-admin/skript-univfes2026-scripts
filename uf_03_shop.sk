@@ -96,7 +96,9 @@ function uf_shopbuy(p: player, id: text):
         stop
     loop {_items::*}:
         give loop-value to {_p}
-    uf_msg({_p}, "&a購入しました: %uf_shopname({_id})% &7(-%{_price}%pt / 残り %uf_pt({_p})%pt)")
+    # ランキング用（買った回数）
+    add 1 to {uf::stat::%uuid of {_p}%::bought}
+    uf_msg({_p}, "&a購入しました:%uf_shopname({_id})% &7(-%{_price}%pt / 残り %uf_pt({_p})%pt)")
     uf_log("shop", "buy %{_p}% (%uuid of {_p}%) %{_id}% price=%{_price}%")
 
 on inventory click:

@@ -130,7 +130,8 @@ on inventory click:
 function uf_dstart(p: player, f: number):
     if uf_on("dungeon") is false:
         stop
-    if uf_inarea({_p}, "reception") is false:
+    # 受付の区域の中か、受付の NPC に話しかけてから 3 分以内（uf_17_npc.sk）
+    if uf_canuse({_p}, "reception") is false:
         uf_msg({_p}, "&cダンジョンへの挑戦は 1 階の受付で行ってください")
         stop
     if {uf::floor::%{_f}%::start} is not set:

@@ -47,9 +47,9 @@ cd /f/Claude/skript-univfes2026-scripts/tests/bot && node live.js denken-mc 2556
   ```bash
   printf '%s\n' "!tool" >> $S/live-cmd.txt; sleep 2; printf '%s\n' "!book 35" >> $S/live-cmd.txt; sleep 3; tail -40 $S/live-log.txt
   ```
-- コマンド: `!tool`（管理者ツールを開く）、`!book <スロット|yes|no>`、`!win <スロット>`、`!close`、`!pos`、`!inv`、`!block x y z`、`!click x y z`、`!quit`、それ以外はチャット（`/` でコマンド）
+- コマンド: `!tool`（管理者ツールを開く）、`!book <スロット|yes|no>`、`!win <スロット>`、`!close`、`!pos`、`!inv`、`!block x y z`、`!click x y z`、`!entity <種類>`（近くの村人などを右クリック）、`!quit`、それ以外はチャット（`/` でコマンド）
 - ブロックを見るときは、先に `/tp ClaudeBot x y z` で近くへ行く（読み込まれていないチャンクは見えない）
-- 管理者ツールの項目のスロット: 最初の画面は 10 モジュール、11 ワールドとロビー、12 ダンジョンの各階、28 プレイヤー、35 OP の一覧、49 戻る。各階の画面は 40 全階を設定、42 ライトの置き直し
+- 管理者ツールの項目のスロット: 最初の画面は 10 モジュール、11 ワールドとロビー、12 ダンジョンの各階、28 プレイヤー、35 OP の一覧、37 ランキングの掲示板、38 NPC、49 戻る。各階の画面は 40 全階を設定、42 ライトの置き直し
 - 確かめるだけのときは、設定を変える項目を押さない。押すときはユーザーに確認してから
 - 管理者ツールをなくしたら `/ufadmin tool`
 - 終わったら `!quit`。開発が全部終わったら、ユーザーに管理者ツールの「OP の一覧」で ClaudeBot の OP を外してもらう（`online-mode=false` なので、同じ名前で入れば誰でも OP になる）

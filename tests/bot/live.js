@@ -9,6 +9,7 @@
 //   !pos / !inv         位置 / 持ち物を記録する
 //   !block <x> <y> <z>  そのブロックの名前を記録する
 //   !click <x> <y> <z>  そのブロックを右クリックする
+//   !entity <種類>      近く（6 ブロック以内）のその種類のもの（villager など）を右クリックする
 //   !quit               抜ける
 // 注意: 本番に入るのは、ユーザーに伝えてからにする（CLAUDE.md）
 const mineflayer = require('mineflayer');
@@ -88,6 +89,10 @@ async function exec(line) {
     const b = bot.blockAt(new Vec3(+a[0], +a[1], +a[2]));
     if (!b) return log('[!] ブロックが読み込まれていない');
     await bot.lookAt(b.position.offset(0.5, 0.5, 0.5), true); await bot.activateBlock(b).catch((e) => log('[!]', e.message));
+  } else if (c === '!entity') {
+    const e = bot.nearestEntity((x) => x.name === a[0] && x.position.distanceTo(bot.entity.position) < 6);
+    if (!e) return log('[!] 近くにいない', a[0]);
+    await bot.lookAt(e.position.offset(0, e.height * 0.8, 0), true); await bot.activateEntity(e).catch((err) => log('[!]', err.message));
   } else if (c === '!quit') { bot.quit(); }
   else bot.chat(line);
 }

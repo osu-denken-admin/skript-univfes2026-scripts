@@ -330,6 +330,10 @@ function uf_adminopen(p: player, page: text):
         uf_ap_players({_p})
     else if {_k} is "ops":
         uf_ap_ops({_p})
+    else if {_k} is "boards":
+        uf_ap_boards({_p})
+    else if {_k} is "npcs":
+        uf_ap_npcs({_p})
     else if {_k} is "player":
         uf_ap_player({_p}, {_q::2})
     else if {_k} is "areas":
@@ -371,6 +375,8 @@ function uf_ap_hub(p: player):
         uf_abtn({_p}, {_g}, 32, iron door, "&7メンテナンス: 停止中", "&eクリックで開始（管理者以外をキック）", "ask/メンテナンスモードにする（管理者以外をキック）|act/maint_on")
     uf_abtn({_p}, {_g}, 33, chest, "&e特殊アイテムを受け取る", "&7テスト用", "open/items")
     uf_abtn({_p}, {_g}, 34, book, "&e操作履歴", "&7管理者の操作の記録", "open/logs")
+    uf_abtn({_p}, {_g}, 37, oak sign, "&eランキングの掲示板", "&7壁に貼りつける浮かぶ文字の掲示板", "open/boards")
+    uf_abtn({_p}, {_g}, 38, villager spawn egg, "&eNPC（受付・ショップ・カジノ）", "&7話しかけると画面が開く村人", "open/npcs")
     # OP の付け外しは OP の人だけ（univfes.admin だけの人が自分に OP を付けられないように）
     if {_p} is op:
         uf_abtn({_p}, {_g}, 35, nether star, "&eOP の一覧", "&7オフラインの人も含めて表示|&7開発用のボット（ClaudeBot）の OP もここで外せる", "open/ops")
@@ -857,6 +863,34 @@ function uf_ap_player(p: player, u: text):
             uf_abtn({_p}, {_g}, 33, nether star, "&eOP を付ける", "&7今は OP なし|&7すべてのコマンドと管理者ツールが使えるようになる|&7確認画面が出ます", "ask/%{_t}% に OP を付ける|opset/%{_u}%/on")
     uf_ashow({_p}, {_g}, "players")
 
+# ランキングの掲示板（uf_16_board.sk）
+function uf_ap_boards(p: player):
+    set {_g} to uf_apage({_p}, "&4ランキングの掲示板")
+    set {_s} to 10
+    loop uf_boardsrcs():
+        set {_src} to loop-value
+        if {uf::board::%{_src}%::loc} is set:
+            set {_st} to "&a置いてある: %uf_locstr({uf::board::%{_src}%::loc})%"
+        else:
+            set {_st} to "&7まだ置いていない"
+        uf_abtn({_p}, {_g}, {_s}, oak sign, "&e%uf_rankname({_src})%", "%{_st}%|&e壁を見ながら押すと、その壁に貼る（置き直すと前のものは消える）|&7文字は下の端から上に伸びる。上位 10 人で高さ 3 ブロックほど", "boardset/%{_src}%")
+        if {uf::board::%{_src}%::loc} is set:
+            uf_abtn({_p}, {_g}, {_s} + 9, tnt, "&c%uf_rankname({_src})% を消す", "&7確認画面が出ます", "ask/%uf_rankname({_src})% の掲示板を消す|boarddel/%{_src}%")
+        add 1 to {_s}
+    uf_abtn({_p}, {_g}, 31, clock, "&e今すぐ書き直す", "&7ふだんは 1 分ごとに書き直す", "boardnow")
+    uf_ashow({_p}, {_g}, "hub")
+
+# NPC（uf_17_npc.sk）
+function uf_ap_npcs(p: player):
+    set {_g} to uf_apage({_p}, "&4NPC（受付・ショップ・カジノ）")
+    set {_s} to 11
+    loop "reception", "shop" and "casino":
+        set {_k} to loop-value
+        uf_abtn({_p}, {_g}, {_s}, villager spawn egg, "%uf_npcname({_k})% &eを置く", "&7今いる場所に、今向いている方向を向けて置く|&7読み込まれている範囲にいる数: %uf_npccount({_k})%", "npcset/%{_k}%")
+        add 2 to {_s}
+    uf_abtn({_p}, {_g}, 31, tnt, "&c近くの NPC を消す", "&73 ブロック以内の NPC を消す|&7確認画面が出ます", "ask/近く（3 ブロック以内）の NPC を消す|npcdel")
+    uf_ashow({_p}, {_g}, "hub")
+
 # OP の一覧（オフラインの人も含む）。OP の人だけが開ける
 function uf_ap_ops(p: player):
     if {_p} is not op:
@@ -1324,6 +1358,22 @@ function uf_aact(p: player, a: text):
         set {_t} to {-uf::apl::%{_x::2}%}
         if {_t} is online:
             uf_dleave({_t})
+    else if {_c} is "boardset":
+        if uf_boardplace({_p}, {_x::2}) is false:
+            uf_msg({_p}, "&c貼りつける壁のブロックを見ながら押してください")
+            stop
+        uf_msg({_p}, "&a%uf_rankname({_x::2})% の掲示板を置きました")
+    else if {_c} is "boarddel":
+        uf_boarddel({_x::2})
+        uf_msg({_p}, "&e%uf_rankname({_x::2})% の掲示板を消しました")
+    else if {_c} is "boardnow":
+        uf_boardupdate()
+        uf_msg({_p}, "&a掲示板を書き直しました")
+    else if {_c} is "npcset":
+        uf_npcspawn({_p}, {_x::2})
+        uf_msg({_p}, "&a%uf_npcname({_x::2})% &aを置きました")
+    else if {_c} is "npcdel":
+        uf_msg({_p}, "&e近くの NPC を %uf_npcdel({_p})% 人消しました")
     else if {_c} is "opset":
         if {_p} is not op:
             uf_msg({_p}, "&cOP の付け外しは OP の人だけができます")

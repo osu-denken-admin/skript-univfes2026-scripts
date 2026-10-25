@@ -249,8 +249,27 @@ every 1 minute:
 # ------------------------------------------------------------
 # ランキング
 #   earned=累計獲得pt / level / dkills=ダンジョン討伐 / clears=クリア回数
-#   event=大学祭イベントスコア（main.sk の {score::*}）
+#   chipwon=カジノの当たりでもらったチップ / sold=売った数 / bought=ショップで買った回数
+#   event=大学祭イベントスコア（main.sk の {score::*}。2026-10-26 から数えていない）
+#   壁の掲示板は uf_16_board.sk
 # ------------------------------------------------------------
+function uf_rankname(src: text) :: text:
+    if {_src} is "dkills":
+        return "ダンジョン討伐数"
+    if {_src} is "chipwon":
+        return "カジノで稼いだチップ"
+    if {_src} is "sold":
+        return "売った数"
+    if {_src} is "bought":
+        return "ショップで買った数"
+    if {_src} is "clears":
+        return "ダンジョンクリア回数"
+    if {_src} is "earned":
+        return "稼いだポイント"
+    if {_src} is "level":
+        return "レベル"
+    return "イベントスコア"
+
 function uf_rankval(u: text, src: text) :: number:
     if {_src} is "event":
         set {_v} to {score::%{_u}%}
@@ -283,16 +302,16 @@ function uf_toplines(src: text, n: number) :: texts:
     return {_out::*}
 
 command /ranking [<text>]:
-    description: ランキング（earned / level / dkills / clears / event）
+    description: ランキング（earned / level / dkills / clears / chipwon / sold / bought / event）
     aliases: /rank
     trigger:
         set {_src} to arg-1
         if {_src} is not set:
             set {_src} to "earned"
-        if {_src} is not "earned", "level", "dkills", "clears" or "event":
-            send "&c種類: earned / level / dkills / clears / event" to command sender
+        if {_src} is not "earned", "level", "dkills", "clears", "chipwon", "sold", "bought" or "event":
+            send "&c種類: earned / level / dkills / clears / chipwon / sold / bought / event" to command sender
             stop
-        send "&6=== ランキング: %{_src}% ===" to command sender
+        send "&6=== ランキング: %uf_rankname({_src})% ===" to command sender
         set {_lines::*} to uf_toplines({_src}, 10)
         if size of {_lines::*} is 0:
             send "&7まだデータがありません" to command sender

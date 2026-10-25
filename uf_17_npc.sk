@@ -1,0 +1,91 @@
+# ============================================================
+# uf_17_npc.sk : 受付・ショップ・カジノの NPC（村人）
+#   管理者ツールの「NPC」で、今いる場所に、今向いている方向を向けて置く
+#   話しかける（右クリック）と、受付は開始階の選択、ショップは /buy、カジノは /casino の画面が開く
+#   動かない・攻撃されない・黙っている。scoreboard tag「uf_npc:<種類>」で見分ける
+#   NPC から開いた人は、3 分間は区域（受付・ショップ・カジノの区域）の外でも使える（uf_canuse）
+# ============================================================
+
+function uf_npcname(k: text) :: text:
+    if {_k} is "reception":
+        return "&e&lダンジョン受付"
+    if {_k} is "shop":
+        return "&a&lショップ"
+    return "&6&lカジノ"
+
+function uf_npckind(e: entity) :: text:
+    loop scoreboard tags of {_e}:
+        if loop-value starts with "uf_npc:":
+            return last (length of loop-value - 7) characters of loop-value
+
+function uf_npcspawn(p: player, k: text):
+    spawn a villager at location of {_p}
+    set {_e} to last spawned entity
+    set ai of {_e} to false
+    make {_e} invulnerable
+    make {_e} silent
+    set display name of {_e} to uf_npcname({_k})
+    if {_k} is "reception":
+        set villager profession of {_e} to librarian profession
+    else if {_k} is "shop":
+        set villager profession of {_e} to weaponsmith profession
+    else:
+        set villager profession of {_e} to cleric profession
+    set yaw of {_e} to yaw of {_p}
+    add "uf_npc:%{_k}%" to scoreboard tags of {_e}
+
+# 近く（3 ブロック以内）の NPC を消す。消した数を返す
+function uf_npcdel(p: player) :: number:
+    set {_n} to 0
+    loop all villagers:
+        if uf_npckind(loop-value) is set:
+            if "%world of loop-value%" is "%world of {_p}%":
+                if distance between loop-value and {_p} <= 3:
+                    kill loop-value
+                    add 1 to {_n}
+    return {_n}
+
+function uf_npccount(k: text) :: number:
+    set {_n} to 0
+    loop all villagers:
+        if uf_npckind(loop-value) is {_k}:
+            add 1 to {_n}
+    return {_n}
+
+function uf_npcopen(p: player, k: text):
+    set {-uf::npcuse::%uuid of {_p}%::%{_k}%} to now
+    if {_k} is "reception":
+        if uf_on("dungeon") is false:
+            uf_msg({_p}, "&cダンジョンは現在停止中です")
+            stop
+        uf_floorgui({_p})
+    else if {_k} is "shop":
+        if uf_on("shop") is false:
+            uf_msg({_p}, "&cショップは現在停止中です")
+            stop
+        uf_shopgui({_p})
+    else:
+        if uf_on("casino") is false:
+            uf_msg({_p}, "&cカジノは現在停止中です")
+            stop
+        uf_casinogui({_p})
+
+# 区域の中にいるか、3 分以内にその NPC に話しかけていれば使える
+function uf_canuse(p: player, name: text) :: boolean:
+    if uf_inarea({_p}, {_name}) is true:
+        return true
+    set {_t} to {-uf::npcuse::%uuid of {_p}%::%{_name}%}
+    if {_t} is set:
+        if difference between {_t} and now < 3 minutes:
+            return true
+    return false
+
+on right click on villager:
+    set {_k} to uf_npckind(event-entity)
+    {_k} is set
+    cancel event
+    uf_npcopen(player, {_k})
+
+on damage of villager:
+    uf_npckind(victim) is set
+    cancel event
