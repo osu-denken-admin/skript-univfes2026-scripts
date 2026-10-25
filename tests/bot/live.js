@@ -63,7 +63,8 @@ bot.on('windowOpen', (w) => {
   log('[window]', plain(simp(typeof w.title === 'string' ? (() => { try { return JSON.parse(w.title); } catch { return w.title; } })() : w.title)));
   for (let i = 0; i < w.inventoryStart; i++) if (w.slots[i]) log(`   [${i}] ${itemName(w.slots[i])}`);
 });
-bot.once('spawn', () => { log('[spawn]', bot.entity.position.toString(), 'version', bot.version); run(); });
+// 入ったらすぐクリエイティブにする（サバイバルのまま立っていると、夜にモンスターに倒され続けて全員のチャットに死亡が流れる。2026-10-26）
+bot.once('spawn', () => { log('[spawn]', bot.entity.position.toString(), 'version', bot.version); bot.chat('/gamemode creative'); run(); });
 
 async function exec(line) {
   const [c, ...a] = line.split(' ');
