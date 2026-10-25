@@ -435,6 +435,7 @@ function uf_ap_floors(p: player):
             set {_st} to "%{_st}%|&6挑戦中"
         uf_abtn({_p}, {_g}, {_f} + 17, oak door, "&f%{_f}%階", "%{_st}%|&7敵の出現地点: %{_ns}% / 宝箱候補: %{_nc}%|&eクリックで設定", "open/floor/%{_f}%")
     uf_abtn({_p}, {_g}, 40, writable book, "&a15号館の内装に合わせて全階を設定", "&72〜9階の開始地点・復帰地点・ボス・敵の出現地点・宝箱・範囲を一括登録|&7先に「15号館（ダンジョン）」のワールドを登録しておくこと|&c今の各階の設定は上書きされます|&7確認画面が出ます", "ask/2〜9階の設定を15号館の内装に合わせて上書きする|layout")
+    uf_abtn({_p}, {_g}, 42, glowstone, "&a15号館のライトを置き直す", "&7内装と闘技場のライトブロックを消して、決まった場所に置き直す|&7Litematica で貼るとライトが置かれないので、貼ったあとに 1 回押す|&7確認画面が出ます", "ask/内装と闘技場のライトブロックを置き直す|lights")
     uf_ashow({_p}, {_g}, "hub")
 
 function uf_ap_floor(p: player, f: number):
@@ -1276,6 +1277,8 @@ function uf_aact(p: player, a: text):
             uf_msg({_p}, "&a2〜9階の設定を15号館の内装に合わせて登録しました")
         else:
             uf_msg({_p}, "&c先に「ワールドとロビー」で15号館（ダンジョン）のワールドを登録してください")
+    else if {_c} is "lights":
+        uf_layout_lights({_p})
     else if {_c} is "view":
         if uf_usebook({_p}) is true:
             set {uf::atoolview::%{_u}%} to "chest"
