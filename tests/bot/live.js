@@ -73,7 +73,11 @@ async function exec(line) {
     const it = bot.inventory.items().find((i) => itemName(i).includes('管理者ツール'));
     if (!it) return log('[!] 管理者ツールを持っていない');
     try { bot.deactivateItem(); } catch {}
-    await bot.equip(it, 'hand'); await sleep(300); bot.activateItem(); await sleep(300); bot.deactivateItem();
+    await bot.equip(it, 'hand'); await sleep(300);
+    // 近くのブロックを見ているときは「空中を右クリック」が受け付けられないので、そのブロックを右クリックする
+    const b = bot.blockAtCursor(4);
+    if (b && b.name !== 'air') await bot.activateBlock(b).catch((e) => log('[!]', e.message));
+    else { bot.activateItem(); await sleep(300); bot.deactivateItem(); }
   } else if (c === '!book') {
     const l = book && book.links[a[0]];
     if (!l) return log('[!] 本にその項目がない', a[0]);
