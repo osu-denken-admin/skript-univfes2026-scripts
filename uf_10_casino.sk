@@ -28,7 +28,7 @@ function uf_bet(p: player) :: number:
     return {_b}
 
 function uf_casinogui(p: player):
-    set {_g} to chest inventory with 4 rows named "&8地下カジノ"
+    set {_g} to chest inventory with 5 rows named "&8地下カジノ"
     uf_guiclear({_p})
     set slot 4 of {_g} to gold ingot named "&e所持チップ: %uf_chip({_p})%" with lore "&7ポイント: %uf_pt({_p})%pt" and "&7交換レート: 1pt = %{uf::cfg::chip_rate}% チップ"
     set slot 10 of {_g} to emerald named "&a100pt → チップ"
@@ -40,6 +40,14 @@ function uf_casinogui(p: player):
     set slot 23 of {_g} to uf_gameicon("roulette", black wool, "&8ルーレット：黒")
     set slot 25 of {_g} to uf_gameicon("reaction", clock, "&a反応速度ゲーム")
     set slot 31 of {_g} to paper named "&f賭け金: &e%uf_bet({_p})% チップ" with lore "&7クリックで変更（10 / 50 / 100 / 500 / 1000）"
+    # 追加のゲーム（uf_21_casino2.sk）
+    set slot 37 of {_g} to uf_gameicon("dice", white wool, "&fサイコロ")
+    set slot 39 of {_g} to uf_gameicon("highlow", paper, "&eハイ＆ロー")
+    set {_gc} to "&7チップ %{uf::cfg::casino::gacha::cost}% 枚で 1 回"
+    if {uf::cfg::casino::gacha::enabled} is true:
+        set slot 41 of {_g} to ender chest named "&dガチャ" with lore "&a営業中", {_gc}, "&7景品はアイテム（大当たりは防具など）" and "&eクリックで回す"
+    else:
+        set slot 41 of {_g} to ender chest named "&dガチャ" with lore "&c休止中" and {_gc}
     uf_gui({_p}, "casino", {_g})
 
 function uf_gameicon(game: text, icon: item, name: text) :: item:
@@ -51,6 +59,8 @@ function uf_gameicon(game: text, icon: item, name: text) :: item:
     add "&7賭け金: %{uf::cfg::casino::%{_game}%::min}%〜%{uf::cfg::casino::%{_game}%::max}% チップ" to {_lore::*}
     if {_game} is "reaction":
         add "&7成功で賭け金の %{uf::cfg::casino::reaction::mult}% 倍" to {_lore::*}
+    else if {_game} is "highlow":
+        add "&7当たりにくいほど倍率が高い" to {_lore::*}
     else:
         add "&7当たりで賭け金の %{uf::cfg::casino::%{_game}%::mult}% 倍" to {_lore::*}
     add "&eクリックで遊ぶ" to {_lore::*}
@@ -80,6 +90,18 @@ on inventory click:
         if player is online:
             uf_reaction(player)
         stop
+    else if {_s} is 37:
+        wait 1 tick
+        if player is online:
+            uf_dicegui(player)
+        stop
+    else if {_s} is 39:
+        wait 1 tick
+        if player is online:
+            uf_hlstart(player)
+        stop
+    else if {_s} is 41:
+        uf_gacha(player)
     else if {_s} is 31:
         set {_b} to uf_bet(player)
         if {_b} is 10:

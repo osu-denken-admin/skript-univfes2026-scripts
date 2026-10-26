@@ -420,6 +420,37 @@ T.casino = async ({ A, P }) => {
   await P.clickWindow(13, 0, 0).catch(() => {});
   check('reaction game success', !!(await waitMsg(P, from, /成功！/)) , P.msgs.slice(from).join(' | '));
   await sleep(500); closeWin(P);
+  // 追加のゲーム（uf_21_casino2.sk）
+  A.chat(`/ufadmin chips ${P.username} give 1000`); await sleep(800);
+  w = await cmdWin(P, '/casino');
+  check('casino has dice, high-low and gacha', findSlot(w, 'サイコロ') === 37 && findSlot(w, 'ハイ＆ロー') === 39 && findSlot(w, 'ガチャ') === 41);
+  w = await clickWin(P, 37);
+  check('dice opens', titleOf(w).includes('サイコロ'), titleOf(w).slice(0, 60));
+  from = P.msgs.length;
+  w = await clickWin(P, 3);
+  check('dice rolls', !!(await waitMsg(P, from, /サイコロの目: \d/)) && !!(await waitMsg(P, from, /(当たり|はずれ)/)));
+  w = await clickWin(P, 8);
+  check('dice back to casino', titleOf(w).includes('地下カジノ'), titleOf(w).slice(0, 60));
+  w = await clickWin(P, 39);
+  check('high-low opens', titleOf(w).includes('ハイ＆ロー'), titleOf(w).slice(0, 60));
+  const side = w && w.slots[11] && w.slots[11].name !== 'barrier' ? 11 : 15;
+  from = P.msgs.length;
+  w = await clickWin(P, side);
+  check('high-low plays', !!(await waitMsg(P, from, /次のカード: \d+/)) && !!(await waitMsg(P, from, /(当たり|はずれ)/)));
+  w = P.currentWindow && titleOf(P.currentWindow).includes('地下カジノ') ? P.currentWindow : await cmdWin(P, '/casino');
+  w = await clickWin(P, 39);
+  from = P.msgs.length;
+  closeWin(P);
+  check('closing high-low before choosing refunds the bet', !!(await waitMsg(P, from, /賭け金 \d+ チップを返した/)));
+  w = await cmdWin(P, '/casino');
+  from = P.msgs.length;
+  const count = () => P.inventory.items().reduce((a, i) => a + i.count, 0);
+  const before = count();
+  w = await clickWin(P, 41);
+  check('gacha gives a prize', !!(await waitMsg(P, from, /\[ガチャ\]/)));
+  await sleep(500);
+  check('gacha prize is in the inventory', count() > before, `${before} -> ${count()}`);
+  closeWin(P);
 };
 
 // ---------------------------------------------------------------

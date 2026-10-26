@@ -514,12 +514,29 @@ function uf_ap_casino(p: player):
     uf_abtn({_p}, {_g}, 20, diamond, "&bスロット", "%uf_onoff({uf::cfg::casino::slot::enabled})%|%{_s1}%|&eクリックで設定", "open/casinogame/slot")
     uf_abtn({_p}, {_g}, 22, red wool, "&cルーレット", "%uf_onoff({uf::cfg::casino::roulette::enabled})%|%{_s2}%|&eクリックで設定", "open/casinogame/roulette")
     uf_abtn({_p}, {_g}, 24, clock, "&a反応速度ゲーム", "%uf_onoff({uf::cfg::casino::reaction::enabled})%|%{_s3}%|&eクリックで設定", "open/casinogame/reaction")
+    set {_s4} to uf_casinosum("dice")
+    set {_s5} to uf_casinosum("highlow")
+    set {_s6} to uf_casinosum("gacha")
+    uf_abtn({_p}, {_g}, 29, white wool, "&fサイコロ", "%uf_onoff({uf::cfg::casino::dice::enabled})%|%{_s4}%|&eクリックで設定", "open/casinogame/dice")
+    uf_abtn({_p}, {_g}, 31, paper, "&eハイ＆ロー", "%uf_onoff({uf::cfg::casino::highlow::enabled})%|%{_s5}%|&eクリックで設定", "open/casinogame/highlow")
+    uf_abtn({_p}, {_g}, 33, ender chest, "&dガチャ", "%uf_onoff({uf::cfg::casino::gacha::enabled})%|%{_s6}%|&eクリックで設定", "open/casinogame/gacha")
     uf_ashow({_p}, {_g}, "hub")
 
 # 設定と集計の要約（"|" 区切り）
 function uf_casinosum(gm: text) :: text:
+    if {_gm} is "gacha":
+        set {_t} to "&71 回 %{uf::cfg::casino::gacha::cost}% チップ / 景品はアイテム"
+        set {_n} to {uf::cstat::gacha::plays}
+        if {_n} is not set:
+            set {_n} to 0
+        return "%{_t}%|&7実績: %{_n}%回"
     if {_gm} is "reaction":
         set {_t} to "&7制限時間 %{uf::cfg::casino::reaction::window}% tick / 倍率 %{uf::cfg::casino::reaction::mult}%"
+    else if {_gm} is "dice":
+        set {_rtp} to round({uf::cfg::casino::dice::mult} / 6 * 1000) / 10
+        set {_t} to "&7当選 1/6 / 倍率 %{uf::cfg::casino::dice::mult}% / 理論還元率 %{_rtp}%％"
+    else if {_gm} is "highlow":
+        set {_t} to "&7倍率 = %{uf::cfg::casino::highlow::mult}% ÷ 当たる確率 / 理論還元率 %{uf::cfg::casino::highlow::mult} * 100%％"
     else:
         set {_rtp} to {uf::cfg::casino::%{_gm}%::prob} * {uf::cfg::casino::%{_gm}%::mult}
         set {_t} to "&7当選 %{uf::cfg::casino::%{_gm}%::prob}%％ / 倍率 %{uf::cfg::casino::%{_gm}%::mult}% / 理論還元率 %{_rtp}%％"
@@ -539,7 +556,7 @@ function uf_casinosum(gm: text) :: text:
     return {_t}
 
 function uf_ap_casinogame(p: player, gm: text):
-    if {_gm} is not "slot", "roulette" or "reaction":
+    if {_gm} is not "slot", "roulette", "reaction", "dice", "highlow" or "gacha":
         uf_ap_casino({_p})
         stop
     set {_g} to uf_apage({_p}, "&4カジノ: %{_gm}%")
@@ -548,8 +565,14 @@ function uf_ap_casinogame(p: player, gm: text):
         uf_abtn({_p}, {_g}, 19, lime concrete, "&a営業中", "&eクリックで休止する", "casinotoggle/%{_gm}%")
     else:
         uf_abtn({_p}, {_g}, 19, red concrete, "&c休止中", "&eクリックで営業する", "casinotoggle/%{_gm}%")
+    if {_gm} is "gacha":
+        uf_abtn({_p}, {_g}, 22, gold nugget, "&e1 回のチップ", "&7現在: %{uf::cfg::casino::gacha::cost}%|&eクリックで変更", "edit/casino/gacha/cost")
+        uf_ashow({_p}, {_g}, "casino")
+        stop
     if {_gm} is "reaction":
         uf_abtn({_p}, {_g}, 21, clock, "&e制限時間（tick）", "&7現在: %{uf::cfg::casino::reaction::window}%|&7緑になってからこの時間内なら成功|&eクリックで変更", "edit/casino/reaction/window")
+    else if {_gm} is "dice" or "highlow":
+        uf_abtn({_p}, {_g}, 21, ender eye, "&7当選確率", "&7ゲームの仕組みで決まる（変えられない）", "")
     else:
         uf_abtn({_p}, {_g}, 21, ender eye, "&e当選確率（％）", "&7現在: %{uf::cfg::casino::%{_gm}%::prob}%|&eクリックで変更", "edit/casino/%{_gm}%/prob")
     uf_abtn({_p}, {_g}, 22, gold ingot, "&e払い戻し倍率", "&7現在: %{uf::cfg::casino::%{_gm}%::mult}%|&eクリックで変更", "edit/casino/%{_gm}%/mult")

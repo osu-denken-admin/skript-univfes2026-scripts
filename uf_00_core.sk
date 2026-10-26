@@ -133,6 +133,17 @@ function uf_defaults():
     uf_setdef("casino::reaction::mult", 1.8)
     uf_setdef("casino::reaction::min", 10)
     uf_setdef("casino::reaction::max", 500)
+    # 追加のゲーム（uf_21_casino2.sk）
+    uf_setdef("casino::dice::enabled", true)
+    uf_setdef("casino::dice::mult", 5.5)
+    uf_setdef("casino::dice::min", 10)
+    uf_setdef("casino::dice::max", 500)
+    uf_setdef("casino::highlow::enabled", true)
+    uf_setdef("casino::highlow::mult", 0.95)
+    uf_setdef("casino::highlow::min", 10)
+    uf_setdef("casino::highlow::max", 500)
+    uf_setdef("casino::gacha::enabled", true)
+    uf_setdef("casino::gacha::cost", 100)
 
     # ショップ（id, 価格, 解放に必要なクリア階層 0=なし, 初期の販売状態）
     uf_shopdef("heal_kit", 40, 0, true)

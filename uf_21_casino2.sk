@@ -1,0 +1,197 @@
+# ============================================================
+# uf_21_casino2.sk : カジノの追加のゲーム（サイコロ・ハイ＆ロー・ガチャ）
+#   カジノの画面（uf_10_casino.sk の uf_casinogui）の下の段から開く。賭け金は同じ「賭け金」ボタンの値
+#   サイコロ dice: 1〜6 から選んで当てる。当たりで mult 倍（初期 5.5 倍 = 理論還元率 91.7％）
+#   ハイ＆ロー highlow: 1〜13 のカードのあと、次のカードが大きいか小さいかを当てる（同じ数は負け）
+#     当たりの倍率 = mult ÷ 当たる確率（初期 mult 0.95 = どのカードでも理論還元率 95％）
+#     選ぶ前に画面を閉じたら、賭け金は返す
+#   ガチャ gacha: チップ cost 枚（初期 100）で 1 回。景品はアイテム（チップは出ない）。uf_gachaprize の表
+#     ふつう 60％ / ちょっといい 27％ / レア 10％ / 大当たり 3％（大当たりは全員に知らせる）
+# ============================================================
+
+# ------------------------------------------------------------
+# サイコロ
+# ------------------------------------------------------------
+function uf_dicegui(p: player):
+    set {_g} to chest inventory with 1 row named "&8サイコロ：出る目を当てよう（当たりで %{uf::cfg::casino::dice::mult}% 倍）"
+    uf_guiclear({_p})
+    loop 6 times:
+        set slot loop-number of {_g} to (loop-number of white wool) named "&f%loop-number% が出る" with lore "&7賭け金: %uf_bet({_p})% チップ" and "&eクリックでサイコロをふる"
+    set slot 8 of {_g} to arrow named "&f戻る"
+    uf_gui({_p}, "dice", {_g})
+
+function uf_dice(p: player, pick: number):
+    set {_bet} to uf_bet({_p})
+    set {_mult} to {uf::cfg::casino::dice::mult}
+    if uf_takebet({_p}, "dice", {_bet}) is false:
+        stop
+    set {_r} to random integer between 1 and 6
+    play sound "block.wood.hit" with volume 1 at {_p}
+    uf_msg({_p}, "&fサイコロの目: &e%{_r}% &7（選んだ目: %{_pick}%）")
+    if {_r} is {_pick}:
+        uf_payout({_p}, "dice", {_bet} * {_mult})
+        uf_msg({_p}, "&6当たり！ &eチップ +%floor({_bet} * {_mult})%")
+        play sound "entity.player.levelup" with volume 1 at {_p}
+    else:
+        uf_msg({_p}, "&7はずれ（-%{_bet}% チップ）")
+    uf_log("casino", "dice %{_p}% bet=%{_bet}% pick=%{_pick}% roll=%{_r}%")
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "dice"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 8:
+        wait 1 tick
+        if player is online:
+            uf_casinogui(player)
+        stop
+    {_s} >= 1
+    {_s} <= 6
+    uf_dice(player, {_s})
+    wait 1 tick
+    if player is online:
+        uf_dicegui(player)
+
+# ------------------------------------------------------------
+# ハイ＆ロー
+# ------------------------------------------------------------
+function uf_hlstart(p: player):
+    set {_u} to uuid of {_p}
+    set {_bet} to uf_bet({_p})
+    if uf_takebet({_p}, "highlow", {_bet}) is false:
+        stop
+    set {_c} to random integer between 1 and 13
+    set {-uf::hl::%{_u}%::card} to {_c}
+    set {-uf::hl::%{_u}%::bet} to {_bet}
+    set {-uf::hl::%{_u}%::state} to "pick"
+    set {_k} to {uf::cfg::casino::highlow::mult}
+    set {_g} to chest inventory with 3 rows named "&8ハイ＆ロー：次のカードは？"
+    uf_guiclear({_p})
+    set slot 13 of {_g} to ({_c} of paper) named "&f今のカード: &e%{_c}%" with lore "&7賭け金: %{_bet}% チップ" and "&7同じ数が出たら負け" and "&7選ぶ前に閉じると賭け金は返る"
+    if {_c} < 13:
+        set {_m} to floor({_k} * 13 / (13 - {_c}) * 100) / 100
+        set slot 11 of {_g} to lime wool named "&aハイ（次は %{_c}% より大きい）" with lore "&7当たる確率: %13 - {_c}% / 13" and "&7当たりで %{_m}% 倍"
+    else:
+        set slot 11 of {_g} to barrier named "&8ハイ（13 より大きいカードはない）"
+    if {_c} > 1:
+        set {_m} to floor({_k} * 13 / ({_c} - 1) * 100) / 100
+        set slot 15 of {_g} to red wool named "&cロー（次は %{_c}% より小さい）" with lore "&7当たる確率: %{_c} - 1% / 13" and "&7当たりで %{_m}% 倍"
+    else:
+        set slot 15 of {_g} to barrier named "&8ロー（1 より小さいカードはない）"
+    set {-uf::hl::%{_u}%::inv} to {_g}
+    uf_gui({_p}, "highlow", {_g})
+
+function uf_hlpick(p: player, side: text):
+    set {_u} to uuid of {_p}
+    if {-uf::hl::%{_u}%::state} is not "pick":
+        stop
+    set {_c} to {-uf::hl::%{_u}%::card}
+    if {_side} is "high":
+        set {_n} to 13 - {_c}
+    else:
+        set {_n} to {_c} - 1
+    if {_n} < 1:
+        stop
+    set {-uf::hl::%{_u}%::state} to "done"
+    set {_bet} to {-uf::hl::%{_u}%::bet}
+    set {_next} to random integer between 1 and 13
+    set {_win} to false
+    if {_side} is "high":
+        if {_next} > {_c}:
+            set {_win} to true
+    else if {_next} < {_c}:
+        set {_win} to true
+    uf_msg({_p}, "&f次のカード: &e%{_next}% &7（今のカード: %{_c}%）")
+    if {_win} is true:
+        set {_pay} to {_bet} * {uf::cfg::casino::highlow::mult} * 13 / {_n}
+        uf_payout({_p}, "highlow", {_pay})
+        uf_msg({_p}, "&6当たり！ &eチップ +%floor({_pay})%")
+        play sound "entity.player.levelup" with volume 1 at {_p}
+    else:
+        uf_msg({_p}, "&7はずれ（-%{_bet}% チップ）")
+    uf_log("casino", "highlow %{_p}% bet=%{_bet}% card=%{_c}% side=%{_side}% next=%{_next}% win=%{_win}%")
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "highlow"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 11:
+        uf_hlpick(player, "high")
+    else if {_s} is 15:
+        uf_hlpick(player, "low")
+    else:
+        stop
+    {-uf::hl::%uuid of player%::state} is "done"
+    wait 1 tick
+    if player is online:
+        uf_casinogui(player)
+
+# 選ぶ前に閉じたら、賭け金を返す
+#   カジノの画面からハイ＆ローの画面に切り替えるときにも、前の画面が閉じた知らせが来るので、閉じたのがハイ＆ローの画面のときだけ
+#   （画面の共通の処理 uf_00_core.sk が先に {-uf::gui::*} を消すので、ハイ＆ローの画面は自分で覚えておく）
+on inventory close:
+    {-uf::hl::%uuid of player%::state} is "pick"
+    event-inventory is {-uf::hl::%uuid of player%::inv}
+    set {-uf::hl::%uuid of player%::state} to "done"
+    set {_bet} to {-uf::hl::%uuid of player%::bet}
+    uf_addchip(player, {_bet}, "refund:highlow")
+    remove {_bet} from {uf::cstat::highlow::in}
+    remove 1 from {uf::cstat::highlow::plays}
+    uf_msg(player, "&7ハイ＆ローをやめた（賭け金 %{_bet}% チップを返した）")
+
+# ------------------------------------------------------------
+# ガチャ
+# ------------------------------------------------------------
+# 景品: rank（1 ふつう / 2 ちょっといい / 3 レア / 4 大当たり）ごとに「id:個数」の表
+function uf_gachaprize(rank: number) :: texts:
+    if {_rank} is 1:
+        return "it_onigiri:3", "it_speed:1", "heal_kit:1" and "it_onigiri:5"
+    if {_rank} is 2:
+        return "it_bomb:2", "it_warp:1", "it_power:1", "it_guard:1" and "heal_kit:3"
+    if {_rank} is 3:
+        return "it_jump:1", "mat_upgrade:2", "acc_basic:1" and "it_bomb:5"
+    return "it_night:1", "dga_uniform_helmet:1", "dga_uniform_chest:1", "dga_labcoat_boots:1" and "mat_final:1"
+
+function uf_gacha(p: player):
+    if {uf::cfg::casino::gacha::enabled} is not true:
+        uf_msg({_p}, "&cガチャは休止中です")
+        stop
+    set {_cost} to {uf::cfg::casino::gacha::cost}
+    if uf_takechip({_p}, {_cost}, "gacha") is false:
+        uf_msg({_p}, "&cチップが足りません（%{_cost}% 枚いる）")
+        stop
+    add {_cost} to {uf::cstat::gacha::in}
+    add 1 to {uf::cstat::gacha::plays}
+    set {_r} to random number between 0 and 100
+    if {_r} < 3:
+        set {_rank} to 4
+    else if {_r} < 13:
+        set {_rank} to 3
+    else if {_r} < 40:
+        set {_rank} to 2
+    else:
+        set {_rank} to 1
+    set {_list::*} to uf_gachaprize({_rank})
+    set {_q::*} to split (random element out of {_list::*}) at ":"
+    set {_n} to {_q::2} parsed as number
+    set {_it} to uf_item({_q::1})
+    if {_it} is not set:
+        stop
+    uf_give({_p}, {_it}, {_n})
+    if {_rank} is 4:
+        set {_rn} to "&6&l大当たり！"
+        play sound "ui.toast.challenge_complete" with volume 1 at {_p}
+        broadcast "&6&l[ガチャ] &e%{_p}% &6が大当たり！ &f%name of {_it}%"
+    else if {_rank} is 3:
+        set {_rn} to "&dレア！"
+        play sound "entity.player.levelup" with volume 1 at {_p}
+    else if {_rank} is 2:
+        set {_rn} to "&bちょっといい"
+        play sound "entity.experience_orb.pickup" with volume 1 at {_p}
+    else:
+        set {_rn} to "&fふつう"
+        play sound "entity.item.pickup" with volume 1 at {_p}
+    uf_msg({_p}, "&e[ガチャ] %{_rn}% &f%name of {_it}% ×%{_n}%")
+    uf_log("casino", "gacha %{_p}% rank=%{_rank}% prize=%{_q::1}%x%{_n}%")
