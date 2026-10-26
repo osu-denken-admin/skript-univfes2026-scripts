@@ -8,6 +8,7 @@ GUI のクリック、購入、ダンジョンの戦闘と報酬、死亡と回�
 
 ## 結果
 
+- 2026-10-26（ダンジョンの敵を作り直した後）: `test.js` **109 / 109**、`lights.js` **29 / 29**、`mobs.js` **81 / 81**
 - 2026-10-26（大学祭イベントを外した後）: `test.js` **109 / 109 PASS**、`lights.js` **29 / 29 PASS**
 - 2026-10-26（ランキングの掲示板と NPC を追加）: `test.js` **108 / 108 PASS**（`boards` `npc` を追加）、`lights.js` **29 / 29 PASS**（Skript 2.13.1）
 - 2026-10-26（本番の Skript が 2.13.1 だとわかったので、テストサーバーも 2.13.1 にした）: `test.js` **95 / 95 PASS**（OP の付け外し `ops` を追加）、`lights.js` **29 / 29 PASS**
@@ -84,6 +85,21 @@ node test.js "テストサーバーのフォルダ/cmds.txt" economy,casino
 ```bash
 node lights.js "テストサーバーのフォルダ/cmds.txt"
 ```
+
+## ダンジョンの敵のテスト（`mobs.js`）
+
+`uf_18_mobs.sk` の敵を確かめます（平らなワールドでよい）。表（`uf_roster`）の全部の行で種類・装備・色が読めるか、2〜9 階の中ボスとボスで、画面下の体力のバー・技・怒り（9 階のボスは 3 段階目も）・挑戦の終わりの片付けを確かめます。
+
+テスト用のコマンドが要るので、先に `-zz_mobtest.sk` をテストサーバーに名前を変えて入れます（先頭の `-` は、本番で読み込まれないため）。
+
+```bash
+cp "tests/bot/-zz_mobtest.sk" "テストサーバーのフォルダ/plugins/Skript/scripts/zz_mobtest.sk"
+```
+```bash
+node mobs.js "テストサーバーのフォルダ/cmds.txt"
+```
+
+`test.js` を流すときは、`zz_mobtest.sk` を消しておく（変数を書き換えるため）。
 
 ## 15号館の通し挑戦テスト（`drun.js`）
 

@@ -1,5 +1,9 @@
-# 画面下（アクションバー）に今のポイントを出す
+# 画面下（アクションバー）に今のポイントを出す。ダンジョンで中ボス・ボスと戦っている間は、その体力のバー（uf_18_mobs.sk の uf_bbtext）
 #   前はモンスター討伐のスコア（{score::*}）を数えて出していたが、今の構想では使わないのでやめた（2026-10-26）
 every 1 second:
     loop all players:
-        send action bar "&f<&e&lポイント: &6%uf_pt(loop-player)%pt&f>" to loop-player
+        set {_t} to uf_bbtext(loop-player)
+        if {_t} is set:
+            send action bar {_t} to loop-player
+        else:
+            send action bar "&f<&e&lポイント: &6%uf_pt(loop-player)%pt&f>" to loop-player

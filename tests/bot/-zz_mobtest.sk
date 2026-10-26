@@ -1,0 +1,64 @@
+# ============================================================
+# -zz_mobtest.sk : ダンジョンの敵のテスト用コマンド（テストサーバー専用）
+#   先頭の - で本番では読み込まれない。tests/bot/mobs.js がテストサーバーに zz_mobtest.sk として入れる
+#   /zzroster          uf_roster の全部の行で、種類・装備・色が読めるか
+#   /zzfight <階> <tier>  その階の挑戦中ということにして、自分の 6 ブロック先に敵を出す
+#   /zzhp <階> <割合>   その階の敵の体力を、最大の割合にする（怒るかの確認）
+#   /zzend <階>        その階の挑戦を終わらせる（敵と体力のバーが消える）
+# ============================================================
+
+function uf_zzcheck(f: number, tier: text, ent: text) :: number:
+    set {_bad} to 0
+    set {_p::*} to split {_ent} at "|"
+    if ({_p::1} parsed as entity type) is not set:
+        broadcast "BAD type %{_f}% %{_tier}% %{_p::1}%"
+        add 1 to {_bad}
+    if {_p::5} is set:
+        loop split {_p::5} at ",":
+            set {_g} to loop-value
+            if {_g} starts with "L:":
+                set {_q::*} to split {_g} at ":"
+                if ({_q::3} parsed as color) is not set:
+                    broadcast "BAD color %{_f}% %{_tier}% %{_g}%"
+                    add 1 to {_bad}
+            else if {_g} starts with "hand:":
+                if ((last (length of {_g} - 5) characters of {_g}) parsed as item type) is not set:
+                    broadcast "BAD hand %{_f}% %{_tier}% %{_g}%"
+                    add 1 to {_bad}
+            else if {_g} is not "":
+                if ({_g} parsed as item type) is not set:
+                    broadcast "BAD item %{_f}% %{_tier}% %{_g}%"
+                    add 1 to {_bad}
+    return {_bad}
+
+command /zzroster:
+    trigger:
+        set {_bad} to 0
+        set {_n} to 0
+        loop integers between 2 and 9:
+            loop "normal", "strong", "elite", "mid" and "boss":
+                loop uf_roster(loop-value-1, loop-value-2):
+                    add 1 to {_n}
+                    add uf_zzcheck(loop-value-1, loop-value-2, loop-value-3) to {_bad}
+        broadcast "roster n=%{_n}% bad=%{_bad}%"
+
+command /zzfight <number> <text>:
+    trigger:
+        set {uf::mod::dungeon} to true
+        set {_f} to arg-1
+        set {-uf::sess::%{_f}%::on} to true
+        set {-uf::sess::%{_f}%::mem::%uuid of player%} to player
+        uf_spawnmob({_f}, arg-2, location of player ~ vector(6, 0, 0))
+        broadcast "fight %{_f}% %arg-2%"
+
+command /zzhp <number> <number>:
+    trigger:
+        loop {-uf::sess::%arg-1%::mobs::*}:
+            if loop-value is alive:
+                set health of loop-value to (max health of loop-value) * arg-2
+        broadcast "hp %arg-1% %arg-2%"
+
+command /zzend <number>:
+    trigger:
+        uf_dend(arg-1, "test", false)
+        broadcast "end %arg-1%"

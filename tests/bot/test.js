@@ -310,9 +310,10 @@ T.dungeon = async ({ A, P }) => {
   check('floor boss appears', !!(await waitMsg(P, from, /受付に残る影 が現れた/, 6000)));
   await sleep(800);
   // 剣は手に持つ（前は頭の防具の場所に入っていた）
-  const boss = Object.values(P.entities).find((e) => e.name === 'wither_skeleton' && e.position.distanceTo(P.entity.position) < 80);
+  // 2 階のボスは黒い革の装備に鉄の剣（uf_18_mobs.sk の表）
+  const boss = Object.values(P.entities).find((e) => e.equipment && e.equipment[0] && e.equipment[0].name === 'iron_sword' && e.position.distanceTo(P.entity.position) < 80);
   const eq = (i) => (boss && boss.equipment && boss.equipment[i] ? boss.equipment[i].name : 'none');
-  check('boss holds the sword in hand, not on head', eq(0) === 'netherite_sword' && eq(5) === 'none', `hand=${eq(0)} head=${eq(5)}`);
+  check('boss holds the sword in hand, not on head', eq(0) === 'iron_sword' && eq(5) === 'leather_helmet', `hand=${eq(0)} head=${eq(5)}`);
   await killAll(P, 60000);
   check('boss reward', !!(await waitMsg(P, from, /討伐報酬 \+300pt/, 8000)));
   check('first clear reward', !!(await waitMsg(P, from, /初回突破報酬 \+200pt/, 8000)));

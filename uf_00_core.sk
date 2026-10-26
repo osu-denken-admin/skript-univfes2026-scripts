@@ -48,6 +48,7 @@ function uf_defaults():
     uf_setdef("reward::elite", 60)
     uf_setdef("reward::mid", 150)
     uf_setdef("reward::boss", 300)
+    uf_setdef("reward::minion", 3)
 
     # ダンジョン：初回クリア報酬
     uf_setdef("clear_pt::2", 200)

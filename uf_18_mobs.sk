@@ -1,0 +1,397 @@
+# ============================================================
+# uf_18_mobs.sk : ダンジョンの敵（階のテーマごとの見た目と技）と、中ボス・ボスの動き
+#   uf_05_dungeon.sk の uf_spawnmob から uf_mobmake を呼ぶ
+#   敵の顔ぶれは uf_roster の表。1 行が「種類|名前|技|大きさ|装備」
+#     名前が BOSS ならボスの名前（uf_bossname）。大きさはスライムだけ「サイズ」
+#     装備はカンマ区切り。L:<部位>:<色> は色つきの革の防具、hand:<アイテム> は手に持つ物、
+#     それ以外は装備する（ブロックは頭にかぶる）
+#   技（1 秒ごとに 1 つ。uf_skillper の間隔で順番に）
+#     leap 飛びかかる / summon 手下を呼ぶ / shock 予告してから周りに衝撃 / volley 矢の雨
+#     blink 背後に回り込む / poison 毒の霧 / zap 予告してから雷 / dark 暗闇
+#   中ボス・ボスは体力が半分を切ると怒る（速さ・力が上がる）。ボスは技も増える。9 階のボスは 4 分の 1 でもう一段
+#   中ボス・ボスが出ている間は、挑戦中の人の画面下に体力のバー（uf_bbtext。main.sk が出す）
+# ============================================================
+
+function uf_roster(f: number, tier: text) :: texts:
+    if {_f} is 2:
+        if {_tier} is "normal":
+            return "zombie|&7◆ 居残りの生徒||1|L:helmet:blue", "baby zombie|&7◆ 迷子の下級生||1|L:helmet:yellow" and "skeleton|&7◆ チョーク投げ||1|L:chest:white"
+        if {_tier} is "strong":
+            return "zombie|&e◆ 風紀委員の影||1|L:helmet:red,L:chest:red,hand:wooden sword", "husk|&e◆ 遅刻の亡霊||1|iron helmet" and "skeleton|&e◆ 黒板の影||1|L:helmet:black,L:chest:black"
+        if {_tier} is "elite":
+            return "vindicator|&c◆ 生活指導の影|leap|1|" and "zombie|&c◆ 体育教師の影|leap|1.2|L:chest:red,L:legs:red,hand:stone sword"
+        if {_tier} is "mid":
+            return "zombie|&6◆ 中ボス「夜警」|leap,summon|1.4|iron helmet,iron chestplate,hand:iron sword"
+        return "zombie|BOSS|leap,summon,shock|1.7|L:helmet:black,L:chest:black,L:legs:black,L:boots:black,hand:iron sword"
+    if {_f} is 3:
+        if {_tier} is "normal":
+            return "skeleton|&7◆ 本の亡霊||1|bookshelf", "endermite|&7◆ 紙魚（しみ）||1|" and "zombie|&7◆ 読書家の亡霊||1|L:chest:brown"
+        if {_tier} is "strong":
+            return "stray|&e◆ 埃まみれの亡霊||1|bookshelf", "skeleton|&e◆ 栞の射手||1|bookshelf,L:chest:green" and "zombie|&e◆ 返却忘れの亡霊|leap|1|bookshelf"
+        if {_tier} is "elite":
+            return "witch|&c◆ 禁書の魔女|blink|1|" and "skeleton|&c◆ 古書の守り手|volley|1.2|bookshelf,iron chestplate"
+        if {_tier} is "mid":
+            return "skeleton|&6◆ 中ボス「夜の司書」|volley,summon|1.4|bookshelf,chainmail chestplate"
+        return "skeleton|BOSS|volley,blink,summon|1.8|bookshelf,iron chestplate,iron leggings"
+    if {_f} is 4:
+        if {_tier} is "normal":
+            return "slime|&7◆ スライム試料||1|", "zombie villager|&7◆ 被験者||1|" and "spider|&7◆ 実験グモ||1|"
+        if {_tier} is "strong":
+            return "husk|&e◆ 薬品まみれの亡霊|poison|1|L:chest:lime", "zombie villager|&e◆ 防護服の亡霊||1|L:helmet:white,L:chest:white,L:legs:white" and "slime|&e◆ 大きな試料||2|"
+        if {_tier} is "elite":
+            return "witch|&c◆ 狂った研究員|blink|1|" and "husk|&c◆ 劇物の亡霊|poison,leap|1.2|L:helmet:lime,L:chest:lime"
+        if {_tier} is "mid":
+            return "zombie villager|&6◆ 中ボス「暴走した助手」|poison,leap|1.4|glass,L:chest:white"
+        return "zombie|BOSS|poison,summon,leap|1.8|slime block,L:chest:lime,L:legs:lime,L:boots:lime"
+    if {_f} is 5:
+        if {_tier} is "normal":
+            return "endermite|&7◆ バグ||1|", "skeleton|&7◆ ウイルス||1|observer" and "zombie|&7◆ ゾンビプロセス||1|redstone lamp"
+        if {_tier} is "strong":
+            return "stray|&e◆ ワーム||1|observer", "zombie|&e◆ フリーズしたプロセス||1|ice,L:chest:cyan" and "skeleton|&e◆ トロイの木馬||1|observer,L:chest:brown"
+        if {_tier} is "elite":
+            return "pillager|&c◆ ハッカーの影|blink|1|" and "skeleton|&c◆ ランサムウェア|zap|1.2|observer,iron chestplate"
+        if {_tier} is "mid":
+            return "skeleton|&6◆ 中ボス「暴走プロセス」|zap,summon|1.4|observer,chainmail chestplate"
+        return "wither skeleton|BOSS|zap,shock,summon|1.6|redstone lamp,netherite chestplate,hand:netherite sword"
+    if {_f} is 6:
+        if {_tier} is "normal":
+            return "spider|&7◆ 倉庫グモ||1|", "cave spider|&7◆ 小グモ||1|" and "zombie|&7◆ 荷物運び||1|barrel"
+        if {_tier} is "strong":
+            return "pillager|&e◆ 警備員の影||1|", "zombie|&e◆ 荷崩れの亡霊|leap|1|barrel,L:chest:orange" and "spider|&e◆ 大グモ||1.4|"
+        if {_tier} is "elite":
+            return "vindicator|&c◆ 倉庫番|leap|1|" and "pillager|&c◆ 警備隊長の影|volley|1.1|iron helmet"
+        if {_tier} is "mid":
+            return "zombie|&6◆ 中ボス「積み荷の怪」|shock,leap|1.5|barrel,L:chest:orange,L:legs:orange"
+        return "ravager|BOSS|leap,shock|1|"
+    if {_f} is 7:
+        if {_tier} is "normal":
+            return "zombie|&7◆ 疲れた院生||1|L:chest:gray,L:legs:gray", "skeleton|&7◆ 論文の亡霊||1|L:chest:white" and "husk|&7◆ 締め切りの亡霊||1|"
+        if {_tier} is "strong":
+            return "stray|&e◆ 査読の影||1|L:helmet:gray", "zombie villager|&e◆ ポスドクの影|leap|1|" and "skeleton|&e◆ 学会の影||1|L:chest:black"
+        if {_tier} is "elite":
+            return "evoker|&c◆ 影の助手|blink|1|" and "vindicator|&c◆ 教授秘書の影|leap|1|"
+        if {_tier} is "mid":
+            return "evoker|&6◆ 中ボス「准教授の影」|blink|1.3|"
+        return "evoker|BOSS|blink,summon,shock|1.8|"
+    if {_f} is 8:
+        if {_tier} is "normal":
+            return "drowned|&7◆ 濡れた亡霊||1|", "zombie|&7◆ 閉じ込められた亡霊||1|L:chest:gray" and "cave spider|&7◆ 錆グモ||1|"
+        if {_tier} is "strong":
+            return "stray|&e◆ 凍えた亡霊||1|", "husk|&e◆ 干からびた亡霊|leap|1|" and "drowned|&e◆ 水没区画の亡霊||1|hand:trident"
+        if {_tier} is "elite":
+            return "wither skeleton|&c◆ 封鎖の番人|leap|1|" and "drowned|&c◆ 深みの亡霊|dark|1.2|hand:trident"
+        if {_tier} is "mid":
+            return "drowned|&6◆ 中ボス「封鎖区画の監視者」|dark,leap|1.4|hand:trident,iron chestplate"
+        return "zombie villager|BOSS|dark,summon,poison,blink|1.8|carved pumpkin,L:chest:black,L:legs:black"
+    if {_tier} is "normal":
+        return "wither skeleton|&7◆ 講堂の亡霊||1|", "vindicator|&7◆ 最上階の亡霊||1|" and "zombie|&7◆ 鎧の亡霊||1|iron helmet,iron chestplate,hand:iron sword"
+    if {_tier} is "strong":
+        return "pillager|&e◆ 最上階の射手||1|", "stray|&e◆ 冷たい亡霊||1|chainmail chestplate" and "husk|&e◆ 灼けた亡霊|leap|1|"
+    if {_tier} is "elite":
+        return "evoker|&c◆ 主の側近|blink|1|" and "wither skeleton|&c◆ 主の近衛|leap|1.2|netherite helmet"
+    if {_tier} is "mid":
+        return "wither skeleton|&6◆ 中ボス「講堂の守り手」|leap,shock|1.5|netherite helmet"
+    return "wither skeleton|BOSS|leap,shock|2.2|netherite helmet,netherite chestplate,netherite leggings,hand:netherite sword"
+
+# ボスが怒ったときに増える技
+function uf_rageskills(f: number) :: text:
+    if {_f} is 2 or 5:
+        return "blink"
+    if {_f} is 3 or 7:
+        return "dark"
+    if {_f} is 4 or 8:
+        return "shock"
+    return "summon,zap"
+
+function uf_mobhp(f: number, tier: text) :: number:
+    if {_tier} is "normal":
+        return 10 + {_f}
+    if {_tier} is "minion":
+        return 8 + {_f}
+    if {_tier} is "strong":
+        return 15 + {_f} * 1.5
+    if {_tier} is "elite":
+        return 20 + {_f} * 2
+    if {_tier} is "mid":
+        return 40 + {_f} * 5
+    return 80 + {_f} * 15
+
+function uf_leather(part: text, c: color) :: item:
+    if {_part} is "helmet":
+        set {_i} to leather helmet
+    else if {_part} is "chest":
+        set {_i} to leather chestplate
+    else if {_part} is "legs":
+        set {_i} to leather leggings
+    else:
+        set {_i} to leather boots
+    dye {_i} {_c}
+    return {_i}
+
+# 表から 1 体を選んで出す（名前・体力・装備・技・大きさまで）
+function uf_mobmake(f: number, tier: text, l: location) :: entity:
+    set {_rt} to {_tier}
+    if {_rt} is "minion":
+        set {_rt} to "normal"
+    set {_list::*} to uf_roster({_f}, {_rt})
+    set {_p::*} to split (random element out of {_list::*}) at "|"
+    spawn ({_p::1} parsed as entity type) at {_l}
+    set {_e} to last spawned entity
+    set {_name} to {_p::2}
+    if {_name} is "BOSS":
+        set {_name} to uf_bossname({_f})
+    set display name of {_e} to {_name}
+    set {_sc} to {_p::4} parsed as number
+    if {_sc} is set:
+        if {_p::1} is "slime":
+            set size of {_e} to {_sc}
+        else if {_sc} is not 1:
+            set scale attribute of {_e} to {_sc}
+    if {_p::5} is set:
+        loop split {_p::5} at ",":
+            set {_g} to loop-value
+            if {_g} starts with "L:":
+                set {_q::*} to split {_g} at ":"
+                equip {_e} with uf_leather({_q::2}, {_q::3} parsed as color)
+            else if {_g} starts with "hand:":
+                set tool of {_e} to (last (length of {_g} - 5) characters of {_g}) parsed as item type
+            else if {_g} is not "":
+                equip {_e} with ({_g} parsed as item type)
+    set max health of {_e} to uf_mobhp({_f}, {_tier})
+    heal {_e}
+    make {_e} persistent
+    if {_p::3} is set:
+        set metadata value "uf_skills" of {_e} to {_p::3}
+    return {_e}
+
+# ------------------------------------------------------------
+# 技
+# ------------------------------------------------------------
+# 技を使う間隔（秒）
+function uf_skillper(s: text) :: number:
+    if {_s} is "leap":
+        return 5
+    if {_s} is "blink":
+        return 9
+    if {_s} is "summon":
+        return 14
+    if {_s} is "dark":
+        return 16
+    return 8
+
+# 挑戦中の人のうち、いちばん近くで生きている人（20 ブロック以内）
+function uf_mobtarget(f: number, e: entity) :: player:
+    set {_best} to 20
+    loop {-uf::sess::%{_f}%::mem::*}:
+        if loop-value is online:
+            if loop-value is alive:
+                if "%world of loop-value%" is "%world of {_e}%":
+                    set {_d} to distance between loop-value and {_e}
+                    if {_d} < {_best}:
+                        set {_best} to {_d}
+                        set {_t} to loop-value
+    return {_t}
+
+# 近く（r ブロック以内）にいる、挑戦中の人
+function uf_mobnear(f: number, l: location, r: number) :: players:
+    loop {-uf::sess::%{_f}%::mem::*}:
+        if loop-value is online:
+            if loop-value is alive:
+                if "%world of loop-value%" is "%world of {_l}%":
+                    if distance between loop-value and {_l} <= {_r}:
+                        add loop-value to {_out::*}
+    return {_out::*}
+
+every 1 second:
+    uf_on("dungeon") is true
+    loop integers between 2 and 9:
+        if {-uf::sess::%loop-value%::on} is true:
+            uf_mobtick(loop-value)
+
+function uf_mobtick(f: number):
+    loop {-uf::sess::%{_f}%::mobs::*}:
+        set {_e} to loop-value
+        if {_e} is alive:
+            set {_sk} to metadata value "uf_skills" of {_e}
+            if {_sk} is set:
+                uf_mobact({_f}, {_e})
+
+function uf_mobact(f: number, e: entity):
+    set {_t} to uf_mobtarget({_f}, {_e})
+    if {_t} is not set:
+        stop
+    set {_mid} to metadata value "uf_mid" of {_e}
+    set {_tier} to metadata value "uf_tier" of {_e}
+    if {_tier} is "mid" or "boss":
+        uf_mobrage({_f}, {_e}, {_mid}, {_tier})
+    add 1 to {-uf::mob::%{_mid}%::t}
+    set {_tk} to {-uf::mob::%{_mid}%::t}
+    loop split (metadata value "uf_skills" of {_e}) at ",":
+        if mod({_tk} + {_mid}, uf_skillper(loop-value)) is 0:
+            uf_skill({_f}, {_e}, {_t}, loop-value)
+            stop
+
+# 体力が減ったら怒る
+function uf_mobrage(f: number, e: entity, mid: number, tier: text):
+    set {_ph} to {-uf::mob::%{_mid}%::ph}
+    if {_ph} is not set:
+        set {_ph} to 1
+    set {_r} to (health of {_e}) / (max health of {_e})
+    set {_n} to uncolored display name of {_e}
+    if {_ph} is 1:
+        if {_r} < 0.5:
+            set {-uf::mob::%{_mid}%::ph} to 2
+            apply speed 1 to {_e} for 10 minutes
+            apply strength 1 to {_e} for 10 minutes
+            play 30 large smoke at location of {_e}
+            play sound "entity.ravager.roar" with volume 1.5 at {_e}
+            uf_dsay({_f}, "&c%{_n}% が怒った！ 動きが速くなった！")
+            if {_tier} is "boss":
+                set {_cur} to metadata value "uf_skills" of {_e}
+                set metadata value "uf_skills" of {_e} to "%{_cur}%,%uf_rageskills({_f})%"
+    else if {_ph} is 2:
+        if {_f} is 9:
+            if {_tier} is "boss":
+                if {_r} < 0.25:
+                    set {-uf::mob::%{_mid}%::ph} to 3
+                    apply resistance 1 to {_e} for 10 minutes
+                    play 40 portal at location of {_e}
+                    play sound "entity.wither.spawn" with volume 1 at {_e}
+                    uf_dsay({_f}, "&4%{_n}% が最後の力を振りしぼった！")
+                    set {_cur} to metadata value "uf_skills" of {_e}
+                    set metadata value "uf_skills" of {_e} to "%{_cur}%,dark,blink"
+
+function uf_skill(f: number, e: entity, t: player, s: text):
+    set {_n} to uncolored display name of {_e}
+    if {_s} is "leap":
+        if distance between {_e} and {_t} > 3:
+            set {_v} to normalized vector from {_e} to {_t}
+            push {_e} {_v} at speed 1.1
+            push {_e} upwards at speed 0.45
+            play sound "entity.horse.jump" with volume 1 at {_e}
+    else if {_s} is "summon":
+        if {-uf::sess::%{_f}%::minions} is not set:
+            set {-uf::sess::%{_f}%::minions} to 0
+        if {-uf::sess::%{_f}%::minions} < 4:
+            uf_dsay({_f}, "&c%{_n}% が手下を呼んだ！")
+            play 20 portal at location of {_e}
+            loop 2 times:
+                uf_spawnmob({_f}, "minion", location of {_e} ~ vector(random number between -2 and 2, 0, random number between -2 and 2))
+    else if {_s} is "shock":
+        uf_skshock({_f}, {_e})
+    else if {_s} is "volley":
+        uf_skvolley({_f}, {_e}, {_t})
+    else if {_s} is "blink":
+        set {_d} to location 2 meters behind {_t}
+        if block at {_d} is passable:
+            if block above block at {_d} is passable:
+                play 20 portal at location of {_e}
+                teleport {_e} to {_d}
+                play sound "entity.enderman.teleport" with volume 1 at {_e}
+    else if {_s} is "poison":
+        set {_l} to location of {_e}
+        loop 16 times:
+            play 2 dragon breath at {_l} ~ vector(random number between -3.5 and 3.5, 0.5, random number between -3.5 and 3.5)
+        play sound "entity.witch.throw" with volume 1 at {_l}
+        loop uf_mobnear({_f}, {_l}, 4):
+            apply poison 1 to loop-value for 4 seconds
+            uf_msg(loop-value, "&2毒の霧だ！ 離れろ！")
+    else if {_s} is "zap":
+        uf_skzap({_f}, {_t})
+    else if {_s} is "dark":
+        play sound "entity.warden.heartbeat" with volume 1.5 at {_e}
+        loop uf_mobnear({_f}, location of {_e}, 20):
+            apply darkness to loop-value for 5 seconds
+            uf_msg(loop-value, "&8あたりが暗くなった…")
+
+# 周りに衝撃（1 秒前に予告）
+function uf_skshock(f: number, e: entity):
+    set {_n} to uncolored display name of {_e}
+    set {_l} to location of {_e}
+    loop 16 times:
+        play 2 crit at {_l} ~ vector(cos(loop-number * 22.5) * 4, 0.3, sin(loop-number * 22.5) * 4)
+    play sound "block.anvil.land" with volume 1 at {_l}
+    loop uf_mobnear({_f}, {_l}, 12):
+        uf_msg(loop-value, "&c%{_n}% が力をためている… 離れろ！")
+    wait 1 second
+    {_e} is alive
+    set {_l} to location of {_e}
+    play 3 explosion at {_l}
+    play sound "entity.generic.explode" with volume 1 at {_l}
+    loop uf_mobnear({_f}, {_l}, 4.5):
+        damage loop-value by 1.5 + {_f} * 0.25
+        set {_v} to normalized vector from {_l} to loop-value
+        push loop-value {_v} at speed 0.9
+        push loop-value upwards at speed 0.4
+
+# 矢の雨（狙った人の周りに降る。3 秒後に矢を消す）
+function uf_skvolley(f: number, e: entity, t: player):
+    set {_l} to location of {_t}
+    uf_msg({_t}, "&e上から矢が降ってくる！")
+    play sound "entity.arrow.shoot" with volume 1 at {_e}
+    loop 6 times:
+        spawn an arrow at {_l} ~ vector(random number between -2 and 2, 7, random number between -2 and 2)
+        set {_a} to last spawned entity
+        set velocity of {_a} to vector(0, -1.6, 0)
+        add {_a} to {_arrows::*}
+    wait 3 seconds
+    loop {_arrows::*}:
+        kill loop-value
+
+# 雷（狙った場所に 1 秒前に予告。見た目だけの雷 + ダメージ）
+function uf_skzap(f: number, t: player):
+    set {_l} to location of {_t}
+    loop 8 times:
+        play 2 enchantment table at {_l} ~ vector(random number between -1.5 and 1.5, 0.2, random number between -1.5 and 1.5)
+    play sound "block.beacon.activate" with volume 1 at {_l}
+    uf_msg({_t}, "&e足元に電気が集まっている… 動け！")
+    wait 1 second
+    strike lightning effect at {_l}
+    loop uf_mobnear({_f}, {_l}, 2.5):
+        damage loop-value by 1.5 + {_f} * 0.25
+        apply slowness 1 to loop-value for 2 seconds
+
+# ------------------------------------------------------------
+# 体力のバー（画面下のアクションバーに出す。main.sk がポイントの代わりに出す）
+#   vanilla の bossbar はコンソールのコマンドで動かすことになり、OP の人のチャットに毎回表示が流れるので使わない
+# ------------------------------------------------------------
+function uf_bbstart(f: number, e: entity, tier: text):
+    uf_bbclear({_f})
+    set {-uf::sess::%{_f}%::bb} to {_e}
+    loop {-uf::sess::%{_f}%::mem::*}:
+        set {-uf::bbof::%uuid of loop-value%} to {_f}
+
+function uf_bbclear(f: number):
+    delete {-uf::sess::%{_f}%::bb}
+    loop {-uf::sess::%{_f}%::mem::*}:
+        if {-uf::bbof::%uuid of loop-value%} is {_f}:
+            delete {-uf::bbof::%uuid of loop-value%}
+
+# 例: ◆ 受付に残る影 [||||||||||          ] 51 / 110
+function uf_bbtext(p: player) :: text:
+    set {_f} to {-uf::bbof::%uuid of {_p}%}
+    if {_f} is not set:
+        return {_none}
+    set {_e} to {-uf::sess::%{_f}%::bb}
+    if {_e} is not set:
+        delete {-uf::bbof::%uuid of {_p}%}
+        return {_none}
+    if {_e} is not alive:
+        return {_none}
+    set {_hp} to ceil(health of {_e})
+    set {_mx} to ceil(max health of {_e})
+    set {_k} to round(20 * {_hp} / {_mx})
+    set {_bar} to ""
+    loop 20 times:
+        if loop-number <= {_k}:
+            set {_bar} to "%{_bar}%&c|"
+        else:
+            set {_bar} to "%{_bar}%&8|"
+    set {_n} to display name of {_e}
+    return "%{_n}% &8[%{_bar}%&8] &f%{_hp}% / %{_mx}%"
+
+# ダンジョンのスライムは倒しても分かれない（分かれた子は管理していないので、挑戦が終わっても残ってしまう）
+on slime split:
+    metadata value "uf_tier" of event-entity is set
+    cancel event
+

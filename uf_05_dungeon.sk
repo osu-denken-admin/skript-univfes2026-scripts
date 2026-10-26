@@ -211,58 +211,10 @@ function uf_spawnwave(f: number):
             set {_l} to random element out of {uf::floor::%{_f}%::spawn::*}
             uf_spawnmob({_f}, {_tier}, {_l})
 
+# 敵の顔ぶれ・見た目・技は uf_18_mobs.sk（uf_mobmake）
+#   tier: normal / strong / elite（フロアの敵）、mid / boss、minion（ボスが呼ぶ手下。全滅の数には入れない）
 function uf_spawnmob(f: number, tier: text, l: location):
-    set {_r} to random integer between 1 and 3
-    if {_tier} is "normal":
-        if {_r} is 1:
-            spawn a zombie at {_l}
-        else if {_r} is 2:
-            spawn a skeleton at {_l}
-        else:
-            spawn a spider at {_l}
-        set {_e} to last spawned entity
-        set {_hp} to 10 + {_f}
-        set {_name} to "&7◆ さまよう亡霊"
-    else if {_tier} is "strong":
-        if {_r} is 1:
-            spawn a husk at {_l}
-        else if {_r} is 2:
-            spawn a stray at {_l}
-        else:
-            spawn a zombie at {_l}
-        set {_e} to last spawned entity
-        equip {_e} with iron helmet
-        set {_hp} to 15 + {_f} * 1.5
-        set {_name} to "&e◆ 強化された亡霊"
-    else if {_tier} is "elite":
-        if {_r} is 1:
-            spawn a wither skeleton at {_l}
-        else if {_r} is 2:
-            spawn a vindicator at {_l}
-        else:
-            spawn a zombie at {_l}
-        set {_e} to last spawned entity
-        equip {_e} with iron chestplate
-        set {_hp} to 20 + {_f} * 2
-        set {_name} to "&c◆ エリート亡霊"
-    else if {_tier} is "mid":
-        spawn a zombie at {_l}
-        set {_e} to last spawned entity
-        equip {_e} with diamond helmet
-        equip {_e} with diamond chestplate
-        set tool of {_e} to iron sword
-        set {_hp} to 40 + {_f} * 5
-        set {_name} to "&6◆ 中ボス「夜警」"
-    else:
-        spawn a wither skeleton at {_l}
-        set {_e} to last spawned entity
-        equip {_e} with netherite chestplate
-        set tool of {_e} to netherite sword
-        set {_hp} to 80 + {_f} * 15
-        set {_name} to uf_bossname({_f})
-    set display name of {_e} to {_name}
-    set max health of {_e} to {_hp}
-    heal {_e}
+    set {_e} to uf_mobmake({_f}, {_tier}, {_l})
     set metadata value "uf_tier" of {_e} to {_tier}
     set metadata value "uf_floor" of {_e} to {_f}
     add 1 to {-uf::mobseq}
@@ -270,6 +222,10 @@ function uf_spawnmob(f: number, tier: text, l: location):
     add {_e} to {-uf::sess::%{_f}%::mobs::*}
     if {_tier} is "normal" or "strong" or "elite":
         add 1 to {-uf::sess::%{_f}%::alive}
+    else if {_tier} is "minion":
+        add 1 to {-uf::sess::%{_f}%::minions}
+    else:
+        uf_bbstart({_f}, {_e}, {_tier})
 
 function uf_dloc(f: number, k: text) :: location:
     if {uf::floor::%{_f}%::%{_k}%} is set:
@@ -608,9 +564,13 @@ on death:
                 uf_msg({_p}, "&a討伐報酬 &e+%{_pt}%pt")
     delete {-uf::dmg::%{_mid}%::*}
     if {_tier} is "mid":
+        uf_bbclear({_f})
         uf_dmidwin({_f})
     else if {_tier} is "boss":
+        uf_bbclear({_f})
         uf_dbosswin({_f})
+    else if {_tier} is "minion":
+        remove 1 from {-uf::sess::%{_f}%::minions}
     else:
         remove 1 from {-uf::sess::%{_f}%::alive}
 
@@ -636,6 +596,7 @@ function uf_dend(f: number, reason: text, tolobby: boolean = true):
     if {-uf::sess::%{_f}%::on} is not true:
         stop
     set {-uf::sess::%{_f}%::on} to false
+    uf_bbclear({_f})
     loop {-uf::sess::%{_f}%::mobs::*}:
         if loop-value is alive:
             kill loop-value

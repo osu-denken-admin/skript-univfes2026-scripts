@@ -61,6 +61,7 @@ systemctl --user restart mc-server
 | `uf_14_admintool.sk` | 管理者ツール（本）。Java 版は本の画面（項目は `/ufadmin ui <画面番号> <スロット>`）、統合版と「チェスト表示」を選んだ人はチェスト画面 |
 | `uf_16_board.sk` | ランキングの掲示板（壁に貼りつける浮かぶ文字 text display。1 分ごとに上位 10 人）。種類: dkills・chipwon・sold・bought・clears・earned |
 | `uf_17_npc.sk` | 受付・ショップ・カジノの NPC（村人）。話しかけると画面が開く。NPC から開いた人は 3 分間、区域の外でも使える（`uf_canuse`） |
+| `uf_18_mobs.sk` | ダンジョンの敵。階のテーマごとの顔ぶれの表（`uf_roster`、1 行「種類\|名前\|技\|大きさ\|装備」）、技（飛びかかる・手下・予告つき衝撃・矢の雨・回り込み・毒・予告つき雷・暗闇）、怒り（体力半分）、画面下の体力のバー |
 | `uf_15_layout.sk` | 15号館の各階の座標と壁の位置（`tools/dungeon/preset.js` で自動生成。手で直さない） |
 | `-uf_13_bike.sk` | 試作のバイク（`-` で無効） |
 | `tools/dungeon/` | 15号館の内装・闘技場の生成と `.litematic` 書き出し。`layout/` に完成品。詳しくは同じフォルダの README |
@@ -87,6 +88,9 @@ systemctl --user restart mc-server
 - ブロックの状態は `"%block data of block at L%"` で保存し、`({文字} parsed as block data)` で戻せる
 - 本: `open book {_b} to player` で開ける。`<cmd:/…>` `<tooltip:…>` は **`formatted` にした文字だけ**クリック・説明になる。説明（tooltip）の中に色記号（`&7`）があると説明として読まれず、半角の `:` から後ろは消える（`uf_bklink` で色を外し、`:` `<` `>` を全角にしている）
 - `book title of` は非推奨（`title of`）
+- vanilla の bossbar をコンソールのコマンドで動かすと、OP の人のチャットに毎回「[Server: …]」が流れる。体力のバーは画面下（アクションバー）に出している
+- ブロックの座標（`x-coordinate of` ブロック）は真ん中（5.5 など）で返る
+- スライムは倒すと分かれ、分かれた子には metadata が付かない（`on slime split` で止めている）
 - Minecraft 1.21.11 ではゲームルール名が変わる（本番の 1.21.4 は古い名前）
 
 ## テスト
@@ -98,8 +102,9 @@ systemctl --user restart mc-server
 - `node test.js <cmds.txt のパス>`: **変数が空（`plugins/Skript/variables.csv` なし）で始める**。15号館の設定が残っているとダンジョンの項目が失敗する
 - `node drun.js <cmds.txt のパス> ../../tools/dungeon/layout`: 15号館（本番から取った建物）を再現したワールドで、2→9 階を通しで登る
 - `node lights.js <cmds.txt のパス>`: 管理者ツールの「15号館のライトを置き直す」を平らなワールドで確かめる
-- 2026-10-25 の結果: `drun.js` 93/93（Skript 2.16.2）。2026-10-26（Skript 2.13.1）: `test.js` 109/109、`lights.js` 29/29
+- 2026-10-25 の結果: `drun.js` 93/93（Skript 2.16.2）。2026-10-26（Skript 2.13.1）: `test.js` 109/109、`lights.js` 29/29、`mobs.js` 81/81
 - この PC（Windows）のテストサーバーは `F:\Claude\testserver-1214`（Skript 2.13.1。2.16.2 の jar は `F:\Claude\testserver-jars`。15号館のワールドはないので `drun.js` は動かせない）。git の作者はこのリポジトリだけ `jtoxyz` に設定済み
+- `node mobs.js <cmds.txt のパス>`: ダンジョンの敵（全階の中ボス・ボスの技・怒り・体力のバー・片付け、表の全行）。先に `tests/bot/-zz_mobtest.sk` をテストサーバーに `zz_mobtest.sk` として入れる
 - `node live.js denken-mc 25565 ClaudeBot <コマンドのファイル> <記録のファイル>`: 本番に入りっぱなしにするボット。コマンドのファイルに 1 行ずつ足すと実行し、チャット・本・チェスト画面の中身を記録に書く（使い方はファイルの先頭）
 - mineflayer の注意: 1.21.4 のしゃがみはパケットを直接送る（`test.js` の `sneak`）。アイテムを使う前に `deactivateItem`
 
@@ -113,6 +118,7 @@ systemctl --user restart mc-server
 - Litematica で内装と闘技場を貼った（Prism Launcher のインスタンス「1.21.11」、中身は 1.21.4 + Litematica 0.21.7）。ただしライトブロックが置かれず、もとのライトも消えなかった → 管理者ツールに「15号館のライトを置き直す」を追加（ブランチ `fix-dungeon-lights`）
 - Litematica は読み込まれたチャンクにしか貼れない。闘技場の 8・9 階（x -60〜14）が貼れていなかった
 
+- 2026-10-26: ダンジョンの敵を作り直した（`uf_18_mobs.sk`）。前は名前を変えただけの普通の敵だった
 - 2026-10-26: 「大学祭イベント」（スコアの開始・終了・リセット）を管理者ツールと `/ufadmin` から外した。来るのはほとんど小学生で競わせない。常設のランキングは掲示板。`{score::*}` のデータは残してある
 - 2026-10-26: 管理者ツールに「ランキングの掲示板」と「NPC」を足した（最初の画面の 37・38）。本番ではまだどこにも置いていない
 - 2026-10-26: 統合版が入れるようにした（WARP のプロキシ）。サーバーと playit を自動で起動するようにした（systemd、Linger）。
