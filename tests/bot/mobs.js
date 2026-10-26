@@ -24,7 +24,7 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   b.msgs = []; b.actionbar = '';
   const plain = (n) => (n == null ? '' : typeof n === 'string' ? n : Array.isArray(n) ? n.map(plain).join('') : (n.text ?? n[''] ?? '') + plain(n.extra));
   b._client.on('action_bar', (d) => { b.actionbar = plain(d.text && d.text.type ? nbt.simplify(d.text) : d.text); });
-  b.on('messagestr', (m, pos) => { if (pos === 'game_info') { b.actionbar = m; return; } b.msgs.push(m); if (/BAD|roster|怒った|最後の力/.test(m)) log('[chat]', m); });
+  b.on('messagestr', (m, pos) => { if (pos === 'game_info') { b.actionbar = m; return; } b.msgs.push(m); if (process.env.DEBUG || /BAD|roster|怒った|最後の力/.test(m)) log('[chat]', m); });
   await new Promise((r) => b.once('spawn', r));
   await sleep(2000);
   con('gamemode creative UfMob'); con('gamerule doMobSpawning false'); con('time set day');
@@ -35,6 +35,38 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   b.chat('/zzroster');
   const r = await waitMsg(from, /roster n=/, 5000);
   check('roster: every entity type, item and color can be read', !!r && /bad=0/.test(r), r || 'no reply');
+
+  // 電研ボムと帰還の巻物（uf_20_items2.sk）
+  con('kill @e[type=!player]'); await sleep(500);
+  from = b.msgs.length;
+  // 近くの敵や足元のブロックを見たままだと「空中を右クリック」が受け付けられないので、敵は 6 ブロック先に出す
+  b.chat('/zzfight 2 normal 6'); await waitMsg(from, /^fight/, 3000); await sleep(1500);
+  const target = () => Object.values(b.entities).find((e) => e !== b.entity && e.type !== 'player' && ['zombie', 'skeleton'].includes(e.name) && e.position.distanceTo(b.entity.position) < 10);
+  for (let i = 0; i < 4; i++) b.chat('/ufadmin give it_bomb');
+  b.chat('/ufadmin give it_warp');
+  con('effect give @e[type=zombie] slowness 30 10'); con('effect give @e[type=skeleton] slowness 30 10');
+  await sleep(1500);
+  const points = async () => { const f0 = b.msgs.length; b.chat('/points'); const m = await waitMsg(f0, /ポイント: (\d+)/, 4000); return m ? Number(m.match(/ポイント: (\d+)/)[1]) : null; };
+  const pt0 = await points();
+  const bomb = b.inventory.items().find((i) => JSON.stringify(i).includes('uf:it_bomb'));
+  if (bomb) await b.equip(bomb, 'hand');
+  for (let i = 0; i < 4 && target(); i++) {
+    const t = target();
+    await b.lookAt(t.position.offset(0, 0.5, 0), true); b.activateItem(); await sleep(400); b.deactivateItem(); await sleep(1400);
+  }
+  check('bomb kills a dungeon enemy', !target());
+  await sleep(500);
+  const pt1 = await points();
+  check('bomb kill counts for the reward', pt0 !== null && pt1 !== null && pt1 > pt0, `${pt0} -> ${pt1}`);
+  con('tp UfMob 20 -60 0'); await sleep(1200);
+  const warp = b.inventory.items().find((i) => JSON.stringify(i).includes('uf:it_warp'));
+  if (warp) await b.equip(warp, 'hand');
+  await b.look(b.entity.yaw, 0, true); await sleep(300);
+  from = b.msgs.length;
+  b.activateItem(); await sleep(300); b.deactivateItem();
+  const warped = !!(await waitMsg(from, /復帰地点に戻った/, 3000)); await sleep(800);
+  check('warp scroll returns to the checkpoint', warped && Math.abs(b.entity.position.x - 0.5) < 1.5 && Math.abs(b.entity.position.z - 0.5) < 1.5, b.entity.position.toString());
+  b.chat('/zzend 2'); await sleep(1500);
 
   for (let f = 2; f <= 9; f++) {
     for (const tier of ['mid', 'boss']) {

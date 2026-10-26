@@ -2,7 +2,7 @@
 # -zz_mobtest.sk : ダンジョンの敵のテスト用コマンド（テストサーバー専用）
 #   先頭の - で本番では読み込まれない。tests/bot/mobs.js がテストサーバーに zz_mobtest.sk として入れる
 #   /zzroster          uf_roster の全部の行で、種類・装備・色が読めるか
-#   /zzfight <階> <tier>  その階の挑戦中ということにして、自分の 6 ブロック先に敵を出す
+#   /zzfight <階> <tier> [距離]  その階の挑戦中ということにして（今いる場所を復帰地点にする）、自分の 3（距離）ブロック先に敵を出す
 #   /zzhp <階> <割合>   その階の敵の体力を、最大の割合にする（怒るかの確認）
 #   /zzend <階>        その階の挑戦を終わらせる（敵と体力のバーが消える）
 # ============================================================
@@ -42,13 +42,20 @@ command /zzroster:
                     add uf_zzcheck(loop-value-1, loop-value-2, loop-value-3) to {_bad}
         broadcast "roster n=%{_n}% bad=%{_bad}%"
 
-command /zzfight <number> <text>:
+command /zzfight <number> <text> [<number>]:
     trigger:
         set {uf::mod::dungeon} to true
+        set {uf::cfg::world::dungeon} to "%world of player%"
         set {_f} to arg-1
         set {-uf::sess::%{_f}%::on} to true
+        set {-uf::sess::%{_f}%::phase} to "explore"
         set {-uf::sess::%{_f}%::mem::%uuid of player%} to player
-        uf_spawnmob({_f}, arg-2, location of player ~ vector(6, 0, 0))
+        set {-uf::insess::%uuid of player%} to {_f}
+        set {uf::floor::%{_f}%::cp} to location of player
+        set {_d} to arg-3
+        if {_d} is not set:
+            set {_d} to 3
+        uf_spawnmob({_f}, arg-2, location of player ~ vector({_d}, 0, 0))
         broadcast "fight %{_f}% %arg-2%"
 
 command /zzhp <number> <number>:

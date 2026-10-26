@@ -343,7 +343,7 @@ function uf_adminopen(p: player, page: text):
     else if {_k} is "protarea":
         uf_ap_protarea({_p}, {_q::2})
     else if {_k} is "items":
-        uf_ap_items({_p})
+        uf_ap_items({_p}, {_q::2} parsed as number)
     else if {_k} is "logs":
         uf_ap_logs({_p})
     else if {_k} is "editor":
@@ -944,15 +944,29 @@ function uf_ap_protarea(p: player, n: text):
     uf_abtn({_p}, {_g}, 24, tnt, "&cこの保護区域を消す", "&7確認画面が出ます", "ask/保護区域 %{_n}% を消す|protdel/%{_n}%")
     uf_ashow({_p}, {_g}, "prot")
 
-function uf_ap_items(p: player):
-    set {_g} to uf_apage({_p}, "&4特殊アイテム（クリックで1個受け取る）")
+# 1 ページ 45 個まで。多いときは「次のページ」で続きを出す
+function uf_ap_items(p: player, pg: number = 1):
+    if {_pg} is not set:
+        set {_pg} to 1
+    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp" and "admin_tool"
+    set {_last} to ceil(size of {_ids::*} / 45)
+    set {_pg} to max(1, min({_pg}, {_last}))
+    set {_g} to uf_apage({_p}, "&4特殊アイテム %{_pg}% / %{_last}%（クリックで1個受け取る）")
     set {_s} to 0
-    loop "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots" and "admin_tool":
-        set {_it} to uf_item(loop-value)
-        if {_it} is set:
-            set slot {_s} of {_g} to {_it}
-            uf_abook({_p}, {_s}, "%name of {_it}%", "&7%loop-value%|&eクリックで1個受け取る", "give/%loop-value%")
-            add 1 to {_s}
+    set {_i} to 0
+    loop {_ids::*}:
+        add 1 to {_i}
+        if {_i} > ({_pg} - 1) * 45:
+            if {_s} < 45:
+                set {_it} to uf_item(loop-value)
+                if {_it} is set:
+                    set slot {_s} of {_g} to {_it}
+                    uf_abook({_p}, {_s}, "%name of {_it}%", "&7%loop-value%|&eクリックで1個受け取る", "give/%loop-value%")
+                    add 1 to {_s}
+    if {_pg} > 1:
+        uf_abtn({_p}, {_g}, 48, arrow, "&f前のページ", "&7%{_pg} - 1% ページ目", "open/items/%{_pg} - 1%")
+    if {_pg} < {_last}:
+        uf_abtn({_p}, {_g}, 50, arrow, "&f次のページ", "&7%{_pg} + 1% ページ目", "open/items/%{_pg} + 1%")
     uf_ashow({_p}, {_g}, "hub")
 
 function uf_ap_logs(p: player):

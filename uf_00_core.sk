@@ -155,6 +155,15 @@ function uf_defaults():
     uf_shopdef("tool_shovel3", 800, 0, false)
     uf_shopdef("tool_axe", 1200, 0, false)
     uf_shopdef("ore_potion", 300, 0, false)
+    # 気軽なアイテム（uf_20_items2.sk）
+    uf_shopdef("it_onigiri", 20, 0, true)
+    uf_shopdef("it_speed", 60, 0, true)
+    uf_shopdef("it_bomb", 80, 2, true)
+    uf_shopdef("it_warp", 100, 2, true)
+    uf_shopdef("it_jump", 300, 3, true)
+    uf_shopdef("it_power", 120, 3, true)
+    uf_shopdef("it_guard", 120, 4, true)
+    uf_shopdef("it_night", 500, 5, true)
 
     # 売却価格（キーは "%type of item%" の文字列。/ufadmin sellprice で手持ちアイテムから登録し直せる）
     uf_selldef("wheat", 2, "crop")

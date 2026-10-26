@@ -11,6 +11,9 @@ function uf_item(id: text, lv: number = 0) :: item:
         return uf_gearitem({_id}, {_lv})
     if {_id} starts with "dga_":
         return uf_gearitem({_id}, {_lv})
+    # ショップの気軽なアイテムは uf_20_items2.sk
+    if {_id} starts with "it_":
+        return uf_item2({_id})
     set {_w} to false
     if {_id} is "heal_kit":
         set {_b} to honey bottle

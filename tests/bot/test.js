@@ -556,6 +556,36 @@ T.gear = async ({ A }) => {
   for (const dest of ['head', 'torso', 'legs', 'feet']) await A.unequip(dest).catch(() => {});
 };
 
+// ショップの気軽なアイテム（uf_20_items2.sk）
+T.items = async ({ A }) => {
+  closeWin(A);
+  A.chat('/ufadmin give it_speed'); await sleep(1000);
+  await hold(A, 'スピードドリンク');
+  let from = A.msgs.length;
+  A.activateItem(); await sleep(2400); A.deactivateItem();
+  check('speed drink message', !!(await waitMsg(A, from, /足が速くなった/, 3000)));
+  check('speed drink gives speed', Object.keys(A.entity.effects || {}).map(Number).includes(A.registry.effectsByName.Speed.id));
+  A.chat('/ufadmin give it_warp'); await sleep(1000);
+  await hold(A, '帰還の巻物');
+  from = A.msgs.length;
+  A.activateItem(); await sleep(300); A.deactivateItem();
+  check('warp scroll only works during a run', !!(await waitMsg(A, from, /挑戦中にだけ使えます/, 3000)));
+  A.chat(`/ufadmin points ${A.username} give 100`); await sleep(800);
+  let w = await cmdWin(A, '/buy');
+  check('shop lists the new items', findSlot(w, 'おにぎり') >= 0 && findSlot(w, 'スピードドリンク') >= 0, w ? '' : 'no shop');
+  const s0 = findSlot(w, 'おにぎり');
+  from = A.msgs.length;
+  if (s0 >= 0) await A.clickWindow(s0, 0, 0).catch(() => {});
+  check('buy onigiri', !!(await waitMsg(A, from, /購入しました: ?おにぎり/, 3000)));
+  closeWin(A); await sleep(500);
+  w = await openTool(A);
+  w = await clickBook(A, 33);
+  check('items page 1 of 2', titleOf(w).includes('1 / 2'), titleOf(w).slice(0, 40));
+  w = await clickBook(A, 50);
+  check('items page 2 has the new items', titleOf(w).includes('2 / 2') && titleOf(w).includes('帰還の巻物'), titleOf(w).slice(0, 40));
+  closeWin(A);
+};
+
 // ランキングの掲示板（壁を見ながら置く → 文字が出る → 消す）
 T.boards = async ({ A }) => {
   closeWin(A);
@@ -669,7 +699,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'boards', 'npc', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);
