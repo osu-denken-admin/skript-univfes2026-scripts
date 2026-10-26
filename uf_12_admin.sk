@@ -13,10 +13,9 @@
 #   /ufadmin sellprice <価格> / sellcat <crop|fish|ore|wood|none>   手に持ったアイテム
 #   /ufadmin casino [<ゲーム> <項目> <値>]
 #   /ufadmin cfg <キー> [値]
-#   /ufadmin event <start|stop|reset>
 #   /ufadmin maint <on|off>
 #   /ufadmin log / give <id> [強化Lv] / defaults
-# 重要な変更（イベントリセット・メンテナンス）は確認画面を通す。
+# 重要な変更（メンテナンスなど）は確認画面を通す。
 # 操作はすべて uf_adminlog で記録する。
 # ============================================================
 
@@ -337,16 +336,6 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             uf_msg(player, "&a%{_k}%: %{_old}% → %{uf::cfg::%{_k}%}%")
             uf_adminlog(player, "cfg %{_k}% %{_old}% -> %{uf::cfg::%{_k}%}%")
 
-        else if {_a} is "event":
-            if arg-2 is "start":
-                uf_confirm(player, "event_start", "大学祭イベントを開始する")
-            else if arg-2 is "stop":
-                uf_confirm(player, "event_stop", "大学祭イベントを終了する")
-            else if arg-2 is "reset":
-                uf_confirm(player, "event_reset", "イベントスコアをリセットする（退避してから消去）")
-            else:
-                uf_msg(player, "&cstart / stop / reset を指定してください")
-
         else if {_a} is "maint":
             if arg-2 is "on":
                 uf_confirm(player, "maint_on", "メンテナンスモードにする（管理者以外をキック）")
@@ -428,23 +417,7 @@ function uf_doaction(p: player, action: text):
     if {_action} starts with "x/":
         uf_aact({_p}, last (length of {_action} - 2) characters of {_action})
         stop
-    if {_action} is "event_start":
-        set {uf::event::active} to true
-        set {uf::event::started} to now
-        broadcast "&6&l[EVENT] &e大学祭イベントが始まりました！ &f/ranking event で順位を確認"
-    else if {_action} is "event_stop":
-        set {uf::event::active} to false
-        broadcast "&6&l[EVENT] &e大学祭イベントが終了しました！ 結果発表"
-        loop uf_toplines("event", 3):
-            broadcast loop-value
-    else if {_action} is "event_reset":
-        # 現在のイベントスコア（main.sk の {score::*}）を退避してから消去
-        set {_d} to now formatted as "yyyyMMdd-HHmmss"
-        loop {score::*}:
-            set {uf::eventarchive::%{_d}%::%loop-index%} to loop-value
-        delete {score::*}
-        uf_msg({_p}, "&aイベントスコアをリセットしました（退避先: {uf::eventarchive::%{_d}%::*}）")
-    else if {_action} is "maint_on":
+    if {_action} is "maint_on":
         set {uf::maint} to true
         loop all players:
             if uf_admin(loop-player) is false:

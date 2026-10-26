@@ -250,7 +250,7 @@ every 1 minute:
 # ランキング
 #   earned=累計獲得pt / level / dkills=ダンジョン討伐 / clears=クリア回数
 #   chipwon=カジノの当たりでもらったチップ / sold=売った数 / bought=ショップで買った回数
-#   event=大学祭イベントスコア（main.sk の {score::*}。2026-10-26 から数えていない）
+#   大学祭イベントのスコア（main.sk の {score::*}）は 2026-10-26 にやめた（データは残してある）
 #   壁の掲示板は uf_16_board.sk
 # ------------------------------------------------------------
 function uf_rankname(src: text) :: text:
@@ -268,12 +268,10 @@ function uf_rankname(src: text) :: text:
         return "稼いだポイント"
     if {_src} is "level":
         return "レベル"
-    return "イベントスコア"
+    return {_src}
 
 function uf_rankval(u: text, src: text) :: number:
-    if {_src} is "event":
-        set {_v} to {score::%{_u}%}
-    else if {_src} is "level":
+    if {_src} is "level":
         set {_v} to {uf::lv::%{_u}%}
     else:
         set {_v} to {uf::stat::%{_u}%::%{_src}%}
@@ -302,14 +300,14 @@ function uf_toplines(src: text, n: number) :: texts:
     return {_out::*}
 
 command /ranking [<text>]:
-    description: ランキング（earned / level / dkills / clears / chipwon / sold / bought / event）
+    description: ランキング（earned / level / dkills / clears / chipwon / sold / bought）
     aliases: /rank
     trigger:
         set {_src} to arg-1
         if {_src} is not set:
             set {_src} to "earned"
-        if {_src} is not "earned", "level", "dkills", "clears", "chipwon", "sold", "bought" or "event":
-            send "&c種類: earned / level / dkills / clears / chipwon / sold / bought / event" to command sender
+        if {_src} is not "earned", "level", "dkills", "clears", "chipwon", "sold" or "bought":
+            send "&c種類: earned / level / dkills / clears / chipwon / sold / bought" to command sender
             stop
         send "&6=== ランキング: %uf_rankname({_src})% ===" to command sender
         set {_lines::*} to uf_toplines({_src}, 10)

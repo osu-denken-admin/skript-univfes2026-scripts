@@ -498,18 +498,20 @@ T.admingui2 = async ({ A }) => {
   check('admin still has tool', !!invFind(A, '管理者ツール'));
   let w = await openTool(A);
   check('hub opens again', titleOf(w).includes('管理者ツール'), titleOf(w).slice(0, 80));
+  check('event button is gone', !(w && w.links['31']));
+  // 確認画面（NPC の画面の「近くの NPC を消す」）
+  w = await clickBook(A, 38);
+  check('npc page', titleOf(w).includes('NPC'), titleOf(w).slice(0, 80));
   w = await clickBook(A, 31);
-  check('event page', titleOf(w).includes('大学祭イベント'), titleOf(w).slice(0, 80));
-  w = await clickBook(A, 20);
   check('confirm screen', titleOf(w).includes('確認'), titleOf(w).slice(0, 80));
   w = await clickBook(A, 'no');
-  check('confirm cancel returns to page', titleOf(w).includes('大学祭イベント'), titleOf(w).slice(0, 80));
-  w = await clickBook(A, 20);
+  check('confirm cancel returns to page', titleOf(w).includes('NPC'), titleOf(w).slice(0, 80));
+  w = await clickBook(A, 31);
   const from = A.msgs.length;
   w = await clickBook(A, 'yes');
-  check('event start broadcast', !!(await waitMsg(A, from, /大学祭イベントが始まりました/)));
+  check('confirm yes runs the action', !!(await waitMsg(A, from, /近くの NPC を 0 人消しました/)));
   // すべてのページを開く（エラーが出ないか）
-  const pages = [10, 11, 12, 13, 14, 15, 16, 28, 29, 30, 33, 34];
+  const pages = [10, 11, 12, 13, 14, 15, 16, 28, 29, 30, 33, 34, 35, 37, 38];
   w = await clickBook(A, 49);
   let opened = 0;
   for (const s of pages) {

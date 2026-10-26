@@ -1,0 +1,11 @@
+# 毎日 5:00 にバックアップ（~/.config/systemd/user/mc-backup.timer に置く）
+#   その時刻にマシンが止まっていたら、次に起動したときに 1 回動く（Persistent）
+[Unit]
+Description=Back up the Minecraft world every day
+
+[Timer]
+OnCalendar=*-*-* 05:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -342,8 +342,6 @@ function uf_adminopen(p: player, page: text):
         uf_ap_prot({_p})
     else if {_k} is "protarea":
         uf_ap_protarea({_p}, {_q::2})
-    else if {_k} is "event":
-        uf_ap_event({_p})
     else if {_k} is "items":
         uf_ap_items({_p})
     else if {_k} is "logs":
@@ -365,10 +363,6 @@ function uf_ap_hub(p: player):
     uf_abtn({_p}, {_g}, 28, player head, "&eプレイヤー", "&7ポイント・チップ・解放階の確認と変更", "open/players")
     uf_abtn({_p}, {_g}, 29, oak sign, "&e受付・ショップ・カジノの区域", "&7利用できる範囲", "open/areas")
     uf_abtn({_p}, {_g}, 30, shield, "&e保護区域", "&7特殊道具で壊させない範囲", "open/prot")
-    if {uf::event::active} is true:
-        uf_abtn({_p}, {_g}, 31, firework rocket, "&e大学祭イベント（&a開催中&e）", "&7開始・終了・スコアのリセット", "open/event")
-    else:
-        uf_abtn({_p}, {_g}, 31, firework rocket, "&e大学祭イベント（&7停止中&e）", "&7開始・終了・スコアのリセット", "open/event")
     if {uf::maint} is true:
         uf_abtn({_p}, {_g}, 32, iron door, "&cメンテナンス中", "&eクリックで解除", "act/maint_off")
     else:
@@ -949,17 +943,6 @@ function uf_ap_protarea(p: player, n: text):
     uf_abtn({_p}, {_g}, 22, white wool, "&e角2", "%uf_locstr({uf::prot::%{_n}%::b})%|&eクリックで今いる場所にする", "prot/%{_n}%/b")
     uf_abtn({_p}, {_g}, 24, tnt, "&cこの保護区域を消す", "&7確認画面が出ます", "ask/保護区域 %{_n}% を消す|protdel/%{_n}%")
     uf_ashow({_p}, {_g}, "prot")
-
-function uf_ap_event(p: player):
-    set {_g} to uf_apage({_p}, "&4大学祭イベント")
-    if {uf::event::active} is true:
-        uf_abtn({_p}, {_g}, 4, firework rocket, "&a開催中", "&7開始: %{uf::event::started}%", "")
-    else:
-        uf_abtn({_p}, {_g}, 4, firework rocket, "&7停止中", "&7イベントスコアは main.sk の {score::*}", "")
-    uf_abtn({_p}, {_g}, 20, lime concrete, "&aイベントを開始", "&7全員に告知します|&7確認画面が出ます", "ask/大学祭イベントを開始する|act/event_start")
-    uf_abtn({_p}, {_g}, 22, red concrete, "&cイベントを終了", "&7上位3名を発表します|&7確認画面が出ます", "ask/大学祭イベントを終了する|act/event_stop")
-    uf_abtn({_p}, {_g}, 24, tnt, "&cイベントスコアをリセット", "&7退避してから消去します|&7常設のポイントなどは消えません|&7確認画面が出ます", "ask/イベントスコアをリセットする（退避してから消去）|act/event_reset")
-    uf_ashow({_p}, {_g}, "hub")
 
 function uf_ap_items(p: player):
     set {_g} to uf_apage({_p}, "&4特殊アイテム（クリックで1個受け取る）")

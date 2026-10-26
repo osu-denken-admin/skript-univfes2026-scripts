@@ -1,0 +1,8 @@
+# ワールドのバックアップ（~/.config/systemd/user/mc-backup.service に置く）
+#   中身は backup.sh。結果は journalctl --user -u mc-backup で見られる
+[Unit]
+Description=Back up the Minecraft world and plugin data
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /home/denken/workspace/paper1214/backup.sh
