@@ -8,6 +8,9 @@
 | `mc-server.service` | `/home/denken/.config/systemd/user/mc-server.service` |
 | `playit.service` | `/home/denken/.config/systemd/user/playit.service` |
 
+| `backup.sh` | `/home/denken/workspace/paper1214/backup.sh` |
+| `mc-backup.service` / `mc-backup.timer` | `/home/denken/.config/systemd/user/` |
+
 自動反映（`skript-git-pull.service` / `.timer`）と `~/.local/bin/update-skript-scripts.sh` はユーザーが作ったもので、RCON のパスワードが入っているので、ここには置きません。
 
 ## 仕組み
@@ -35,3 +38,12 @@ systemctl --user restart mc-server
 - 使われていなかった `worldedit-bukkit-7.4.0-beta-01.jar`（FAWE と名前がかぶる）を `plugins/_unused/` に移した
 - 確かめたこと: Geyser が 19132 で起動し、統合版の問い合わせに返事をする / playit の 2 本のトンネルがつながる / Java 版で入れる / `systemctl --user stop` で保存してから止まり、勝手に起動し直さない
 - まだのこと: マシンの再起動での確認、統合版の実機での確認
+
+## バックアップ（2026-10-26 に置いた）
+
+- 毎日 5:00（`mc-backup.timer`）。マシンが止まっていたら次の起動時に 1 回
+- 自動保存を止めて全部書き出してから、ワールド・プラグイン（jar 以外）・サーバーの設定ファイルを固める。終わったら自動保存を戻す（途中で失敗しても戻す）
+- `/home/denken/workspace/backups/world-<日時>.tar.gz`。新しいものから 7 個残す（約 95MB ずつ）
+- 手で取る: `systemctl --user start mc-backup`。結果: `journalctl --user -u mc-backup`
+- 復元: 止めたサーバーのフォルダに展開する。テストするときは別のフォルダに展開し、`server.properties` を `server-ip=127.0.0.1`・別のポート・`enable-rcon=false` にし、本番の `paper-1.21.4-232.jar`・`libraries`・`cache`・`versions` を写して起動する（プラグインの jar は入っていないので、DiscordSRV などは動かない）
+- 中にプラグインの設定の秘密の値（DiscordSRV のトークン、RCON のパスワード）が入るので、サーバーの外へ出さない

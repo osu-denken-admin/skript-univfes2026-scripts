@@ -31,8 +31,14 @@ if [ $running = 1 ]; then
 fi
 
 name="world-$(date +%Y%m%d-%H%M)"
+# ワールド、プラグインのデータと設定（jar 本体は除く）、サーバーの設定ファイル
+FILES="world world_nether world_the_end plugins config"
+for f in server.properties bukkit.yml spigot.yml commands.yml help.yml permissions.yml ops.json whitelist.json banned-players.json banned-ips.json usercache.json run.sh; do
+  if [ -e "$SRV/$f" ]; then FILES="$FILES $f"; fi
+done
+# shellcheck disable=SC2086
 tar -C "$SRV" --exclude='*.jar' --exclude='plugins/.paper-remapped' --exclude='plugins/_unused' --exclude='plugins/spark' \
-  -czf "$DST/$name.tar.gz.part" world world_nether world_the_end plugins
+  -czf "$DST/$name.tar.gz.part" $FILES
 mv "$DST/$name.tar.gz.part" "$DST/$name.tar.gz"
 echo "バックアップしました: $DST/$name.tar.gz ($(du -h "$DST/$name.tar.gz" | cut -f1))"
 

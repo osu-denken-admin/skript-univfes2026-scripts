@@ -124,5 +124,6 @@
 ## 7. 起動とバックアップ
 
 - サーバーと playit は systemd のユーザーのサービス（`mc-server`・`playit`）で、マシンを起動すると自動で動く。止めるのは `systemctl --user stop mc-server`（コンソールの `stop` だと 15 秒後にまた起動する）。詳しくは [tools/server/README.md](../tools/server/README.md)
-- 毎日のバックアップ（`tools/server/backup.sh` と `mc-backup.timer`）は用意してあるが、**本番にはまだ置いていない**
+- 毎日 5:00 にバックアップ（`tools/server/backup.sh` と `mc-backup.timer`）。ワールド・プラグインのデータと設定・サーバーの設定ファイルを `/home/denken/workspace/backups/world-<日時>.tar.gz` に固め、7 個残す。手で取るときは `systemctl --user start mc-backup`
+- 復元テスト（2026-10-26）: バックアップを別のフォルダに展開し、`server.properties` を 127.0.0.1・別のポートにして、プラグインなしで起動できることを確かめた
 - Discord への通知を使うときは、環境変数 `UF_DISCORD_WEBHOOK` に URL を設定する。URL はリポジトリに書かない
