@@ -53,6 +53,7 @@ function uf_defaults():
     uf_setdef("gear::boss_weapon", 0.3)
     uf_setdef("gear::boss_armor", 0.3)
     uf_setdef("gear::mid_armor", 0.25)
+    uf_setdef("gear::bonus_ab", 0.25)
     # 敵のドロップ（％。sure は必ず落ちる数）。uf_19_gear.sk の uf_mobdrop
     uf_setdef("drop::normal::mat_upgrade", 4)
     uf_setdef("drop::strong::mat_upgrade", 8)

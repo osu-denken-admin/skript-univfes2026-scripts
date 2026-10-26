@@ -3,7 +3,7 @@
 #   開き方: /upgrade、または鍛冶屋の NPC（uf_17_npc.sk）。手に持っている武具に対して使う
 #   特殊武器（weapons）かダンジョン（dungeon）のモジュールが有効なら開ける
 #   強化: Lv0→5 は武器強化素材 1 個、Lv5→10 は最終強化パーツ 1 個（1 レベルにつき +10％。強化すると耐久値も戻る）
-#         強化できるのは dgw_（ダンジョン産の武器）・melee_・gun_
+#         強化できるのは dgw_・dgb_（ダンジョン産の武器・弓）・melee_・gun_
 #   特殊能力: 特殊素材 1 個 ＋ その階のレアドロップ品 1 個で、その階の能力を 1 つ付ける（付け直すと前の能力は消える）
 #         武器（dgw_・melee_）には uf_rareab、防具（dga_・armor_special）には uf_rareabarmor（uf_19_gear.sk）
 #   交換: 武器パーツ 3 個 → 最終強化パーツ 1 個
@@ -23,6 +23,8 @@ function uf_smithopen() :: boolean:
 function uf_canlevel(id: text) :: boolean:
     if {_id} starts with "dgw_":
         return true
+    if {_id} starts with "dgb_":
+        return true
     if {_id} starts with "melee_":
         return true
     if {_id} starts with "gun_":
@@ -32,6 +34,8 @@ function uf_canlevel(id: text) :: boolean:
 # 能力を付けられる武具の種類: weapon / armor / ""
 function uf_abkind(id: text) :: text:
     if {_id} starts with "dgw_":
+        return "weapon"
+    if {_id} starts with "dgb_":
         return "weapon"
     if {_id} starts with "melee_":
         return "weapon"

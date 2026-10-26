@@ -1,7 +1,9 @@
 # ============================================================
 # uf_19_gear.sk : ダンジョン産の武具（階ごとの武器 8 本と、防具 3 セット）
 #   ダンジョンのモジュール（dungeon）で動く（特殊武器のモジュールとは別）
-#   武器 dgw_<階>: その階のボスから。初回突破では必ず 1 本。/upgrade で強化できる（強化 1 レベルにつき +10％）
+#   武器 dgw_<階>（剣・斧）と dgb_<階>（弓。無限つき）: その階のボスから。初回突破では dgw を必ず 1 本。2 回目からは dgw か dgb
+#     鍛冶屋（/upgrade）で強化できる（強化 1 レベルにつき +10％）
+#   掘り出し物: 武具が出るとき gear::bonus_ab の確率で、その階までのどれかの能力がはじめから 1 つ付いている
 #     手に持って敵を叩くと、特殊能力の効果（uf_abhit）。はじめからその階の能力を持ち、鍛冶屋でもう 1 つ付けられる。プレイヤーには効果なし
 #   防具 dga_<セット>_<部位>（helmet / chest / legs / boots）。4 つそろえるとセットの効果（2 秒ごと）
 #     uniform 制服（2〜4 階）: 足が速くなる / labcoat 白衣（5〜7 階）: 少しずつ回復 / lord 主の鎧（8・9 階）: 力が上がる・火に強い
@@ -9,7 +11,41 @@
 #     中ボス（gear::mid_armor の確率で防具）、レジェンダリーの宝箱（3 分の 1 でその階の武器。uf_05_dungeon.sk の uf_chestloot）
 # ============================================================
 
+function uf_bowname(f: number) :: text:
+    if {_f} is 2:
+        return "&aチョークボウ"
+    if {_f} is 3:
+        return "&aしおりの弓"
+    if {_f} is 4:
+        return "&a試験管ボウ"
+    if {_f} is 5:
+        return "&9光ファイバーの弓"
+    if {_f} is 6:
+        return "&9物干し竿の弓"
+    if {_f} is 7:
+        return "&9指示棒の弓"
+    if {_f} is 8:
+        return "&6封鎖の大弓"
+    return "&6&l15号館の主の天弓"
+
 function uf_gearitem(id: text, lv: number) :: item:
+    if {_id} starts with "dgb_":
+        set {_f} to (last (length of {_id} - 4) characters of {_id}) parsed as number
+        if {_f} is not set:
+            return {_none}
+        if {_f} < 2:
+            return {_none}
+        if {_f} > 9:
+            return {_none}
+        set {_b} to bow
+        enchant {_b} with infinity 1
+        add "&7矢が 1 本あれば、いくらでも撃てる" to {_d::*}
+        add "&dはじめからの能力: %uf_abname(uf_rareab({_f}))%" to {_d::*}
+        add "&8%{_f}%階のボスから手に入る" to {_d::*}
+        add "&8uf:%{_id}%" to {_d::*}
+        add "&7強化レベル: &e%{_lv}%" to {_d::*}
+        add "&8uflv:%{_lv}%" to {_d::*}
+        return ({_b} named uf_bowname({_f})) with lore {_d::*}
     if {_id} starts with "dgw_":
         set {_f} to (last (length of {_id} - 4) characters of {_id}) parsed as number
         if {_f} is 2:
@@ -284,7 +320,10 @@ function uf_geardrop(p: player, f: number, kind: text):
         set {_it} to uf_item({_w})
     else if {_kind} is "repeat":
         if random number between 0 and 1 < {uf::cfg::gear::boss_weapon}:
-            set {_it} to uf_item({_w})
+            if random integer between 1 and 2 is 1:
+                set {_it} to uf_item("dgb_%{_f}%")
+            else:
+                set {_it} to uf_item({_w})
         else if random number between 0 and 1 < {uf::cfg::gear::boss_armor}:
             set {_it} to uf_item({_a})
     else:
@@ -292,10 +331,55 @@ function uf_geardrop(p: player, f: number, kind: text):
             set {_it} to uf_item({_a})
     if {_it} is not set:
         stop
+    set {_it} to uf_bonusab({_it}, {_f})
+    uf_gearbow({_p}, {_it})
     uf_give({_p}, {_it})
     uf_msg({_p}, "&6武具を手に入れた！ &f%name of {_it}%")
+    set {_x} to uf_abof({_it})
+    if {_x} is not "":
+        uf_msg({_p}, "&d掘り出し物！ 特殊能力「%uf_abname({_x})%」つき")
     play sound "entity.player.levelup" with volume 1 at {_p}
     uf_log("item", "gear %{_p}% (%uuid of {_p}%) %uf_id({_it})% f=%{_f}% kind=%{_kind}%")
+
+# 掘り出し物: gear::bonus_ab の確率で、2 階〜その階のどれかの能力を付ける（武器なら武器の能力、防具なら防具の能力）
+function uf_bonusab(i: item, f: number) :: item:
+    if random number between 0 and 1 >= {uf::cfg::gear::bonus_ab}:
+        return {_i}
+    set {_kind} to uf_abkind(uf_id({_i}))
+    if {_kind} is "":
+        return {_i}
+    set {_g} to random integer between 2 and {_f}
+    if {_kind} is "weapon":
+        set {_ab} to uf_rareab({_g})
+    else:
+        set {_ab} to uf_rareabarmor({_g})
+    return uf_rebuild({_i}, -1, {_ab})
+
+# 弓には矢を 1 本添える（無限なので 1 本あれば撃てる）
+function uf_gearbow(p: player, i: item):
+    if uf_id({_i}) starts with "dgb_":
+        if {_p} doesn't have arrow:
+            uf_give({_p}, arrow)
+
+# 弓の矢が当たったとき（鍛冶屋の強化と能力が効く）
+on damage:
+    damage cause is projectile
+    set {_a} to attacker
+    {_a} is a player
+    set {_t} to tool of {_a}
+    set {_id} to uf_id({_t})
+    {_id} starts with "dgb_"
+    uf_on("dungeon") is true
+    set {_v} to victim
+    {_v} is not a player
+    set damage to damage * 1.1 * (1 + 0.1 * uf_lv({_t}))
+    set {_abs::*} to uf_weaponabs({_t})
+    if {_abs::*} contains "crit":
+        if random number between 0 and 1 < 0.15:
+            set damage to damage * 2
+            play 10 crit at location of {_v}
+    loop {_abs::*}:
+        uf_abhit({_a}, {_v}, loop-value)
 
 # ------------------------------------------------------------
 # 武器の効果（特殊能力で動く）
@@ -317,6 +401,8 @@ function uf_abof(i: item) :: text:
 function uf_weaponabs(i: item) :: texts:
     set {_id} to uf_id({_i})
     if {_id} starts with "dgw_":
+        add uf_rareab((last (length of {_id} - 4) characters of {_id}) parsed as number) to {_out::*}
+    else if {_id} starts with "dgb_":
         add uf_rareab((last (length of {_id} - 4) characters of {_id}) parsed as number) to {_out::*}
     set {_x} to uf_abof({_i})
     if {_x} is not "":

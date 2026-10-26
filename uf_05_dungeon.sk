@@ -810,7 +810,12 @@ function uf_chestloot(p: player, f: number):
             uf_give({_p}, uf_item("mat_part"))
             uf_msg({_p}, "&6[レジェンダリー] &f武器パーツ")
         else:
-            set {_it} to uf_item("dgw_%{_f}%")
+            if random integer between 1 and 2 is 1:
+                set {_it} to uf_item("dgb_%{_f}%")
+            else:
+                set {_it} to uf_item("dgw_%{_f}%")
+            set {_it} to uf_bonusab({_it}, {_f})
+            uf_gearbow({_p}, {_it})
             uf_give({_p}, {_it})
             uf_msg({_p}, "&6[レジェンダリー] &f%name of {_it}%")
     uf_log("dungeon", "chest %{_p}% f=%{_f}% roll=%{_r}%")

@@ -85,6 +85,28 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   check('weapon ability haste gives speed on hit', Object.keys(b.entity.effects || {}).map(Number).includes(SPEED), mob ? mob.name : 'no mob');
   b.chat('/zzend 2'); await sleep(1000);
   con('effect clear UfMob'); await sleep(3500);
+  // 弓（dgb_2）の矢が当たっても、はじめからの能力「疾風」が効く
+  con('effect clear UfMob'); await sleep(3500);
+  b.chat('/ufadmin give dgb_2'); con('give UfMob arrow 1'); await sleep(1000);
+  from = b.msgs.length;
+  b.chat('/zzfight 2 normal 7'); await waitMsg(from, /^fight/, 3000); await sleep(1000);
+  con('effect give @e[type=zombie] slowness 30 10'); con('effect give @e[type=skeleton] slowness 30 10');
+  const bow = b.inventory.items().find((i) => JSON.stringify(i).includes('uf:dgb_2'));
+  check('bow has infinity and its floor ability', !!bow && JSON.stringify(bow).includes('はじめからの能力'));
+  if (bow) await b.equip(bow, 'hand');
+  const tgt = Object.values(b.entities).find((e) => e !== b.entity && ['zombie', 'skeleton'].includes(e.name) && e.position.distanceTo(b.entity.position) < 10);
+  if (tgt) { await b.lookAt(tgt.position.offset(0, tgt.height * 0.6, 0), true); b.activateItem(); await sleep(1300); b.deactivateItem(); }
+  await sleep(1200);
+  check('bow ability haste gives speed when the arrow hits', Object.keys(b.entity.effects || {}).map(Number).includes(SPEED), tgt ? tgt.name : 'no mob');
+  b.chat('/zzend 2'); await sleep(1000);
+  // 掘り出し物: 確率を 100％ にして、3 階を初めて突破したときの武器に能力が付く
+  b.chat('/ufadmin cfg gear::bonus_ab 1'); await sleep(500);
+  from = b.msgs.length;
+  b.chat('/zzreward 3'); await sleep(1500);
+  check('bonus ability on a dropped weapon', !!(await waitMsg(from, /掘り出し物！ 特殊能力「.+」つき/, 2000)));
+  b.chat('/ufadmin cfg gear::bonus_ab 0.25'); await sleep(500);
+  con('effect clear UfMob'); await sleep(500);
+
   // 鍛冶屋で「俊足」を付けたくつを履くと速くなる
   for (const id of ['dga_uniform_boots', 'mat_special', 'rare_2']) b.chat(`/ufadmin give ${id}`);
   await sleep(1200);
