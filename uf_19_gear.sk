@@ -2,7 +2,7 @@
 # uf_19_gear.sk : ダンジョン産の武具（階ごとの武器 8 本と、防具 3 セット）
 #   ダンジョンのモジュール（dungeon）で動く（特殊武器のモジュールとは別）
 #   武器 dgw_<階>: その階のボスから。初回突破では必ず 1 本。/upgrade で強化できる（強化 1 レベルにつき +10％）
-#     手に持って敵を叩くと、武器ごとの効果（uf_gearhit）。プレイヤーには効果なし
+#     手に持って敵を叩くと、特殊能力の効果（uf_abhit）。はじめからその階の能力を持ち、鍛冶屋でもう 1 つ付けられる。プレイヤーには効果なし
 #   防具 dga_<セット>_<部位>（helmet / chest / legs / boots）。4 つそろえるとセットの効果（2 秒ごと）
 #     uniform 制服（2〜4 階）: 足が速くなる / labcoat 白衣（5〜7 階）: 少しずつ回復 / lord 主の鎧（8・9 階）: 力が上がる・火に強い
 #   落ちる場所（uf_geardrop）: ボス（初回は武器を必ず。2 回目からは gear::boss_weapon の確率で武器、だめなら gear::boss_armor で防具）
@@ -15,7 +15,7 @@ function uf_gearitem(id: text, lv: number) :: item:
         if {_f} is 2:
             set {_b} to iron sword
             set {_n} to "&aさしぼうソード"
-            add "&7教室棟のボスが持っていた指し棒。よくしなる" to {_d::*}
+            add "&7教室棟のボスが持っていた指し棒。当てると少し足が速くなる" to {_d::*}
         else if {_f} is 3:
             set {_b} to iron sword
             set {_n} to "&aじしょブレード"
@@ -46,6 +46,7 @@ function uf_gearitem(id: text, lv: number) :: item:
             add "&7当てた敵を燃やし、まわりの敵にもダメージ" to {_d::*}
         else:
             return {_none}
+        add "&dはじめからの能力: %uf_abname(uf_rareab({_f}))%" to {_d::*}
         add "&8%{_f}%階のボスから手に入る" to {_d::*}
         add "&8uf:%{_id}%" to {_d::*}
         add "&7強化レベル: &e%{_lv}%" to {_d::*}
@@ -297,33 +298,68 @@ function uf_geardrop(p: player, f: number, kind: text):
     uf_log("item", "gear %{_p}% (%uuid of {_p}%) %uf_id({_it})% f=%{_f}% kind=%{_kind}%")
 
 # ------------------------------------------------------------
-# 武器の効果
+# 武器の効果（特殊能力で動く）
+#   能力 = 武器のはじめからの能力（dgw_<階> はその階の uf_rareab）＋ 鍛冶屋で付けた能力（説明の ufab:<能力>）
+#   ダンジョン産の武器（dgw_）・特殊な近接武器（melee_）で、プレイヤー以外の相手に効く
 # ------------------------------------------------------------
+# 鍛冶屋で付けた能力（なければ ""）
+function uf_abof(i: item) :: text:
+    if {_i} is not set:
+        return ""
+    loop lore of {_i}:
+        set {_s} to uncolored loop-value
+        replace all "&8" with "" in {_s}
+        if {_s} starts with "ufab:":
+            return last (length of {_s} - 5) characters of {_s}
+    return ""
+
+# 武器の能力の一覧
+function uf_weaponabs(i: item) :: texts:
+    set {_id} to uf_id({_i})
+    if {_id} starts with "dgw_":
+        add uf_rareab((last (length of {_id} - 4) characters of {_id}) parsed as number) to {_out::*}
+    set {_x} to uf_abof({_i})
+    if {_x} is not "":
+        if {_out::*} does not contain {_x}:
+            add {_x} to {_out::*}
+    return {_out::*}
+
 on damage:
     damage cause is attack
     set {_a} to attacker
     {_a} is a player
-    set {_id} to uf_id(tool of {_a})
-    {_id} starts with "dgw_"
+    set {_t} to tool of {_a}
+    set {_id} to uf_id({_t})
+    set {_ok} to false
+    if {_id} starts with "dgw_":
+        set {_ok} to true
+    else if {_id} starts with "melee_":
+        set {_ok} to true
+    {_ok} is true
     uf_on("dungeon") is true
     set {_v} to victim
     {_v} is not a player
-    set damage to damage * uf_gearmult({_id}) * (1 + 0.1 * uf_lv(tool of {_a}))
-    if {_id} is "dgw_7":
+    if {_id} starts with "dgw_":
+        set damage to damage * uf_gearmult({_id}) * (1 + 0.1 * uf_lv({_t}))
+    set {_abs::*} to uf_weaponabs({_t})
+    if {_abs::*} contains "crit":
         if random number between 0 and 1 < 0.15:
             set damage to damage * 2
             play 10 crit at location of {_v}
             play sound "entity.player.attack.crit" with volume 1 at {_v}
-    uf_gearhit({_a}, {_v}, {_id})
+    loop {_abs::*}:
+        uf_abhit({_a}, {_v}, loop-value)
 
-function uf_gearhit(a: player, v: entity, id: text):
-    if {_id} is "dgw_3":
+function uf_abhit(a: player, v: entity, ab: text):
+    if {_ab} is "haste":
+        apply speed 1 to {_a} for 2 seconds
+    else if {_ab} is "knock":
         set {_d} to normalized vector from {_a} to {_v}
         push {_v} {_d} at speed 0.9
         push {_v} upwards at speed 0.3
-    else if {_id} is "dgw_4":
+    else if {_ab} is "poison":
         apply poison 1 to {_v} for 3 seconds
-    else if {_id} is "dgw_5":
+    else if {_ab} is "zap":
         if random number between 0 and 1 < 0.25:
             loop all living entities in radius 4 of location of {_v}:
                 if loop-value is not {_v}:
@@ -332,18 +368,76 @@ function uf_gearhit(a: player, v: entity, id: text):
                         play 5 crit at location of loop-value
                         play sound "block.beacon.power_select" with volume 0.6 at loop-value
                         stop
-    else if {_id} is "dgw_6":
+    else if {_ab} is "slow":
         apply slowness 2 to {_v} for 2 seconds
-    else if {_id} is "dgw_8":
+    else if {_ab} is "drain":
         if random number between 0 and 1 < 0.25:
             heal {_a} by 1
             play 3 heart at location of {_a}
-    else if {_id} is "dgw_9":
+    else if {_ab} is "fire":
         ignite {_v} for 3 seconds
         loop all living entities in radius 3 of location of {_v}:
             if loop-value is not {_v}:
                 if metadata value "uf_tier" of loop-value is set:
                     damage loop-value by 1
+
+# ------------------------------------------------------------
+# 防具の能力（鍛冶屋で付ける。着ている防具の数だけ強くなるものもある）
+#   swift 俊足 / guard 鉄壁（1 つにつき -5％）/ antidote 解毒 / thorns 反撃 / regen 再生
+#   lucky 幸運（討伐のポイント +20％。uf_05_dungeon.sk）/ dodge 回避（1 つにつき 8％）/ might 剛力（体力 30％ 未満で力）
+# ------------------------------------------------------------
+function uf_armorabs(p: player) :: texts:
+    loop helmet of {_p}, chestplate of {_p}, leggings of {_p} and boots of {_p}:
+        set {_x} to uf_abof(loop-value)
+        if {_x} is not "":
+            add {_x} to {_out::*}
+    return {_out::*}
+
+function uf_armorabcount(p: player, ab: text) :: number:
+    set {_n} to 0
+    loop uf_armorabs({_p}):
+        if loop-value is {_ab}:
+            add 1 to {_n}
+    return {_n}
+
+on damage:
+    victim is a player
+    uf_on("dungeon") is true
+    set {_p} to victim
+    set {_dodge} to uf_armorabcount({_p}, "dodge")
+    if {_dodge} > 0:
+        if attacker is set:
+            if random number between 0 and 1 < min(0.3, 0.08 * {_dodge}):
+                cancel event
+                play sound "entity.player.attack.sweep" with volume 0.6 at {_p}
+                send action bar "&b回避！" to {_p}
+                stop
+    set {_guard} to uf_armorabcount({_p}, "guard")
+    if {_guard} > 0:
+        set damage to damage * (1 - 0.05 * {_guard})
+    set {_th} to uf_armorabcount({_p}, "thorns")
+    if {_th} > 0:
+        set {_atk} to attacker
+        if {_atk} is set:
+            if {_atk} is not a player:
+                if {_atk} is alive:
+                    damage {_atk} by 0.5 * {_th}
+
+every 2 seconds:
+    uf_on("dungeon") is true
+    loop all players:
+        set {_abs::*} to uf_armorabs(loop-player)
+        if size of {_abs::*} > 0:
+            if {_abs::*} contains "swift":
+                apply speed 1 to loop-player for 3 seconds
+            if {_abs::*} contains "regen":
+                apply regeneration 1 to loop-player for 3 seconds
+            if {_abs::*} contains "antidote":
+                remove poison from loop-player
+            if {_abs::*} contains "might":
+                if (health of loop-player) / (max health of loop-player) < 0.3:
+                    apply strength 1 to loop-player for 3 seconds
+        delete {_abs::*}
 
 # ------------------------------------------------------------
 # 防具のセットの効果

@@ -29,6 +29,8 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   await sleep(2000);
   con('gamemode creative UfMob'); con('gamerule doMobSpawning false'); con('time set day');
   con('tp UfMob 0 -60 0'); await sleep(1500);
+  // 読み込み直しで uf_15_layout.sk が 15号館の座標の区域を入れていることがあるので、先に消す（平らな世界全体をダンジョンにする）
+  b.chat('/zzareadel dungeon1'); b.chat('/zzareadel dungeon2'); await sleep(600);
   const waitMsg = async (from, re, ms) => { const end = Date.now() + ms; while (Date.now() < end) { const m = b.msgs.slice(from).find((x) => re.test(x)); if (m) return m; await sleep(200); } return null; };
 
   let from = b.msgs.length;
@@ -67,6 +69,36 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   const warped = !!(await waitMsg(from, /復帰地点に戻った/, 3000)); await sleep(800);
   check('warp scroll returns to the checkpoint', warped && Math.abs(b.entity.position.x - 0.5) < 1.5 && Math.abs(b.entity.position.z - 0.5) < 1.5, b.entity.position.toString());
   b.chat('/zzend 2'); await sleep(1500);
+
+  // 特殊能力が効く（uf_19_gear.sk）: 2 階の武器のはじめからの能力「疾風」は、叩くと自分が速くなる
+  con('kill @e[type=!player]'); await sleep(500);
+  con('effect clear UfMob'); con('gamemode survival UfMob'); await sleep(500);
+  b.chat('/ufadmin give dgw_2'); await sleep(800);
+  from = b.msgs.length;
+  b.chat('/zzfight 2 normal 2'); await waitMsg(from, /^fight/, 3000); await sleep(1000);
+  const sw = b.inventory.items().find((i) => JSON.stringify(i).includes('uf:dgw_2'));
+  if (sw) await b.equip(sw, 'hand');
+  const mob = Object.values(b.entities).find((e) => e !== b.entity && ['zombie', 'skeleton'].includes(e.name) && e.position.distanceTo(b.entity.position) < 6);
+  if (mob) { await b.lookAt(mob.position.offset(0, mob.height * 0.8, 0), true); b.attack(mob); }
+  await sleep(800);
+  const SPEED = b.registry.effectsByName.Speed.id;
+  check('weapon ability haste gives speed on hit', Object.keys(b.entity.effects || {}).map(Number).includes(SPEED), mob ? mob.name : 'no mob');
+  b.chat('/zzend 2'); await sleep(1000);
+  con('effect clear UfMob'); await sleep(3500);
+  // 鍛冶屋で「俊足」を付けたくつを履くと速くなる
+  for (const id of ['dga_uniform_boots', 'mat_special', 'rare_2']) b.chat(`/ufadmin give ${id}`);
+  await sleep(1200);
+  const boots = b.inventory.items().find((i) => JSON.stringify(i).includes('uf:dga_uniform_boots'));
+  if (boots) await b.equip(boots, 'hand');
+  const sw2 = await new Promise((res) => { const t = setTimeout(() => res(null), 4000); b.once('windowOpen', (w) => { clearTimeout(t); res(w); }); b.chat('/upgrade'); });
+  if (sw2) { const p2 = new Promise((res) => { const t = setTimeout(() => res(null), 4000); b.once('windowOpen', (w) => { clearTimeout(t); res(w); }); }); await b.clickWindow(13, 0, 0).catch(() => {}); const w2 = await p2; if (w2) { from = b.msgs.length; await b.clickWindow(10, 0, 0).catch(() => {}); await waitMsg(from, /特殊能力「俊足」を付けた/, 3000); } }
+  await sleep(800); if (b.currentWindow) b.closeWindow(b.currentWindow);
+  const boots2 = b.inventory.items().find((i) => JSON.stringify(i).includes('uf:dga_uniform_boots'));
+  if (boots2) await b.equip(boots2, 'feet');
+  con('effect clear UfMob'); await sleep(3000);
+  check('armor ability swift gives speed when worn', Object.keys(b.entity.effects || {}).map(Number).includes(SPEED) && !!boots2 && JSON.stringify(boots2).includes('ufab:swift'));
+  await b.unequip('feet').catch(() => {});
+  con('gamemode creative UfMob'); await sleep(500);
 
   for (let f = 2; f <= 9; f++) {
     for (const tier of ['mid', 'boss']) {

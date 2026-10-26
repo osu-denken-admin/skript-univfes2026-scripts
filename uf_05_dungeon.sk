@@ -574,13 +574,17 @@ on death:
     loop {-uf::dmg::%{_mid}%::*}:
         set {_p} to loop-value
         if {_p} is online:
-            uf_addpt({_p}, {_pt}, "kill:%{_tier}%")
+            set {_pp} to {_pt}
+            # 防具の能力「幸運」（uf_19_gear.sk）
+            if uf_armorabcount({_p}, "lucky") > 0:
+                set {_pp} to floor({_pt} * 1.2)
+            uf_addpt({_p}, {_pp}, "kill:%{_tier}%")
             uf_addxp({_p}, ceil({_pt} / 2))
             add 1 to {uf::stat::%uuid of {_p}%::dkills}
             uf_questadd({_p}, "dkill", 1)
             uf_achcheck({_p})
             if {_tier} is "mid" or "boss":
-                uf_msg({_p}, "&a討伐報酬 &e+%{_pt}%pt")
+                uf_msg({_p}, "&a討伐報酬 &e+%{_pp}%pt")
             if {_tier} is "mid":
                 uf_geardrop({_p}, {_f}, "mid")
             # 強化素材・レアドロップ品（uf_19_gear.sk）

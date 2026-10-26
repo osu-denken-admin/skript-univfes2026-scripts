@@ -1,5 +1,5 @@
 # ============================================================
-# uf_17_npc.sk : 受付・ショップ・カジノの NPC（村人）
+# uf_17_npc.sk : 受付・ショップ・カジノ・鍛冶屋の NPC（村人）
 #   管理者ツールの「NPC」で、今いる場所に、今向いている方向を向けて置く
 #   話しかける（右クリック）と、受付は開始階の選択、ショップは /buy、カジノは /casino の画面が開く
 #   動かない・攻撃されない・黙っている。scoreboard tag「uf_npc:<種類>」で見分ける
@@ -11,6 +11,8 @@ function uf_npcname(k: text) :: text:
         return "&e&lダンジョン受付"
     if {_k} is "shop":
         return "&a&lショップ"
+    if {_k} is "smith":
+        return "&7&l鍛冶屋"
     return "&6&lカジノ"
 
 function uf_npckind(e: entity) :: text:
@@ -29,6 +31,8 @@ function uf_npcspawn(p: player, k: text):
         set villager profession of {_e} to librarian profession
     else if {_k} is "shop":
         set villager profession of {_e} to weaponsmith profession
+    else if {_k} is "smith":
+        set villager profession of {_e} to armorer profession
     else:
         set villager profession of {_e} to cleric profession
     set yaw of {_e} to yaw of {_p}
@@ -64,6 +68,8 @@ function uf_npcopen(p: player, k: text):
             uf_msg({_p}, "&cショップは現在停止中です")
             stop
         uf_shopgui({_p})
+    else if {_k} is "smith":
+        uf_smithgui({_p})
     else:
         if uf_on("casino") is false:
             uf_msg({_p}, "&cカジノは現在停止中です")

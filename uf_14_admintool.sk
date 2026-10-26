@@ -911,9 +911,9 @@ function uf_ap_boards(p: player):
 
 # NPC（uf_17_npc.sk）
 function uf_ap_npcs(p: player):
-    set {_g} to uf_apage({_p}, "&4NPC（受付・ショップ・カジノ）")
+    set {_g} to uf_apage({_p}, "&4NPC（受付・ショップ・カジノ・鍛冶屋）")
     set {_s} to 11
-    loop "reception", "shop" and "casino":
+    loop "reception", "shop", "casino" and "smith":
         set {_k} to loop-value
         uf_abtn({_p}, {_g}, {_s}, villager spawn egg, "%uf_npcname({_k})% &eを置く", "&7今いる場所に、今向いている方向を向けて置く|&7読み込まれている範囲にいる数: %uf_npccount({_k})%", "npcset/%{_k}%")
         add 2 to {_s}

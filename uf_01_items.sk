@@ -164,47 +164,4 @@ every 2 seconds:
         else if {_id} is "acc_rare":
             apply resistance 1 to loop-player for 3 seconds
 
-# ------------------------------------------------------------
-# 武器強化
-#   Lv0→5 : 武器強化素材を1個ずつ消費
-#   Lv5→10: 最終強化パーツを1個消費（仮仕様）
-# ------------------------------------------------------------
-command /upgrade:
-    description: 手に持った特殊武器を強化する
-    executable by: players
-    trigger:
-        if uf_on("weapons") is false:
-            uf_msg(player, "&c武器強化は現在停止中です")
-            stop
-        set {_id} to uf_id(player's tool)
-        set {_ok} to false
-        if {_id} starts with "melee_":
-            set {_ok} to true
-        if {_id} starts with "gun_":
-            set {_ok} to true
-        if {_id} starts with "dgw_":
-            set {_ok} to true
-        if {_ok} is false:
-            uf_msg(player, "&c強化できる特殊武器を手に持ってください")
-            stop
-        set {_lv} to uf_lv(player's tool)
-        if {_lv} >= 10:
-            uf_msg(player, "&eこの武器はすでに最大レベルです")
-            stop
-        if {_lv} < 5:
-            set {_mat} to uf_item("mat_upgrade")
-            if player doesn't have 1 of {_mat}:
-                uf_msg(player, "&c武器強化素材が必要です")
-                stop
-            remove 1 of {_mat} from player's inventory
-            set {_new} to {_lv} + 1
-        else:
-            set {_fin} to uf_item("mat_final")
-            if player doesn't have 1 of {_fin}:
-                uf_msg(player, "&cレベル5以上の強化には最終強化パーツが必要です")
-                stop
-            remove 1 of {_fin} from player's inventory
-            set {_new} to 10
-        set player's tool to uf_item({_id}, {_new})
-        uf_msg(player, "&a強化成功！ 強化レベル &e%{_lv}% → %{_new}%")
-        uf_log("item", "upgrade %player% %{_id}% %{_lv}%->%{_new}%")
+# 武器強化は鍛冶屋（uf_22_smith.sk。/upgrade か鍛冶屋の NPC）

@@ -1,0 +1,221 @@
+# ============================================================
+# uf_22_smith.sk : 鍛冶屋（武具の強化・特殊能力・素材の交換を画面で）
+#   開き方: /upgrade、または鍛冶屋の NPC（uf_17_npc.sk）。手に持っている武具に対して使う
+#   特殊武器（weapons）かダンジョン（dungeon）のモジュールが有効なら開ける
+#   強化: Lv0→5 は武器強化素材 1 個、Lv5→10 は最終強化パーツ 1 個（1 レベルにつき +10％。強化すると耐久値も戻る）
+#         強化できるのは dgw_（ダンジョン産の武器）・melee_・gun_
+#   特殊能力: 特殊素材 1 個 ＋ その階のレアドロップ品 1 個で、その階の能力を 1 つ付ける（付け直すと前の能力は消える）
+#         武器（dgw_・melee_）には uf_rareab、防具（dga_・armor_special）には uf_rareabarmor（uf_19_gear.sk）
+#   交換: 武器パーツ 3 個 → 最終強化パーツ 1 個
+# ============================================================
+
+command /upgrade:
+    description: 鍛冶屋を開く（手に持った武具の強化・特殊能力）
+    executable by: players
+    trigger:
+        uf_smithgui(player)
+
+function uf_smithopen() :: boolean:
+    if uf_on("weapons") is true:
+        return true
+    return uf_on("dungeon")
+
+function uf_canlevel(id: text) :: boolean:
+    if {_id} starts with "dgw_":
+        return true
+    if {_id} starts with "melee_":
+        return true
+    if {_id} starts with "gun_":
+        return true
+    return false
+
+# 能力を付けられる武具の種類: weapon / armor / ""
+function uf_abkind(id: text) :: text:
+    if {_id} starts with "dgw_":
+        return "weapon"
+    if {_id} starts with "melee_":
+        return "weapon"
+    if {_id} starts with "dga_":
+        return "armor"
+    if {_id} is "armor_special":
+        return "armor"
+    return ""
+
+# 同じ武具を、強化レベルと能力を保ったまま作り直す（lv が -1 なら今のまま）
+function uf_rebuild(i: item, lv: number, ab: text) :: item:
+    set {_id} to uf_id({_i})
+    if {_lv} < 0:
+        set {_lv} to uf_lv({_i})
+    set {_new} to uf_item({_id}, {_lv})
+    if {_ab} is not "":
+        add "&d特殊能力: %uf_abname({_ab})%" to lore of {_new}
+        add "&8ufab:%{_ab}%" to lore of {_new}
+    return {_new}
+
+function uf_smithgui(p: player):
+    if uf_smithopen() is false:
+        uf_msg({_p}, "&c鍛冶屋は現在お休みです")
+        stop
+    set {_t} to tool of {_p}
+    set {_id} to uf_id({_t})
+    set {_g} to chest inventory with 3 rows named "&8鍛冶屋（手に持っている武具に使う）"
+    uf_guiclear({_p})
+    if {_id} is "":
+        set slot 4 of {_g} to barrier named "&c武具を手に持ってから開いてください" with lore "&7ダンジョン産の武器・防具、特殊な剣・銃"
+    else:
+        set slot 4 of {_g} to {_t}
+    # 強化
+    if uf_canlevel({_id}) is true:
+        set {_lv} to uf_lv({_t})
+        if {_lv} >= 10:
+            set slot 11 of {_g} to anvil named "&e強化" with lore "&7強化レベル: %{_lv}%（最大）"
+        else if {_lv} < 5:
+            set slot 11 of {_g} to anvil named "&e強化する" with lore "&7強化レベル: %{_lv}% → %{_lv} + 1%" and "&7必要: 武器強化素材 1 個" and "&eクリックで強化"
+        else:
+            set slot 11 of {_g} to anvil named "&e強化する" with lore "&7強化レベル: %{_lv}% → 10" and "&7必要: 最終強化パーツ 1 個" and "&eクリックで強化"
+    else:
+        set slot 11 of {_g} to gray dye named "&7強化" with lore "&7この武具は強化できません"
+    # 特殊能力
+    if uf_abkind({_id}) is not "":
+        set {_ab} to uf_abof({_t})
+        if {_ab} is "":
+            set {_now} to "なし"
+        else:
+            set {_now} to uf_abname({_ab})
+        set slot 13 of {_g} to enchanting table named "&d特殊能力を付ける" with lore "&7今の能力: %{_now}%" and "&7必要: 特殊素材 1 個 ＋ レアドロップ品 1 個" and "&eクリックで、付ける能力を選ぶ"
+    else:
+        set slot 13 of {_g} to gray dye named "&7特殊能力" with lore "&7この武具には能力を付けられません"
+    set slot 15 of {_g} to smithing table named "&6交換: 武器パーツ 3 個 → 最終強化パーツ 1 個" with lore "&eクリックで交換"
+    set slot 22 of {_g} to barrier named "&c閉じる"
+    uf_gui({_p}, "smith", {_g})
+
+# 付ける能力を選ぶ画面（持っているレアドロップ品の階だけ選べる）
+function uf_smithabgui(p: player):
+    set {_t} to tool of {_p}
+    set {_kind} to uf_abkind(uf_id({_t}))
+    if {_kind} is "":
+        uf_smithgui({_p})
+        stop
+    set {_g} to chest inventory with 3 rows named "&8付ける能力を選ぶ（特殊素材 1 個＋レアドロップ品 1 個）"
+    uf_guiclear({_p})
+    loop integers between 2 and 9:
+        set {_f} to loop-value
+        if {_kind} is "weapon":
+            set {_ab} to uf_rareab({_f})
+        else:
+            set {_ab} to uf_rareabarmor({_f})
+        set {_r} to uf_item("rare_%{_f}%")
+        set {_n} to number of {_r} in inventory of {_p}
+        if {_n} > 0:
+            set slot ({_f} + 8) of {_g} to {_r} with lore "&d付く能力: %uf_abname({_ab})%" and "&7持っている数: %{_n}%" and "&eクリックで付ける"
+        else:
+            set slot ({_f} + 8) of {_g} to gray stained glass pane named "&8%{_f}%階: %uf_abname({_ab})%" with lore "&7%uncolored uf_rarename({_f})% を持っていない"
+        set {-uf::guictx::%uuid of {_p}%::%{_f} + 8%} to {_f}
+    set slot 22 of {_g} to arrow named "&f戻る"
+    uf_gui({_p}, "smithab", {_g})
+
+function uf_smithlevel(p: player):
+    set {_t} to tool of {_p}
+    set {_id} to uf_id({_t})
+    if uf_canlevel({_id}) is false:
+        uf_msg({_p}, "&c強化できる武具を手に持ってください")
+        stop
+    set {_lv} to uf_lv({_t})
+    if {_lv} >= 10:
+        uf_msg({_p}, "&eこの武器はすでに最大レベルです")
+        stop
+    if {_lv} < 5:
+        set {_mat} to uf_item("mat_upgrade")
+        if {_p} doesn't have 1 of {_mat}:
+            uf_msg({_p}, "&c武器強化素材が必要です")
+            stop
+        remove 1 of {_mat} from {_p}'s inventory
+        set {_new} to {_lv} + 1
+    else:
+        set {_fin} to uf_item("mat_final")
+        if {_p} doesn't have 1 of {_fin}:
+            uf_msg({_p}, "&cレベル5以上の強化には最終強化パーツが必要です")
+            stop
+        remove 1 of {_fin} from {_p}'s inventory
+        set {_new} to 10
+    set tool of {_p} to uf_rebuild({_t}, {_new}, uf_abof({_t}))
+    uf_msg({_p}, "&a強化成功！ 強化レベル &e%{_lv}% → %{_new}%")
+    play sound "block.anvil.use" with volume 0.8 at {_p}
+    uf_log("item", "upgrade %{_p}% %{_id}% %{_lv}%->%{_new}%")
+
+function uf_smithab(p: player, f: number):
+    set {_t} to tool of {_p}
+    set {_id} to uf_id({_t})
+    set {_kind} to uf_abkind({_id})
+    if {_kind} is "":
+        uf_msg({_p}, "&c能力を付けられる武具を手に持ってください")
+        stop
+    set {_sp} to uf_item("mat_special")
+    set {_r} to uf_item("rare_%{_f}%")
+    if {_p} doesn't have 1 of {_sp}:
+        uf_msg({_p}, "&c特殊素材が必要です")
+        stop
+    if {_p} doesn't have 1 of {_r}:
+        uf_msg({_p}, "&c%uncolored uf_rarename({_f})% が必要です")
+        stop
+    if {_kind} is "weapon":
+        set {_ab} to uf_rareab({_f})
+    else:
+        set {_ab} to uf_rareabarmor({_f})
+    remove 1 of {_sp} from {_p}'s inventory
+    remove 1 of {_r} from {_p}'s inventory
+    set tool of {_p} to uf_rebuild({_t}, -1, {_ab})
+    uf_msg({_p}, "&d特殊能力「%uf_abname({_ab})%」を付けた！")
+    play sound "block.enchantment_table.use" with volume 1 at {_p}
+    uf_log("item", "ability %{_p}% %{_id}% %{_ab}%")
+
+function uf_smithtrade(p: player):
+    set {_part} to uf_item("mat_part")
+    if {_p} doesn't have 3 of {_part}:
+        uf_msg({_p}, "&c武器パーツが 3 個必要です")
+        stop
+    remove 3 of {_part} from {_p}'s inventory
+    uf_give({_p}, uf_item("mat_final"))
+    uf_msg({_p}, "&6武器パーツ 3 個を、最終強化パーツ 1 個と交換した")
+    uf_log("item", "trade %{_p}% mat_part x3 -> mat_final")
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "smith"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 11:
+        uf_smithlevel(player)
+    else if {_s} is 13:
+        wait 1 tick
+        if player is online:
+            uf_smithabgui(player)
+        stop
+    else if {_s} is 15:
+        uf_smithtrade(player)
+    else if {_s} is 22:
+        wait 1 tick
+        close inventory of player
+        stop
+    else:
+        stop
+    wait 1 tick
+    if player is online:
+        uf_smithgui(player)
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "smithab"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 22:
+        wait 1 tick
+        if player is online:
+            uf_smithgui(player)
+        stop
+    set {_f} to {-uf::guictx::%uuid of player%::%{_s}%}
+    {_f} is set
+    uf_smithab(player, {_f})
+    wait 1 tick
+    if player is online:
+        uf_smithgui(player)

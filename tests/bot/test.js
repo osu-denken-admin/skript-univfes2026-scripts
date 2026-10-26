@@ -629,12 +629,39 @@ T.gear = async ({ A }) => {
   const fx = Object.keys(A.entity.effects || {}).map(Number);
   const E = A.registry.effectsByName;
   check('full lord set gives strength and fire resistance', fx.includes(E.Strength ? E.Strength.id : E.strength.id) && fx.includes(E.FireResistance ? E.FireResistance.id : E.fire_resistance.id), JSON.stringify(fx));
-  A.chat('/ufadmin give dgw_4'); A.chat('/ufadmin give mat_upgrade'); await sleep(1200);
+  // 鍛冶屋（uf_22_smith.sk）: 強化 → 能力を付ける → もう一度強化しても能力が残る → 交換
+  for (const id of ['dgw_4', 'mat_upgrade', 'mat_upgrade', 'mat_special', 'rare_7', 'mat_part', 'mat_part', 'mat_part']) A.chat(`/ufadmin give ${id}`);
+  await sleep(1500);
   await hold(A, 'フラスコアックス');
-  const from = A.msgs.length;
-  A.chat('/upgrade');
-  check('dungeon weapon can be upgraded', !!(await waitMsg(A, from, /強化成功！ 強化レベル 0 → 1/)));
+  let w = await cmdWin(A, '/upgrade');
+  check('smith opens', titleOf(w).includes('鍛冶屋'), titleOf(w).slice(0, 60));
+  let from = A.msgs.length;
+  w = await clickWin(A, 11);
+  check('dungeon weapon can be upgraded at the smith', !!(await waitMsg(A, from, /強化成功！ 強化レベル 0 → 1/)));
   check('upgraded weapon keeps its name', !!invFind(A, 'フラスコアックス') && itemText(A.heldItem).includes('uflv:1'));
+  w = await clickWin(A, 13);
+  check('ability picker opens', titleOf(w).includes('付ける能力を選ぶ'), titleOf(w).slice(0, 60));
+  from = A.msgs.length;
+  w = await clickWin(A, 15);
+  check('ability is set with a rare item', !!(await waitMsg(A, from, /特殊能力「会心」を付けた/)));
+  check('ability is written on the weapon', itemText(A.heldItem).includes('ufab:crit') && itemText(A.heldItem).includes('uflv:1'));
+  from = A.msgs.length;
+  w = await clickWin(A, 11);
+  check('upgrading keeps the ability', !!(await waitMsg(A, from, /強化レベル 1 → 2/)) && itemText(A.heldItem).includes('ufab:crit') && itemText(A.heldItem).includes('uflv:2'));
+  from = A.msgs.length;
+  w = await clickWin(A, 15);
+  check('3 weapon parts trade for a final upgrade part', !!(await waitMsg(A, from, /最終強化パーツ 1 個と交換した/)));
+  closeWin(A); await sleep(500);
+  // 防具の能力
+  for (const id of ['dga_uniform_helmet', 'mat_special', 'rare_3']) A.chat(`/ufadmin give ${id}`);
+  await sleep(1200);
+  await hold(A, '制服（かぶと）');
+  w = await cmdWin(A, '/upgrade');
+  w = await clickWin(A, 13);
+  from = A.msgs.length;
+  w = await clickWin(A, 11);
+  check('armor gets an armor ability', !!(await waitMsg(A, from, /特殊能力「鉄壁」を付けた/)) && itemText(A.heldItem).includes('ufab:guard'));
+  closeWin(A);
   for (const dest of ['head', 'torso', 'legs', 'feet']) await A.unequip(dest).catch(() => {});
 };
 
