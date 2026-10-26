@@ -88,11 +88,11 @@ function uf_item(id: text, lv: number = 0) :: item:
     else if {_id} is "bike_key":
         set {_b} to saddle
         set {_n} to "&6バイクのキー"
-        add "&7右クリックでバイクを呼び出す（試験中）" to {_d::*}
+        add "&7右クリックでバイクを呼び出して乗る（降りると消える）" to {_d::*}
     else if {_id} is "bike_kit":
         set {_b} to piston
         set {_n} to "&6バイク強化キット"
-        add "&7バイクの速度を上げる（試験中）" to {_d::*}
+        add "&7右クリックでバイクの速さとジャンプを上げる（最大 3 段階）" to {_d::*}
     else if {_id} is "ore_potion":
         set {_b} to water bottle
         set {_n} to "&3鉱石探知ポーション"

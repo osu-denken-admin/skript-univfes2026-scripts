@@ -5,6 +5,7 @@
 #   /zzfight <階> <tier> [距離]  その階の挑戦中ということにして（今いる場所を復帰地点にする）、自分の 3（距離）ブロック先に敵を出す
 #   /zzhp <階> <割合>   その階の敵の体力を、最大の割合にする（怒るかの確認）
 #   /zzend <階>        その階の挑戦を終わらせる（敵と体力のバーが消える）
+#   /zzworld <種類> <ワールド|none>  ワールドの登録を変える / /zzmod <名前> <on|off>  モジュールを切り替える
 # ============================================================
 
 function uf_zzcheck(f: number, tier: text, ent: text) :: number:
@@ -64,6 +65,22 @@ command /zzhp <number> <number>:
             if loop-value is alive:
                 set health of loop-value to (max health of loop-value) * arg-2
         broadcast "hp %arg-1% %arg-2%"
+
+command /zzworld <text> <text>:
+    trigger:
+        if arg-2 is "none":
+            delete {uf::cfg::world::%arg-1%}
+        else:
+            set {uf::cfg::world::%arg-1%} to arg-2
+        broadcast "world %arg-1% %arg-2%"
+
+command /zzmod <text> <text>:
+    trigger:
+        if arg-2 is "on":
+            set {uf::mod::%arg-1%} to true
+        else:
+            set {uf::mod::%arg-1%} to false
+        broadcast "mod %arg-1% %arg-2%"
 
 command /zzend <number>:
     trigger:

@@ -10,6 +10,7 @@
 //   !block <x> <y> <z>  そのブロックの名前を記録する
 //   !click <x> <y> <z>  そのブロックを右クリックする
 //   !entity <種類>      近く（6 ブロック以内）のその種類のもの（villager など）を右クリックする
+//   !use <id>           uf:<id> の付いたアイテムを持って使う（it_speed、bike_key など）
 //   !quit               抜ける
 // 注意: 本番に入るのは、ユーザーに伝えてからにする（CLAUDE.md）
 const mineflayer = require('mineflayer');
@@ -93,6 +94,15 @@ async function exec(line) {
     const b = bot.blockAt(new Vec3(+a[0], +a[1], +a[2]));
     if (!b) return log('[!] ブロックが読み込まれていない');
     await bot.lookAt(b.position.offset(0.5, 0.5, 0.5), true); await bot.activateBlock(b).catch((e) => log('[!]', e.message));
+  } else if (c === '!use') {
+    // uf:<id> の付いたアイテムを持って使う（前を向いてから。近くのブロックを見ていればそのブロックを右クリック）
+    const it = bot.inventory.items().find((i) => JSON.stringify(i).includes(`uf:${a[0]}"`) || JSON.stringify(i).includes(`uf:${a[0]}\\`));
+    if (!it) return log('[!] 持っていない', a[0]);
+    try { bot.deactivateItem(); } catch {}
+    await bot.equip(it, 'hand'); await bot.look(bot.entity.yaw, 0, true); await sleep(300);
+    const b = bot.blockAtCursor(4);
+    if (b && b.name !== 'air') await bot.activateBlock(b).catch((e) => log('[!]', e.message));
+    else { bot.activateItem(); await sleep(300); bot.deactivateItem(); }
   } else if (c === '!entity') {
     const e = bot.nearestEntity((x) => x.name === a[0] && x.position.distanceTo(bot.entity.position) < 6);
     if (!e) return log('[!] 近くにいない', a[0]);

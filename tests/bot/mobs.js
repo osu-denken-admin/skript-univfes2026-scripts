@@ -91,6 +91,39 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
       check(`${f}F ${tier}: enemies removed`, left.length === 0, left.map((e) => e.name).join(','));
     }
   }
+  // バイク（uf_13_bike.sk）。テストの世界はサバイバルとダンジョンが同じワールドなので、ダンジョンの登録を外して試す
+  con('kill @e[type=!player]'); con('tp UfMob 40.5 -60 40.5 0 0'); await sleep(1500);
+  b.chat('/zzworld dungeon none'); b.chat('/zzworld survival world'); b.chat('/zzmod tools on'); await sleep(800);
+  for (const [dx, dz, blk] of [[1, 0, 'short_grass'], [-1, 0, 'poppy'], [0, 1, 'oxeye_daisy'], [0, -1, 'oak_leaves']]) con(`setblock ${40 + dx} -60 ${40 + dz} minecraft:${blk}`);
+  con('setblock 41 -60 41 minecraft:stone'); await sleep(800);
+  b.chat('/ufadmin give bike_key'); b.chat('/ufadmin give bike_kit'); await sleep(1200);
+  // uf:<id> の付いたアイテムを持って、まっすぐ前を向いて使う（下の草花を見たままだと「空中を右クリック」が無視される）
+  const useItem = async (id) => {
+    const it = b.inventory.items().find((i) => JSON.stringify(i).includes(`uf:${id}`));
+    if (!it) return false;
+    try { b.deactivateItem(); } catch {}
+    await b.equip(it, 'hand'); await b.look(b.entity.yaw, 0, true); await sleep(300);
+    b.activateItem(); await sleep(300); b.deactivateItem(); return true;
+  };
+  await useItem('bike_key'); await sleep(1500);
+  const horse = () => Object.values(b.entities).find((e) => e.name === 'horse' && e.position.distanceTo(b.entity.position) < 3);
+  check('bike key summons a bike and rides it', !!horse() && (!!b.vehicle || b.entity.position.y > -59.9), `${b.entity.position}`);
+  await sleep(1000);
+  const V = require('vec3').Vec3;
+  const cleared = [[41, 40], [39, 40], [40, 41], [40, 39]].map(([x, z]) => b.blockAt(new V(x, -60, z))).map((bl) => (bl ? bl.name : 'null'));
+  check('riding clears grass, flowers and leaves', cleared.every((n) => n === 'air'), cleared.join(','));
+  const st = b.blockAt(new V(41, -60, 41));
+  check('riding does not break other blocks', !!st && st.name === 'stone', st && st.name);
+  b.dismount(); con('tp UfMob 40.5 -60 43.5 0 0'); await sleep(2500);
+  check('bike disappears after getting off', !Object.values(b.entities).some((e) => e.name === 'horse' && e.position.distanceTo(b.entity.position) < 8));
+  from = b.msgs.length;
+  await useItem('bike_kit');
+  check('bike kit upgrades the bike', !!(await waitMsg(from, /バイクを強化した（段階 \d）/, 3000)));
+  b.chat('/zzworld dungeon world'); await sleep(800);
+  from = b.msgs.length;
+  await useItem('bike_key');
+  check('bike cannot be called in the dungeon', !!(await waitMsg(from, /ダンジョンの中ではバイクを呼べません/, 3000)));
+
   const p = results.filter((x) => x[0] === 'PASS').length;
   const fl = results.filter((x) => x[0] === 'FAIL');
   log(`RESULT: PASS ${p} / FAIL ${fl.length}`);
