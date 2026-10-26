@@ -7,6 +7,7 @@
 #   /zzend <階>        その階の挑戦を終わらせる（敵と体力のバーが消える）
 #   /zzworld <種類> <ワールド|none>  ワールドの登録を変える / /zzmod <名前> <on|off>  モジュールを切り替える
 #   /zzarea <名前> x1 y1 z1 x2 y2 z2 / /zzareadel <名前>  区域を登録する・消す（今いるワールド）
+#   /zzreward <階>     その階を突破したときの報酬を、自分に渡す（初回なら初回の報酬）
 # ============================================================
 
 function uf_zzcheck(f: number, tier: text, ent: text) :: number:
@@ -93,6 +94,11 @@ command /zzareadel <text>:
     trigger:
         delete {uf::area::%arg-1%::*}
         broadcast "areadel %arg-1%"
+
+command /zzreward <number>:
+    trigger:
+        uf_dreward(player, arg-1)
+        broadcast "reward %arg-1%"
 
 command /zzend <number>:
     trigger:

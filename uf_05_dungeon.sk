@@ -55,6 +55,15 @@ function uf_bossname(f: number) :: text:
         return "&4◆ 忘れられた研究者"
     return "&4◆ 15号館の主"
 
+# 次の目標（設計書 5.1。main.sk が画面下に出す）。まだ突破していない、いちばん下の階
+function uf_nextgoal(p: player) :: text:
+    if uf_on("dungeon") is false:
+        return ""
+    loop integers between 2 and 9:
+        if {uf::clear::%uuid of {_p}%::%loop-value%} is not true:
+            return "&7次の目標: &b%loop-value%階を突破"
+    return "&6&l15号館 制覇！"
+
 # ------------------------------------------------------------
 # 受付（フロアマップ右クリック または /dungeon）
 # ------------------------------------------------------------
@@ -473,6 +482,14 @@ function uf_dreward(p: player, f: number):
             uf_give({_p}, bread, 8)
         else if {_f} is 4:
             uf_give({_p}, uf_item("mat_upgrade"), 3)
+        else if {_f} is 9:
+            # 完成記念品と最終強化（設計書 10.4）。記念品には名前と日付を入れる
+            set {_t} to uf_item("trophy_15")
+            set {_day} to now formatted as "yyyy/MM/dd"
+            add "&e%{_p}% &7（%{_day}%）" to lore of {_t}
+            uf_give({_p}, {_t})
+            uf_give({_p}, uf_item("mat_final"))
+            broadcast "&6&l[15号館] &e%{_p}% &6が 15号館を制覇した！ おめでとう！"
         uf_geardrop({_p}, {_f}, "first")
         send title "&6初回突破！" with subtitle "&e+%{_pt}%pt" to {_p} for 3 seconds
         uf_msg({_p}, "&6%{_f}%階 初回突破報酬 &e+%{_pt}%pt")

@@ -97,6 +97,11 @@ function uf_item(id: text, lv: number = 0) :: item:
         set {_b} to water bottle
         set {_n} to "&3鉱石探知ポーション"
         add "&7飲むと一定時間、近くの鉱石の方向を表示する" to {_d::*}
+    else if {_id} is "trophy_15":
+        set {_b} to heart of the sea
+        set {_n} to "&b&l15号館 制覇の証"
+        add "&715号館の 9 階のボスを倒した人だけが持っている" to {_d::*}
+        add "&7記念品（売れない・使えない）" to {_d::*}
     else if {_id} is "admin_tool":
         set {_b} to book
         set {_n} to "&4管理者ツール"

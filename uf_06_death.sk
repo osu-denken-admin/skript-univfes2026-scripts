@@ -10,6 +10,7 @@
 #     死亡した人はフロアの復帰地点（cp）で復活する（闘技場で倒れても、復帰はフロアの開始地点）。
 #     仲間が死亡地点でしゃがみ続けて revive_seconds 秒たつと、死亡地点へ呼び戻される。
 #     被ダメージで中断・進行リセット。失ったポイントは返らない。
+#   回収マーカー: 落としたポイントがある場所（48 ブロック以内）に、本人にだけ見える光の柱を出す
 # ============================================================
 
 on death of player:
@@ -86,8 +87,16 @@ every 1 second:
             set {_l} to {uf::rec::%{_u}%::%loop-value-2%::loc}
             if {_l} is set:
                 if "%world of {_l}%" is "%world of {_p}%":
-                    if distance between {_l} and {_p} < 2.5:
+                    set {_dist} to distance between {_l} and {_p}
+                    if {_dist} < 2.5:
                         add loop-value-2 to {_got::*}
+                    else if {_dist} < 48:
+                        # 回収マーカー（設計書 11.2）: 本人にだけ見える光の柱
+                        set {_k} to 0
+                        loop 5 times:
+                            add 1 to {_k}
+                            play 1 end rod at {_l} ~ vector(0, {_k} * 0.6, 0) to {_p}
+                        play 3 happy villager at {_l} ~ vector(0, 0.3, 0) to {_p}
         loop {_got::*}:
             set {_i} to loop-value-2
             set {_amt} to {uf::rec::%{_u}%::%{_i}%::amt}

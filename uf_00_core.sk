@@ -144,6 +144,17 @@ function uf_defaults():
     uf_setdef("casino::highlow::max", 500)
     uf_setdef("casino::gacha::enabled", true)
     uf_setdef("casino::gacha::cost", 100)
+    uf_setdef("casino::target::enabled", true)
+    uf_setdef("casino::target::time", 15)
+    uf_setdef("casino::target::goal", 10)
+    uf_setdef("casino::target::mult", 2.5)
+    uf_setdef("casino::target::min", 10)
+    uf_setdef("casino::target::max", 500)
+    uf_setdef("casino::timed::enabled", true)
+    uf_setdef("casino::timed::time", 10)
+    uf_setdef("casino::timed::mult", 2)
+    uf_setdef("casino::timed::min", 10)
+    uf_setdef("casino::timed::max", 500)
 
     # ショップ（id, 価格, 解放に必要なクリア階層 0=なし, 初期の販売状態）
     uf_shopdef("heal_kit", 40, 0, true)

@@ -520,6 +520,10 @@ function uf_ap_casino(p: player):
     uf_abtn({_p}, {_g}, 29, white wool, "&fサイコロ", "%uf_onoff({uf::cfg::casino::dice::enabled})%|%{_s4}%|&eクリックで設定", "open/casinogame/dice")
     uf_abtn({_p}, {_g}, 31, paper, "&eハイ＆ロー", "%uf_onoff({uf::cfg::casino::highlow::enabled})%|%{_s5}%|&eクリックで設定", "open/casinogame/highlow")
     uf_abtn({_p}, {_g}, 33, ender chest, "&dガチャ", "%uf_onoff({uf::cfg::casino::gacha::enabled})%|%{_s6}%|&eクリックで設定", "open/casinogame/gacha")
+    set {_s7} to uf_casinosum("target")
+    set {_s8} to uf_casinosum("timed")
+    uf_abtn({_p}, {_g}, 38, target, "&c的当て", "%uf_onoff({uf::cfg::casino::target::enabled})%|%{_s7}%|&eクリックで設定", "open/casinogame/target")
+    uf_abtn({_p}, {_g}, 42, clock, "&b時間制限チャレンジ", "%uf_onoff({uf::cfg::casino::timed::enabled})%|%{_s8}%|&eクリックで設定", "open/casinogame/timed")
     uf_ashow({_p}, {_g}, "hub")
 
 # 設定と集計の要約（"|" 区切り）
@@ -537,6 +541,10 @@ function uf_casinosum(gm: text) :: text:
         set {_t} to "&7当選 1/6 / 倍率 %{uf::cfg::casino::dice::mult}% / 理論還元率 %{_rtp}%％"
     else if {_gm} is "highlow":
         set {_t} to "&7倍率 = %{uf::cfg::casino::highlow::mult}% ÷ 当たる確率 / 理論還元率 %{uf::cfg::casino::highlow::mult} * 100%％"
+    else if {_gm} is "target":
+        set {_t} to "&7%{uf::cfg::casino::target::time}% 秒で %{uf::cfg::casino::target::goal}% 個 → %{uf::cfg::casino::target::mult}% 倍（半分以上で返金）"
+    else if {_gm} is "timed":
+        set {_t} to "&7%{uf::cfg::casino::timed::time}% 秒以内に 1→9 → %{uf::cfg::casino::timed::mult}% 倍"
     else:
         set {_rtp} to {uf::cfg::casino::%{_gm}%::prob} * {uf::cfg::casino::%{_gm}%::mult}
         set {_t} to "&7当選 %{uf::cfg::casino::%{_gm}%::prob}%％ / 倍率 %{uf::cfg::casino::%{_gm}%::mult}% / 理論還元率 %{_rtp}%％"
@@ -556,7 +564,7 @@ function uf_casinosum(gm: text) :: text:
     return {_t}
 
 function uf_ap_casinogame(p: player, gm: text):
-    if {_gm} is not "slot", "roulette", "reaction", "dice", "highlow" or "gacha":
+    if {_gm} is not "slot", "roulette", "reaction", "dice", "highlow", "gacha", "target" or "timed":
         uf_ap_casino({_p})
         stop
     set {_g} to uf_apage({_p}, "&4カジノ: %{_gm}%")
@@ -573,6 +581,10 @@ function uf_ap_casinogame(p: player, gm: text):
         uf_abtn({_p}, {_g}, 21, clock, "&e制限時間（tick）", "&7現在: %{uf::cfg::casino::reaction::window}%|&7緑になってからこの時間内なら成功|&eクリックで変更", "edit/casino/reaction/window")
     else if {_gm} is "dice" or "highlow":
         uf_abtn({_p}, {_g}, 21, ender eye, "&7当選確率", "&7ゲームの仕組みで決まる（変えられない）", "")
+    else if {_gm} is "target" or "timed":
+        uf_abtn({_p}, {_g}, 21, clock, "&e制限時間（秒）", "&7現在: %{uf::cfg::casino::%{_gm}%::time}%|&eクリックで変更", "edit/casino/%{_gm}%/time")
+        if {_gm} is "target":
+            uf_abtn({_p}, {_g}, 20, target, "&e目標の数", "&7現在: %{uf::cfg::casino::target::goal}%|&eクリックで変更", "edit/casino/target/goal")
     else:
         uf_abtn({_p}, {_g}, 21, ender eye, "&e当選確率（％）", "&7現在: %{uf::cfg::casino::%{_gm}%::prob}%|&eクリックで変更", "edit/casino/%{_gm}%/prob")
     uf_abtn({_p}, {_g}, 22, gold ingot, "&e払い戻し倍率", "&7現在: %{uf::cfg::casino::%{_gm}%::mult}%|&eクリックで変更", "edit/casino/%{_gm}%/mult")
@@ -978,7 +990,7 @@ function uf_ap_protarea(p: player, n: text):
 function uf_ap_items(p: player, pg: number = 1):
     if {_pg} is not set:
         set {_pg} to 1
-    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp" and "admin_tool"
+    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15" and "admin_tool"
     set {_last} to ceil(size of {_ids::*} / 45)
     set {_pg} to max(1, min({_pg}, {_last}))
     set {_g} to uf_apage({_p}, "&4特殊アイテム %{_pg}% / %{_last}%（クリックで1個受け取る）")

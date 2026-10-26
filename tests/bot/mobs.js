@@ -158,6 +158,14 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   check('inside the dungeon area the bike cannot be called', !!(await waitMsg(from, /ダンジョンの中ではバイクを呼べません/, 3000)));
   b.chat('/zzareadel dungeon1'); await sleep(500);
 
+  // 9 階の完成記念品（初回突破の報酬）
+  from = b.msgs.length;
+  b.chat('/zzreward 9'); await sleep(2000);
+  const trophy = b.inventory.items().find((i) => JSON.stringify(i).includes('uf:trophy_15'));
+  check('9F first clear gives the trophy with the name', !!trophy && JSON.stringify(trophy).includes('UfMob'));
+  check('9F first clear is announced to everyone', !!(await waitMsg(from, /15号館を制覇した/, 2000)));
+  check('9F first clear gives the final upgrade part', b.inventory.items().some((i) => JSON.stringify(i).includes('uf:mat_final')));
+
   const p = results.filter((x) => x[0] === 'PASS').length;
   const fl = results.filter((x) => x[0] === 'FAIL');
   log(`RESULT: PASS ${p} / FAIL ${fl.length}`);

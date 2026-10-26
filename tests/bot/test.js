@@ -39,6 +39,9 @@ function mk(name) {
     // 2.13 はオーバーレイのチャット（messagestr の game_info）で届く
     b.actionbar = '';
     b.on('messagestr', (m, pos) => { if (pos === 'game_info') b.actionbar = m; });
+    // 届いた粒子の位置（回収マーカーが本人にだけ見えるかを確かめる）
+    b.particles = [];
+    b._client.on('world_particles', (d) => { b.particles.push({ x: d.x, y: d.y, z: d.z }); if (b.particles.length > 5000) b.particles.shift(); });
     const plain = (n) => (n == null ? '' : typeof n === 'string' ? n : Array.isArray(n) ? n.map(plain).join('') : (n.text ?? n[''] ?? '') + plain(n.extra));
     b._client.on('action_bar', (d) => { b.actionbar = plain(d.text && d.text.type ? nbt.simplify(d.text) : d.text); });
     b.on('kicked', (r) => log(`[${name}] kicked`, text(r)));
@@ -322,6 +325,8 @@ T.dungeon = async ({ A, P }) => {
   check('3F not ready -> run ends', !!(await waitMsg(P, from, /3階は準備中/, 8000)));
   await sleep(1500);
   check('back to lobby after clear', P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
+  await sleep(1500);
+  check('action bar shows the next goal', P.actionbar.includes('次の目標: 3階を突破'), P.actionbar);
   const after = await points(P);
   check('points increased by dungeon', after > before, `${before} -> ${after}`);
   w = await cmdWin(P, '/dungeon');
@@ -334,7 +339,7 @@ T.dungeon = async ({ A, P }) => {
 };
 
 // ---------------------------------------------------------------
-T.death = async ({ P }) => {
+T.death = async ({ A, P }) => {
   con(`gamemode survival ${P.username}`);
   con(`tp ${P.username} 20 -60 -20`); await sleep(800);
   const pt = await points(P);
@@ -345,6 +350,13 @@ T.death = async ({ P }) => {
   await sleep(1500);
   if (!P.entity || P.health <= 0) { P.respawn(); await sleep(1500); }
   check('balance after death', (await points(P)) === pt - loss);
+  // 回収マーカー: 死亡地点に、本人にだけ見える粒子が出る
+  con(`tp ${P.username} 5 -60 -5`); await sleep(1000);
+  P.particles = []; A.particles = [];
+  await sleep(2500);
+  const nearDeath = (b) => b.particles.filter((q) => Math.abs(q.x - 20.5) < 1.5 && Math.abs(q.z + 19.5) < 1.5).length;
+  check('recovery marker is shown to the owner', nearDeath(P) > 0, `${nearDeath(P)}`);
+  check('recovery marker is not shown to others', nearDeath(A) === 0, `${nearDeath(A)}`);
   from = P.msgs.length;
   con(`tp ${P.username} 20 -60 -20`);
   check('recover dropped points', !!(await waitMsg(P, from, new RegExp(`回収した \\+${loss}pt`), 5000)));
@@ -450,6 +462,40 @@ T.casino = async ({ A, P }) => {
   check('gacha gives a prize', !!(await waitMsg(P, from, /\[ガチャ\]/)));
   await sleep(500);
   check('gacha prize is in the inventory', count() > before, `${before} -> ${count()}`);
+  closeWin(P); await sleep(500);
+  // 的当て: 動く的（target ブロック）をクリックし続ける
+  w = await cmdWin(P, '/casino');
+  check('casino has target and timed games', findSlot(w, '的当て') === 47 && findSlot(w, '時間制限チャレンジ') === 51);
+  from = P.msgs.length;
+  w = await clickWin(P, 47);
+  check('target game opens', titleOf(w).includes('的当て'), titleOf(w).slice(0, 60));
+  const tEnd = Date.now() + 17000;
+  while (Date.now() < tEnd && !P.msgs.slice(from).some((m) => /的当て \d+ 個/.test(m))) {
+    const cw = P.currentWindow;
+    const ts = cw ? cw.slots.findIndex((it, i) => i < 36 && it && it.name === 'target') : -1;
+    if (ts >= 0) await P.clickWindow(ts, 0, 0).catch(() => {});
+    await sleep(150);
+  }
+  check('target game pays out when the goal is reached', !!(await waitMsg(P, from, /的当て \d+ 個！ 大当たり/, 3000)), P.msgs.slice(from).filter((m) => /的当て/.test(m)).join(' | '));
+  await sleep(800);
+  // 時間制限チャレンジ: 1→9 を順に押す
+  w = await cmdWin(P, '/casino');
+  from = P.msgs.length;
+  w = await clickWin(P, 51);
+  check('timed challenge opens', titleOf(w).includes('時間制限チャレンジ'), titleOf(w).slice(0, 60));
+  if (w) {
+    const order = [];
+    for (let i = 9; i <= 17; i++) if (w.slots[i] && w.slots[i].name === 'paper') order[w.slots[i].count] = i;
+    for (let n = 1; n <= 9; n++) { if (order[n] !== undefined) await P.clickWindow(order[n], 0, 0).catch(() => {}); await sleep(120); }
+  }
+  check('timed challenge clears in order', !!(await waitMsg(P, from, /クリア！ チップ \+\d+/, 3000)));
+  await sleep(500);
+  // 押し間違えると負け
+  w = await cmdWin(P, '/casino');
+  from = P.msgs.length;
+  w = await clickWin(P, 51);
+  if (w) { const s2 = [9, 10, 11, 12, 13, 14, 15, 16, 17].find((i) => w.slots[i] && w.slots[i].count === 2); if (s2 !== undefined) await P.clickWindow(s2, 0, 0).catch(() => {}); }
+  check('timed challenge fails on a wrong number', !!(await waitMsg(P, from, /押し間違え！ 1 を押すところだった/, 3000)));
   closeWin(P);
 };
 

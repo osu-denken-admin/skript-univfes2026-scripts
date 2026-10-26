@@ -28,7 +28,7 @@ function uf_bet(p: player) :: number:
     return {_b}
 
 function uf_casinogui(p: player):
-    set {_g} to chest inventory with 5 rows named "&8地下カジノ"
+    set {_g} to chest inventory with 6 rows named "&8地下カジノ"
     uf_guiclear({_p})
     set slot 4 of {_g} to gold ingot named "&e所持チップ: %uf_chip({_p})%" with lore "&7ポイント: %uf_pt({_p})%pt" and "&7交換レート: 1pt = %{uf::cfg::chip_rate}% チップ"
     set slot 10 of {_g} to emerald named "&a100pt → チップ"
@@ -48,6 +48,8 @@ function uf_casinogui(p: player):
         set slot 41 of {_g} to ender chest named "&dガチャ" with lore "&a営業中", {_gc}, "&7景品はアイテム（大当たりは防具など）" and "&eクリックで回す"
     else:
         set slot 41 of {_g} to ender chest named "&dガチャ" with lore "&c休止中" and {_gc}
+    set slot 47 of {_g} to uf_gameicon("target", target, "&c的当て")
+    set slot 51 of {_g} to uf_gameicon("timed", clock, "&b時間制限チャレンジ")
     uf_gui({_p}, "casino", {_g})
 
 function uf_gameicon(game: text, icon: item, name: text) :: item:
@@ -61,6 +63,10 @@ function uf_gameicon(game: text, icon: item, name: text) :: item:
         add "&7成功で賭け金の %{uf::cfg::casino::reaction::mult}% 倍" to {_lore::*}
     else if {_game} is "highlow":
         add "&7当たりにくいほど倍率が高い" to {_lore::*}
+    else if {_game} is "target":
+        add "&7%{uf::cfg::casino::target::time}% 秒で %{uf::cfg::casino::target::goal}% 個当てたら %{uf::cfg::casino::target::mult}% 倍（半分以上なら賭け金が戻る）" to {_lore::*}
+    else if {_game} is "timed":
+        add "&7%{uf::cfg::casino::timed::time}% 秒以内に 1→9 を順に押せたら %{uf::cfg::casino::timed::mult}% 倍" to {_lore::*}
     else:
         add "&7当たりで賭け金の %{uf::cfg::casino::%{_game}%::mult}% 倍" to {_lore::*}
     add "&eクリックで遊ぶ" to {_lore::*}
@@ -102,6 +108,16 @@ on inventory click:
         stop
     else if {_s} is 41:
         uf_gacha(player)
+    else if {_s} is 47:
+        wait 1 tick
+        if player is online:
+            uf_tgstart(player)
+        stop
+    else if {_s} is 51:
+        wait 1 tick
+        if player is online:
+            uf_tmstart(player)
+        stop
     else if {_s} is 31:
         set {_b} to uf_bet(player)
         if {_b} is 10:
