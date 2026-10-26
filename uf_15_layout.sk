@@ -1182,7 +1182,22 @@ function uf_layout_apply() :: boolean:
         uf_gateclose(loop-value, "block")
         uf_gateclose(loop-value, "exit")
         uf_gateclose(loop-value, "mid")
+    uf_layout_areas()
     return true
+
+# ダンジョンの区域（建物と上空の闘技場）。まだ登録されていなければ入れる（管理者ツールの「受付・ショップ・カジノの区域」で直せる）
+function uf_layout_areas():
+    if {uf::cfg::world::dungeon} is not set:
+        stop
+    if {uf::area::dungeon1::a} is not set:
+        set {uf::area::dungeon1::a} to uf_layout_loc(-278, 55, 82)
+        set {uf::area::dungeon1::b} to uf_layout_loc(-196, 125, 130)
+    if {uf::area::dungeon2::a} is not set:
+        set {uf::area::dungeon2::a} to uf_layout_loc(-300, 195, -60)
+        set {uf::area::dungeon2::b} to uf_layout_loc(15, 215, 20)
+
+on load:
+    uf_layout_areas()
 
 # ライトブロック（Litematica で貼るとライトが置かれず、もとからあったライトも消えないため、ここで置き直す）
 #   内装と闘技場の範囲にあるライトを全部消してから、決まった場所に置く

@@ -414,12 +414,39 @@ function uf_inbox(l: location, a: location, b: location) :: boolean:
         return false
     return true
 
-# kind: survival / dungeon / event（/ufadmin world <kind> で登録）
+# kind: survival / dungeon / event（管理者ツールの「ワールドとロビー」か /ufadmin world <kind> で登録）
+#   15号館は、常設サバイバルと同じワールドの中にある「世界のどこかのダンジョン」という位置づけ（2026-10-27）
+#   ダンジョンの区域（建物 dungeon1・上空の闘技場 dungeon2。uf_15_layout.sk が初期値を入れ、管理者ツールで直せる）が
+#   登録してあれば、dungeon はその区域の中だけ、survival はその区域の外だけ。区域がなければワールド全体で判定する
 function uf_inworld(l: location, kind: text) :: boolean:
     if {uf::cfg::world::%{_kind}%} is not set:
         return false
-    if "%world of {_l}%" is {uf::cfg::world::%{_kind}%}:
-        return true
+    if "%world of {_l}%" is not {uf::cfg::world::%{_kind}%}:
+        return false
+    if {_kind} is "dungeon":
+        if uf_hasdarea() is true:
+            return uf_indarea({_l})
+    else if {_kind} is "survival":
+        if uf_indarea({_l}) is true:
+            return false
+    return true
+
+function uf_hasdarea() :: boolean:
+    loop "dungeon1" and "dungeon2":
+        if {uf::area::%loop-value%::a} is set:
+            if {uf::area::%loop-value%::b} is set:
+                return true
+    return false
+
+# ダンジョンの区域（建物・闘技場）の中か
+function uf_indarea(l: location) :: boolean:
+    loop "dungeon1" and "dungeon2":
+        set {_a} to {uf::area::%loop-value%::a}
+        set {_b} to {uf::area::%loop-value%::b}
+        if {_a} is set:
+            if {_b} is set:
+                if uf_inbox({_l}, {_a}, {_b}) is true:
+                    return true
     return false
 
 # 名前付き区域（shop / casino など）。未設定なら「どこでも可」として true

@@ -58,7 +58,24 @@ L.push('    loop integers between 2 and 9:');
 L.push('        uf_gateclose(loop-value, "block")');
 L.push('        uf_gateclose(loop-value, "exit")');
 L.push('        uf_gateclose(loop-value, "mid")');
+L.push('    uf_layout_areas()');
 L.push('    return true');
+L.push('');
+// ダンジョンの区域（建物と上空の闘技場）。この中だけがダンジョン、外は常設サバイバル（uf_00_core.sk の uf_inworld）
+//   建物は階段（x -273〜-201）と各階の範囲（z 87〜125）の外側に 3 ブロックのゆとり。1 階（y 63 前後）から屋上まで
+L.push('# ダンジョンの区域（建物と上空の闘技場）。まだ登録されていなければ入れる（管理者ツールの「受付・ショップ・カジノの区域」で直せる）');
+L.push('function uf_layout_areas():');
+L.push('    if {uf::cfg::world::dungeon} is not set:');
+L.push('        stop');
+L.push('    if {uf::area::dungeon1::a} is not set:');
+L.push('        set {uf::area::dungeon1::a} to uf_layout_loc(-278, 55, 82)');
+L.push('        set {uf::area::dungeon1::b} to uf_layout_loc(-196, 125, 130)');
+L.push('    if {uf::area::dungeon2::a} is not set:');
+L.push('        set {uf::area::dungeon2::a} to uf_layout_loc(-300, 195, -60)');
+L.push('        set {uf::area::dungeon2::b} to uf_layout_loc(15, 215, 20)');
+L.push('');
+L.push('on load:');
+L.push('    uf_layout_areas()');
 L.push('');
 
 // ライトブロック: Litematica で貼るとライトが置かれず、もとからあったライトも消えないので、Skript で置き直す

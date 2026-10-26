@@ -945,6 +945,13 @@ function uf_ap_areas(p: player):
     uf_abtn({_p}, {_g}, 29, white wool, "&eカジノ: 角1", "%uf_locstr({uf::area::casino::a})%%{_h}%", "area/casino/a")
     uf_abtn({_p}, {_g}, 30, white wool, "&eカジノ: 角2", "%uf_locstr({uf::area::casino::b})%%{_h}%", "area/casino/b")
     uf_abtn({_p}, {_g}, 31, tnt, "&cカジノの区域を解除", "&7確認画面が出ます", "ask/カジノの区域を解除する|areadel/casino")
+    # ダンジョンの区域（uf_00_core.sk の uf_inworld）。この中だけがダンジョン、外は常設サバイバル
+    uf_abtn({_p}, {_g}, 37, crying obsidian, "&eダンジョンの区域（15号館の建物）", "&7この中だけがダンジョン（銃・ボム・死亡時のポイント）|&7外は常設サバイバル（3×3 ピッケル・バイク）|&7初期値は 15号館の内装から自動で入る", "")
+    uf_abtn({_p}, {_g}, 38, white wool, "&e建物: 角1", "%uf_locstr({uf::area::dungeon1::a})%%{_h}%", "area/dungeon1/a")
+    uf_abtn({_p}, {_g}, 39, white wool, "&e建物: 角2", "%uf_locstr({uf::area::dungeon1::b})%%{_h}%", "area/dungeon1/b")
+    uf_abtn({_p}, {_g}, 41, end stone, "&eダンジョンの区域（上空の闘技場）", "&7中ボス・ボスの闘技場の範囲", "")
+    uf_abtn({_p}, {_g}, 42, white wool, "&e闘技場: 角1", "%uf_locstr({uf::area::dungeon2::a})%%{_h}%", "area/dungeon2/a")
+    uf_abtn({_p}, {_g}, 43, white wool, "&e闘技場: 角2", "%uf_locstr({uf::area::dungeon2::b})%%{_h}%", "area/dungeon2/b")
     uf_ashow({_p}, {_g}, "hub")
 
 function uf_ap_prot(p: player):

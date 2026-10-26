@@ -6,6 +6,7 @@
 #   /zzhp <階> <割合>   その階の敵の体力を、最大の割合にする（怒るかの確認）
 #   /zzend <階>        その階の挑戦を終わらせる（敵と体力のバーが消える）
 #   /zzworld <種類> <ワールド|none>  ワールドの登録を変える / /zzmod <名前> <on|off>  モジュールを切り替える
+#   /zzarea <名前> x1 y1 z1 x2 y2 z2 / /zzareadel <名前>  区域を登録する・消す（今いるワールド）
 # ============================================================
 
 function uf_zzcheck(f: number, tier: text, ent: text) :: number:
@@ -81,6 +82,17 @@ command /zzmod <text> <text>:
         else:
             set {uf::mod::%arg-1%} to false
         broadcast "mod %arg-1% %arg-2%"
+
+command /zzarea <text> <number> <number> <number> <number> <number> <number>:
+    trigger:
+        set {uf::area::%arg-1%::a} to location(arg-2, arg-3, arg-4, world of player)
+        set {uf::area::%arg-1%::b} to location(arg-5, arg-6, arg-7, world of player)
+        broadcast "area %arg-1%"
+
+command /zzareadel <text>:
+    trigger:
+        delete {uf::area::%arg-1%::*}
+        broadcast "areadel %arg-1%"
 
 command /zzend <number>:
     trigger:

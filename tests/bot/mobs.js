@@ -141,6 +141,23 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   await useItem('bike_key');
   check('bike cannot be called in the dungeon', !!(await waitMsg(from, /ダンジョンの中ではバイクを呼べません/, 3000)));
 
+  // 同じワールドの中のダンジョンの区域（uf_00_core.sk の uf_inworld）。区域の中だけダンジョン、外はサバイバル
+  b.chat('/zzworld dungeon world'); b.chat('/zzworld survival world'); b.chat('/zzarea dungeon1 100 -64 100 120 -40 120'); await sleep(1000);
+  con('tp UfMob 60.5 -60 60.5 0 0'); await sleep(1500);
+  from = b.msgs.length;
+  await useItem('bike_key'); await sleep(1500);
+  check('outside the dungeon area the bike can be called in the same world', !!horse() && !(await waitMsg(from, /ダンジョンの中ではバイクを呼べません/, 300)));
+  b.dismount(); await sleep(2500);
+  b.chat('/ufadmin give it_bomb'); await sleep(800);
+  from = b.msgs.length;
+  await useItem('it_bomb');
+  check('outside the dungeon area the bomb cannot be used', !!(await waitMsg(from, /ダンジョンの中でだけ使えます/, 3000)));
+  con('tp UfMob 110.5 -60 110.5 0 0'); await sleep(1500);
+  from = b.msgs.length;
+  await useItem('bike_key');
+  check('inside the dungeon area the bike cannot be called', !!(await waitMsg(from, /ダンジョンの中ではバイクを呼べません/, 3000)));
+  b.chat('/zzareadel dungeon1'); await sleep(500);
+
   const p = results.filter((x) => x[0] === 'PASS').length;
   const fl = results.filter((x) => x[0] === 'FAIL');
   log(`RESULT: PASS ${p} / FAIL ${fl.length}`);
