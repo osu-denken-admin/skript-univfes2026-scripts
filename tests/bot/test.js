@@ -317,6 +317,7 @@ T.dungeon = async ({ A, P }) => {
   await killAll(P, 60000);
   check('boss reward', !!(await waitMsg(P, from, /討伐報酬 \+300pt/, 8000)));
   check('first clear reward', !!(await waitMsg(P, from, /初回突破報酬 \+200pt/, 8000)));
+  check('first clear gives the floor weapon', !!(await waitMsg(P, from, /武具を手に入れた！ さしぼうソード/, 4000)) && !!invFind(P, 'さしぼうソード'));
   check('floor 3 unlocked', !!(await waitMsg(P, from, /3階 が解放された/, 5000)));
   check('3F not ready -> run ends', !!(await waitMsg(P, from, /3階は準備中/, 8000)));
   await sleep(1500);
@@ -531,6 +532,30 @@ T.admingui2 = async ({ A }) => {
   check('close does not reopen the book', A.nbooks === n);
 };
 
+// ダンジョン産の武具（防具のセットの効果、武器の強化）
+T.gear = async ({ A }) => {
+  closeWin(A);
+  for (const pt of ['helmet', 'chest', 'legs', 'boots']) A.chat(`/ufadmin give dga_lord_${pt}`);
+  await sleep(1500);
+  const slot = { helmet: 'head', chest: 'torso', legs: 'legs', boots: 'feet' };
+  for (const [pt, dest] of Object.entries(slot)) {
+    const it = A.inventory.items().find((i) => itemText(i).includes(`uf:dga_lord_${pt}`));
+    if (it) await A.equip(it, dest).catch((e) => log('equip', e.message));
+    await sleep(300);
+  }
+  await sleep(2800);
+  const fx = Object.keys(A.entity.effects || {}).map(Number);
+  const E = A.registry.effectsByName;
+  check('full lord set gives strength and fire resistance', fx.includes(E.Strength ? E.Strength.id : E.strength.id) && fx.includes(E.FireResistance ? E.FireResistance.id : E.fire_resistance.id), JSON.stringify(fx));
+  A.chat('/ufadmin give dgw_4'); A.chat('/ufadmin give mat_upgrade'); await sleep(1200);
+  await hold(A, 'フラスコアックス');
+  const from = A.msgs.length;
+  A.chat('/upgrade');
+  check('dungeon weapon can be upgraded', !!(await waitMsg(A, from, /強化成功！ 強化レベル 0 → 1/)));
+  check('upgraded weapon keeps its name', !!invFind(A, 'フラスコアックス') && itemText(A.heldItem).includes('uflv:1'));
+  for (const dest of ['head', 'torso', 'legs', 'feet']) await A.unequip(dest).catch(() => {});
+};
+
 // ランキングの掲示板（壁を見ながら置く → 文字が出る → 消す）
 T.boards = async ({ A }) => {
   closeWin(A);
@@ -644,7 +669,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'boards', 'npc', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'boards', 'npc', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

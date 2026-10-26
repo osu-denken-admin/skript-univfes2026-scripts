@@ -8,6 +8,7 @@ GUI のクリック、購入、ダンジョンの戦闘と報酬、死亡と回�
 
 ## 結果
 
+- 2026-10-26（ダンジョン産の武具を追加）: `test.js` **113 項目**（`gear` と初回突破の武器を追加。通しで 112 合格・1 つはテスト側の効果の番号の誤りで、直して `gear` だけ流し直して合格）、`lights.js` **29 / 29**、`mobs.js` **81 / 81**
 - 2026-10-26（ダンジョンの敵を作り直した後）: `test.js` **109 / 109**、`lights.js` **29 / 29**、`mobs.js` **81 / 81**
 - 2026-10-26（大学祭イベントを外した後）: `test.js` **109 / 109 PASS**、`lights.js` **29 / 29 PASS**
 - 2026-10-26（ランキングの掲示板と NPC を追加）: `test.js` **108 / 108 PASS**（`boards` `npc` を追加）、`lights.js` **29 / 29 PASS**（Skript 2.13.1）
@@ -67,7 +68,7 @@ node test.js "テストサーバーのフォルダ/cmds.txt"
 node test.js "テストサーバーのフォルダ/cmds.txt" economy,casino
 ```
 
-テスト名: `admintool` `economy` `dungeon` `death` `revive` `casino` `rpg` `tools` `guns` `admingui2` `boards` `npc` `ops` `security`
+テスト名: `admintool` `economy` `dungeon` `death` `revive` `casino` `rpg` `tools` `guns` `admingui2` `gear` `boards` `npc` `ops` `security`
 
 ## 注意
 

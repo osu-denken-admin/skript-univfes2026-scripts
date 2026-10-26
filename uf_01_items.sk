@@ -6,6 +6,11 @@
 
 function uf_item(id: text, lv: number = 0) :: item:
     set {_lv} to max(0, floor({_lv}))
+    # ダンジョン産の武具は uf_19_gear.sk
+    if {_id} starts with "dgw_":
+        return uf_gearitem({_id}, {_lv})
+    if {_id} starts with "dga_":
+        return uf_gearitem({_id}, {_lv})
     set {_w} to false
     if {_id} is "heal_kit":
         set {_b} to honey bottle
@@ -165,6 +170,8 @@ command /upgrade:
         if {_id} starts with "melee_":
             set {_ok} to true
         if {_id} starts with "gun_":
+            set {_ok} to true
+        if {_id} starts with "dgw_":
             set {_ok} to true
         if {_ok} is false:
             uf_msg(player, "&c強化できる特殊武器を手に持ってください")

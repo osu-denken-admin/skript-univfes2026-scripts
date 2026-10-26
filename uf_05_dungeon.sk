@@ -473,6 +473,7 @@ function uf_dreward(p: player, f: number):
             uf_give({_p}, bread, 8)
         else if {_f} is 4:
             uf_give({_p}, uf_item("mat_upgrade"), 3)
+        uf_geardrop({_p}, {_f}, "first")
         send title "&6初回突破！" with subtitle "&e+%{_pt}%pt" to {_p} for 3 seconds
         uf_msg({_p}, "&6%{_f}%階 初回突破報酬 &e+%{_pt}%pt")
         if {_f} < 9:
@@ -482,6 +483,7 @@ function uf_dreward(p: player, f: number):
         set {_r} to floor({_pt} * {uf::cfg::repeat_rate})
         uf_addpt({_p}, {_r}, "repeatclear:%{_f}%")
         uf_msg({_p}, "&a%{_f}%階 再突破報酬 &e+%{_r}%pt")
+        uf_geardrop({_p}, {_f}, "repeat")
     if uf_unlock({_p}) <= {_f}:
         set {uf::unlock::%{_u}%} to min({_f} + 1, 9)
         if {_f} < 9:
@@ -562,6 +564,8 @@ on death:
             uf_achcheck({_p})
             if {_tier} is "mid" or "boss":
                 uf_msg({_p}, "&a討伐報酬 &e+%{_pt}%pt")
+            if {_tier} is "mid":
+                uf_geardrop({_p}, {_f}, "mid")
     delete {-uf::dmg::%{_mid}%::*}
     if {_tier} is "mid":
         uf_bbclear({_f})
@@ -775,12 +779,17 @@ function uf_chestloot(p: player, f: number):
         uf_give({_p}, uf_item("mat_special"))
         uf_msg({_p}, "&5[エピック] &e+%{_pt}%pt &7と 特殊素材")
     else:
-        if random integer between 1 and 2 is 1:
+        set {_k} to random integer between 1 and 3
+        if {_k} is 1:
             uf_give({_p}, uf_item("acc_rare"))
             uf_msg({_p}, "&6[レジェンダリー] &f守護のお守り")
-        else:
+        else if {_k} is 2:
             uf_give({_p}, uf_item("mat_part"))
             uf_msg({_p}, "&6[レジェンダリー] &f武器パーツ")
+        else:
+            set {_it} to uf_item("dgw_%{_f}%")
+            uf_give({_p}, {_it})
+            uf_msg({_p}, "&6[レジェンダリー] &f%name of {_it}%")
     uf_log("dungeon", "chest %{_p}% f=%{_f}% roll=%{_r}%")
 
 # ------------------------------------------------------------

@@ -947,7 +947,7 @@ function uf_ap_protarea(p: player, n: text):
 function uf_ap_items(p: player):
     set {_g} to uf_apage({_p}, "&4特殊アイテム（クリックで1個受け取る）")
     set {_s} to 0
-    loop "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_kit" and "admin_tool":
+    loop "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots" and "admin_tool":
         set {_it} to uf_item(loop-value)
         if {_it} is set:
             set slot {_s} of {_g} to {_it}

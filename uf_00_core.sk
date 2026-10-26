@@ -49,6 +49,10 @@ function uf_defaults():
     uf_setdef("reward::mid", 150)
     uf_setdef("reward::boss", 300)
     uf_setdef("reward::minion", 3)
+    # ダンジョン産の武具が落ちる確率（uf_19_gear.sk）
+    uf_setdef("gear::boss_weapon", 0.3)
+    uf_setdef("gear::boss_armor", 0.3)
+    uf_setdef("gear::mid_armor", 0.25)
 
     # ダンジョン：初回クリア報酬
     uf_setdef("clear_pt::2", 200)
