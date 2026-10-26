@@ -186,6 +186,8 @@ function uf_defaults():
     uf_shopdef("gun_shotgun", 1400, 6, true)
     uf_shopdef("bike_key", 2500, 6, false)
     uf_shopdef("bike_kit", 1000, 7, false)
+    uf_shopdef("bike_key_scooter", 1800, 6, true)
+    uf_shopdef("bike_key_offroad", 3500, 8, true)
     uf_shopdef("gun_energy", 2000, 8, true)
     uf_shopdef("mat_final", 3000, 9, true)
     uf_shopdef("tool_pick3", 1500, 0, false)

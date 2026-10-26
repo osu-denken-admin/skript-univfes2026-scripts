@@ -127,7 +127,9 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
       con(`kill @e[type=!player]`); await sleep(500);
       from = b.msgs.length;
       b.chat(`/zzfight ${f} ${tier}`);
-      await waitMsg(from, /^fight/, 3000); await sleep(1500);
+      await waitMsg(from, /^fight/, 3000);
+      // クリエイティブのボットには敵が寄ってこないので、遅くして離れていかないようにする（近くでしか出ない技を確かめるため）
+      con('effect give @e[type=!player] slowness 60 4 true'); await sleep(1500);
       check(`${f}F ${tier}: health bar shows`, /◆.*\[.*\] \d+ \/ \d+/.test(b.actionbar), b.actionbar);
       const re = tier === 'boss' ? BOSS_MSG[f] : MID_MSG[f];
       if (re) { const m = await waitMsg(from, re, 22000); check(`${f}F ${tier}: uses a skill`, !!m, m || ''); }
@@ -149,7 +151,10 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   con('kill @e[type=!player]'); con('tp UfMob 40.5 -60 40.5 0 0'); await sleep(1500);
   b.chat('/zzworld dungeon none'); b.chat('/zzworld survival world'); b.chat('/zzmod tools on'); await sleep(800);
   for (const [dx, dz, blk] of [[1, 0, 'short_grass'], [-1, 0, 'poppy'], [0, 1, 'oxeye_daisy'], [0, -1, 'oak_leaves']]) con(`setblock ${40 + dx} -60 ${40 + dz} minecraft:${blk}`);
-  con('setblock 41 -60 41 minecraft:stone'); await sleep(800);
+  con('setblock 41 -60 41 minecraft:stone');
+  // 自然の木（幹 4 段・上に葉）と、葉のない原木 2 段の柱（家の柱のつもり）
+  con('fill 37 -56 41 40 -55 44 minecraft:oak_leaves[persistent=true]'); con('fill 39 -60 41 39 -57 41 minecraft:oak_log');
+  con('fill 41 -60 39 41 -59 39 minecraft:oak_log'); await sleep(800);
   b.chat('/ufadmin give bike_key'); b.chat('/ufadmin give bike_kit'); await sleep(1200);
   // uf:<id> の付いたアイテムを持って、まっすぐ前を向いて使う（下の草花を見たままだと「空中を右クリック」が無視される）
   const useItem = async (id) => {
@@ -184,12 +189,25 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   check('riding clears grass, flowers and leaves', cleared.every((n) => n === 'air'), cleared.join(','));
   const st = b.blockAt(new V(41, -60, 41));
   check('riding does not break other blocks', !!st && st.name === 'stone', st && st.name);
+  const trunk = [-60, -59, -58, -57].map((y) => b.blockAt(new V(39, y, 41))).map((x) => (x ? x.name : 'null'));
+  check('riding fells a natural tree in the way', trunk.every((n) => n === 'air'), trunk.join(','));
+  const pillar = [-60, -59].map((y) => b.blockAt(new V(41, y, 39))).map((x) => (x ? x.name : 'null'));
+  check('riding does not break a log pillar without leaves', pillar.every((n) => n === 'oak_log'), pillar.join(','));
   b.dismount(); con('tp UfMob 40.5 -60 43.5 0 0'); await sleep(2500);
   check('bike disappears after getting off', !Object.values(b.entities).some((e) => e.name === 'horse' && e.position.distanceTo(b.entity.position) < 8));
   check('bike body disappears after getting off', !Object.values(b.entities).some((e) => e.name === 'block_display' && e.position.distanceTo(b.entity.position) < 8));
   from = b.msgs.length;
   await useItem('bike_kit');
   check('bike kit upgrades the bike (or says it is at max)', !!(await waitMsg(from, /バイクを強化した（段階 \d）|すでに最大まで強化/, 3000)));
+  // スクーターとオフロード
+  for (const [id, name] of [['bike_key_scooter', 'scooter'], ['bike_key_offroad', 'offroad']]) {
+    con('tp UfMob 50.5 -60 50.5 0 0'); await sleep(1200);
+    b.chat(`/ufadmin give ${id}`); await sleep(800);
+    await useItem(id); await sleep(1500);
+    check(`${name} can be called and ridden`, !!horse() && (!!b.vehicle || b.entity.position.y > -59.9), `${b.entity.position}`);
+    check(`${name} has its own block body`, parts().length === 8, `${parts().length}`);
+    b.dismount(); await sleep(2500);
+  }
   b.chat('/zzworld dungeon world'); await sleep(800);
   from = b.msgs.length;
   await useItem('bike_key');

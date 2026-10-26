@@ -94,6 +94,17 @@ function uf_item(id: text, lv: number = 0) :: item:
         set {_b} to saddle
         set {_n} to "&6バイクのキー"
         add "&7右クリックでバイクを呼び出して乗る（降りると消える）" to {_d::*}
+        add "&7スタンダード。走ると草花や自然の木をなぎ倒す" to {_d::*}
+    else if {_id} is "bike_key_scooter":
+        set {_b} to saddle
+        set {_n} to "&bスクーターのキー"
+        add "&7右クリックでスクーターを呼び出して乗る（降りると消える）" to {_d::*}
+        add "&7小さくて少し速い。ジャンプは低い" to {_d::*}
+    else if {_id} is "bike_key_offroad":
+        set {_b} to saddle
+        set {_n} to "&2オフロードバイクのキー"
+        add "&7右クリックでオフロードバイクを呼び出して乗る（降りると消える）" to {_d::*}
+        add "&7大きいタイヤで高く跳べる。なぎ倒す範囲が広い" to {_d::*}
     else if {_id} is "bike_kit":
         set {_b} to piston
         set {_n} to "&6バイク強化キット"

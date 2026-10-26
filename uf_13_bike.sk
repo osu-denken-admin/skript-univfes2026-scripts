@@ -2,23 +2,49 @@
 # uf_13_bike.sk : バイク（特殊道具のモジュール tools で動く）
 #   バイクのキーを右クリックすると、本人専用のバイク（見えない馬）を呼び出して乗る
 #     乗るとエンジンの音、走ると煙。降りると消える（1 人 1 台）。他人は乗れない。ダメージを受けない
-#   バイク強化キットで速さとジャンプが上がる（段階 0〜3。uf_bikespeed / uf_bikejump）
-#   走ると、前にある草・花・葉をなぎ倒す（常設サバイバルのワールドだけ。保護区域と、プレイヤーが置いたブロックは壊さない）
-#     原木は家を壊すおそれがあるので壊さない
+#   種類はキーで決まる（uf_biketype）: standard スタンダード（bike_key）/ scooter スクーター（bike_key_scooter）/ offroad オフロード（bike_key_offroad）
+#     速さ・ジャンプ・車体の形・なぎ倒す範囲が違う（uf_bikespeed / uf_bikejump / uf_bikeparts / uf_bikeradius）
+#   バイク強化キットで速さとジャンプが上がる（段階 0〜3。種類に関係なく、その人のバイク全部に効く）
+#   走ると、前にある草・花・葉と、自然の木（てっぺんに葉がある原木の幹。uf_naturallog）をなぎ倒す
+#     常設サバイバルの場所だけ（ダンジョンの区域の外）。保護区域・プレイヤーが置いたブロック・皮をはいだ原木は壊さない
+#     一度に倒す数に上限（5 tick ごとに草花 8 個・木 1 本まで）
 #   ダンジョンの中では呼べない
 #   見た目: 馬は見えなくして、ブロックの部品（block display）で組んだ車体を重ねる（uf_bikebody）
 #     部品は毎 tick 馬の位置と向きに合わせて動かす（2 tick かけてなめらかに）。車体の色は強化の段階で変わる
 #   ※2026-10-26 までは -uf_13_bike.sk（無効）の試作だった
 # ============================================================
 
-function uf_bikespeed(lv: number) :: number:
-    return 0.3 + 0.05 * min(3, max(0, {_lv}))
+function uf_biketype(id: text) :: text:
+    if {_id} is "bike_key_scooter":
+        return "scooter"
+    if {_id} is "bike_key_offroad":
+        return "offroad"
+    return "standard"
 
-function uf_bikejump(lv: number) :: number:
-    return 0.6 + 0.1 * min(3, max(0, {_lv}))
+function uf_bikespeed(lv: number, type: text = "standard") :: number:
+    set {_base} to 0.3
+    if {_type} is "scooter":
+        set {_base} to 0.34
+    else if {_type} is "offroad":
+        set {_base} to 0.28
+    return {_base} + 0.05 * min(3, max(0, {_lv}))
+
+function uf_bikejump(lv: number, type: text = "standard") :: number:
+    set {_base} to 0.6
+    if {_type} is "scooter":
+        set {_base} to 0.45
+    else if {_type} is "offroad":
+        set {_base} to 0.8
+    return {_base} + 0.1 * min(3, max(0, {_lv}))
+
+function uf_bikeradius(type: text) :: number:
+    if {_type} is "offroad":
+        return 2.2
+    return 1.6
 
 on right click:
-    uf_id(player's tool) is "bike_key"
+    set {_id} to uf_id(player's tool)
+    {_id} starts with "bike_key"
     cancel event
     if uf_on("tools") is false:
         uf_msg(player, "&cバイクは現在使用できません")
@@ -27,6 +53,7 @@ on right click:
         uf_msg(player, "&cダンジョンの中ではバイクを呼べません")
         stop
     set {_u} to uuid of player
+    set {_type} to uf_biketype({_id})
     if {-uf::bike::%{_u}%} is set:
         if {-uf::bike::%{_u}%} is alive:
             kill {-uf::bike::%{_u}%}
@@ -42,11 +69,12 @@ on right click:
     set {_lv} to {uf::bikelv::%{_u}%}
     if {_lv} is not set:
         set {_lv} to 0
-    set movement speed attribute of {_h} to uf_bikespeed({_lv})
-    set jump strength attribute of {_h} to uf_bikejump({_lv})
+    set movement speed attribute of {_h} to uf_bikespeed({_lv}, {_type})
+    set jump strength attribute of {_h} to uf_bikejump({_lv}, {_type})
     set scale attribute of {_h} to 0.8
     set {-uf::bike::%{_u}%} to {_h}
-    uf_bikebody({_u}, {_h}, {_lv})
+    set {-uf::biketype::%{_u}%} to {_type}
+    uf_bikebody({_u}, {_h}, {_lv}, {_type})
     make player ride {_h}
     play sound "entity.minecart.riding" with volume 0.8 at {_h}
     play 10 large smoke at location of {_h}
@@ -75,7 +103,7 @@ every 1 second:
         delete {-uf::bike::%loop-value%}
         uf_bikepartsdel(loop-value)
 
-# 走っている間: 煙・音・草花をなぎ倒す
+# 走っている間: 煙・音・草花と木をなぎ倒す
 every 5 ticks:
     loop {-uf::bike::*}:
         set {_h} to loop-value
@@ -86,20 +114,69 @@ every 5 ticks:
                 if mod({-uf::bikesnd::%loop-index%}, 8) is 0:
                     play sound "entity.minecart.riding" with volume 0.4 at {_h}
             if uf_inworld(location of {_h}, "survival") is true:
-                uf_bikeclear({_h})
+                uf_bikeclear({_h}, uf_bikeradius({-uf::biketype::%loop-index%}))
 
-function uf_bikeclear(h: entity):
-    loop blocks in radius 1.6 around (location of {_h} ~ vector(0, 1, 0)):
+function uf_bikesmall(t: text) :: boolean:
+    if {_t} ends with " leaves":
+        return true
+    if {_t} is "short grass", "tall grass", "fern", "large fern", "dead bush", "dandelion", "poppy", "blue orchid", "allium", "azure bluet", "red tulip", "orange tulip", "white tulip", "pink tulip", "oxeye daisy", "cornflower", "lily of the valley", "sunflower", "lilac", "rose bush" or "peony":
+        return true
+    return false
+
+# 自然の木の幹か: 原木（皮をはいだものは除く）を上へたどり、てっぺんのまわりに葉が 3 個以上あるか
+function uf_naturallog(l: location) :: boolean:
+    set {_t} to "%type of block at {_l}%"
+    if {_t} does not end with " log":
+        return false
+    if {_t} contains "stripped":
+        return false
+    set {_top} to {_l}
+    loop 12 times:
+        if "%type of block at ({_top} ~ vector(0, 1, 0))%" is {_t}:
+            set {_top} to {_top} ~ vector(0, 1, 0)
+        else:
+            exit loop
+    set {_n} to 0
+    loop blocks in radius 2.5 around ({_top} ~ vector(0, 1, 0)):
+        if "%type of loop-block%" ends with " leaves":
+            add 1 to {_n}
+    if {_n} >= 3:
+        return true
+    return false
+
+function uf_bikeclear(h: entity, r: number):
+    set {_small} to 0
+    set {_tree} to 0
+    loop blocks in radius {_r} around (location of {_h} ~ vector(0, 1, 0)):
         set {_t} to "%type of loop-block%"
-        set {_ok} to false
-        if {_t} contains "leaves":
-            set {_ok} to true
-        else if {_t} is "short grass", "tall grass", "fern", "large fern", "dead bush", "dandelion", "poppy", "blue orchid", "allium", "azure bluet", "red tulip", "orange tulip", "white tulip", "pink tulip", "oxeye daisy", "cornflower", "lily of the valley", "sunflower", "lilac", "rose bush" or "peony":
-            set {_ok} to true
-        if {_ok} is true:
-            if metadata value "uf_placed" of loop-block is not set:
-                if uf_protected(location of loop-block) is false:
-                    break loop-block naturally
+        if metadata value "uf_placed" of loop-block is not set:
+            if uf_protected(location of loop-block) is false:
+                if uf_bikesmall({_t}) is true:
+                    if {_small} < 8:
+                        break loop-block naturally
+                        add 1 to {_small}
+                else if {_tree} < 1:
+                    if uf_naturallog(location of loop-block) is true:
+                        add 1 to {_tree}
+                        uf_bikefell(location of loop-block, {_t})
+
+# 幹を、当たったところから上へまとめて倒す（葉は自然に消える）
+function uf_bikefell(l: location, t: text):
+    # 幹の途中に当たっても根元が残らないように、根元まで下りてから上へ倒す
+    set {_x} to {_l}
+    loop 12 times:
+        if "%type of block at ({_x} ~ vector(0, -1, 0))%" is {_t}:
+            set {_x} to {_x} ~ vector(0, -1, 0)
+        else:
+            exit loop
+    loop 14 times:
+        if "%type of block at {_x}%" is not {_t}:
+            exit loop
+        if metadata value "uf_placed" of block at {_x} is not set:
+            if uf_protected({_x}) is false:
+                break block at {_x} naturally
+        set {_x} to {_x} ~ vector(0, 1, 0)
+    play sound "block.wood.break" with volume 1 at {_l}
 
 on damage:
     metadata value "uf_bike" of victim is set
@@ -130,7 +207,13 @@ on quit:
 #   1 行が「ブロック|位置 x,y,z|大きさ x,y,z」。位置は馬の足元からの距離で、+z が前、+y が上
 #   FRAME は強化の段階の色（uf_bikecolor）
 # ------------------------------------------------------------
-function uf_bikeparts() :: texts:
+function uf_bikeparts(type: text = "standard") :: texts:
+    if {_type} is "scooter":
+        # 小さいタイヤ・低い床・前の風よけ
+        return "coal block|-0.06,0,0.55|0.12,0.42,0.42", "coal block|-0.06,0,-0.95|0.12,0.42,0.42", "FRAME|-0.2,0.22,-0.85|0.4,0.12,1.3", "FRAME|-0.2,0.34,0.35|0.4,0.65,0.18", "light blue stained glass|-0.22,0.99,0.42|0.44,0.3,0.04", "black wool|-0.18,0.5,-0.75|0.36,0.14,0.55", "iron block|-0.32,0.98,0.4|0.64,0.06,0.06" and "sea lantern|-0.1,0.7,0.53|0.2,0.16,0.06"
+    if {_type} is "offroad":
+        # 大きいタイヤ・高い車体・ロールバー・予備のタイヤ
+        return "coal block|-0.1,0,0.45|0.2,0.85,0.85", "coal block|-0.1,0,-1.3|0.2,0.85,0.85", "FRAME|-0.18,0.55,-0.95|0.36,0.35,1.55", "black wool|-0.2,0.9,-0.75|0.4,0.14,0.6", "iron bars|-0.35,0.9,-1.05|0.7,0.75,0.08", "iron block|-0.05,0.75,0.62|0.1,0.6,0.1", "iron block|-0.42,1.32,0.62|0.84,0.08,0.08" and "sea lantern|-0.12,0.85,0.76|0.24,0.2,0.1"
     return "coal block|-0.07,0,0.5|0.14,0.62,0.62", "coal block|-0.07,0,-1.12|0.14,0.62,0.62", "FRAME|-0.14,0.38,-0.75|0.28,0.3,1.35", "black wool|-0.18,0.68,-0.62|0.36,0.12,0.6", "iron block|-0.05,0.55,0.62|0.1,0.62,0.1", "iron block|-0.38,1.12,0.62|0.76,0.08,0.08", "sea lantern|-0.1,0.62,0.74|0.2,0.18,0.1" and "FRAME|-0.14,0.3,0.45|0.28,0.25,0.25"
 
 function uf_bikecolor(lv: number) :: text:
@@ -142,11 +225,11 @@ function uf_bikecolor(lv: number) :: text:
         return "blue concrete"
     return "red concrete"
 
-function uf_bikebody(u: text, h: entity, lv: number):
+function uf_bikebody(u: text, h: entity, lv: number, type: text = "standard"):
     uf_bikepartsdel({_u})
     set {_l} to location of {_h}
     set pitch of {_l} to 0
-    loop uf_bikeparts():
+    loop uf_bikeparts({_type}):
         set {_p::*} to split loop-value at "|"
         set {_b} to {_p::1}
         if {_b} is "FRAME":
@@ -188,4 +271,7 @@ on load:
             set {_lv} to {uf::bikelv::%loop-index%}
             if {_lv} is not set:
                 set {_lv} to 0
-            uf_bikebody(loop-index, loop-value, {_lv})
+            set {_type} to {-uf::biketype::%loop-index%}
+            if {_type} is not set:
+                set {_type} to "standard"
+            uf_bikebody(loop-index, loop-value, {_lv}, {_type})
