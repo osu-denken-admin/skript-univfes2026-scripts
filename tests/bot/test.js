@@ -501,6 +501,20 @@ T.casino = async ({ A, P }) => {
   w = await clickWin(P, 51);
   if (w) { const s2 = [9, 10, 11, 12, 13, 14, 15, 16, 17].find((i) => w.slots[i] && w.slots[i].count === 2); if (s2 !== undefined) await P.clickWindow(s2, 0, 0).catch(() => {}); }
   check('timed challenge fails on a wrong number', !!(await waitMsg(P, from, /押し間違え！ 1 を押すところだった/, 3000)));
+  closeWin(P); await sleep(500);
+  // カジノ限定ショップ（uf_23_chipshop.sk）
+  w = await cmdWin(P, '/casino');
+  w = await clickWin(P, 49);
+  check('casino-only shop opens', titleOf(w).includes('カジノ限定ショップ'), titleOf(w).slice(0, 60));
+  check('casino-only shop lists gear and handy items', findSlot(w, 'ディーラーの剣') >= 0 && findSlot(w, 'ラッキーハット') >= 0 && findSlot(w, '3×3ピッケル') >= 0 && findSlot(w, 'エリトラ') >= 0);
+  from = P.msgs.length;
+  w = await clickWin(P, findSlot(w, '名札'));
+  check('buy a name tag with chips', !!(await waitMsg(P, from, /交換しました: 名札/, 3000)) && P.inventory.items().some((i) => i.name === 'name_tag'));
+  from = P.msgs.length;
+  w = await clickWin(P, findSlot(w, 'エリトラ'));
+  check('not enough chips for the elytra', !!(await waitMsg(P, from, /チップが足りません/, 3000)));
+  w = await clickWin(P, 49);
+  check('back from the casino-only shop', titleOf(w).includes('地下カジノ'), titleOf(w).slice(0, 60));
   closeWin(P);
 };
 
@@ -595,6 +609,11 @@ T.admingui2 = async ({ A }) => {
   w = await clickBook(A, 'yes');
   check('confirm yes runs the action', !!(await waitMsg(A, from, /近くの NPC を 0 人消しました/)));
   // すべてのページを開く（エラーが出ないか）
+  // カジノの管理 → カジノ限定ショップ
+  w = await clickBook(A, 49); w = await clickBook(A, 14);
+  w = await clickBook(A, 40);
+  check('admin casino-only shop page', titleOf(w).includes('カジノ限定ショップ'), titleOf(w).slice(0, 60));
+  w = await clickBook(A, 49);
   const pages = [10, 11, 12, 13, 14, 15, 16, 28, 29, 30, 33, 34, 35, 37, 38];
   w = await clickBook(A, 49);
   let opened = 0;
@@ -662,6 +681,18 @@ T.gear = async ({ A }) => {
   w = await clickWin(A, 11);
   check('armor gets an armor ability', !!(await waitMsg(A, from, /特殊能力「鉄壁」を付けた/)) && itemText(A.heldItem).includes('ufab:guard'));
   closeWin(A);
+  for (const dest of ['head', 'torso', 'legs', 'feet']) await A.unequip(dest).catch(() => {});
+  // ラッキーセット（カジノ限定）: 4 つで採掘が速くなり、幸運が付く
+  for (const pt of ['helmet', 'chest', 'legs', 'boots']) A.chat(`/ufadmin give cg_${pt}`);
+  await sleep(1500);
+  for (const [pt, dest] of Object.entries(slot)) {
+    const it = A.inventory.items().find((i) => itemText(i).includes(`uf:cg_${pt}`));
+    if (it) await A.equip(it, dest).catch((e) => log('equip', e.message));
+    await sleep(300);
+  }
+  await sleep(2800);
+  const fx2 = Object.keys(A.entity.effects || {}).map(Number);
+  check('lucky set gives haste and luck', fx2.includes(E.Haste.id) && fx2.includes(E.Luck.id), JSON.stringify(fx2));
   for (const dest of ['head', 'torso', 'legs', 'feet']) await A.unequip(dest).catch(() => {});
 };
 

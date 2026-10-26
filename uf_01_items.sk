@@ -13,6 +13,9 @@ function uf_item(id: text, lv: number = 0) :: item:
         return uf_gearitem({_id}, {_lv})
     if {_id} starts with "dgb_":
         return uf_gearitem({_id}, {_lv})
+    # カジノ限定の武具は uf_23_chipshop.sk
+    if {_id} starts with "cg_":
+        return uf_cgitem({_id}, {_lv})
     # 階ごとのレアドロップ品は uf_19_gear.sk
     if {_id} starts with "rare_":
         return uf_rareitem({_id})

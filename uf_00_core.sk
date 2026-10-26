@@ -194,6 +194,25 @@ function uf_defaults():
     uf_shopdef("tool_shovel3", 800, 0, false)
     uf_shopdef("tool_axe", 1200, 0, false)
     uf_shopdef("ore_potion", 300, 0, false)
+    # カジノ限定ショップ（uf_23_chipshop.sk。id, 価格（チップ）, 初期の販売状態）
+    uf_cshopdef("tool_pick3", 3000, true)
+    uf_cshopdef("tool_shovel3", 1500, true)
+    uf_cshopdef("tool_axe", 2500, true)
+    uf_cshopdef("ore_potion", 400, true)
+    uf_cshopdef("hook", 1500, true)
+    uf_cshopdef("mat_upgrade", 150, true)
+    uf_cshopdef("mat_special", 800, true)
+    uf_cshopdef("cg_sword", 4000, true)
+    uf_cshopdef("cg_bow", 3500, true)
+    uf_cshopdef("cg_helmet", 1500, true)
+    uf_cshopdef("cg_chest", 2000, true)
+    uf_cshopdef("cg_legs", 1800, true)
+    uf_cshopdef("cg_boots", 1500, true)
+    uf_cshopdef("v_elytra", 20000, true)
+    uf_cshopdef("v_totem", 5000, true)
+    uf_cshopdef("v_xp", 600, true)
+    uf_cshopdef("v_nametag", 300, true)
+    uf_cshopdef("v_shulker", 2500, true)
     # 気軽なアイテム（uf_20_items2.sk）
     uf_shopdef("it_onigiri", 20, 0, true)
     uf_shopdef("it_speed", 60, 0, true)
@@ -244,6 +263,15 @@ function uf_shopdef(id: text, price: number, req: number, enabled: boolean):
         add 1 to {uf::shopcount}
         set {uf::shoporder::%{_id}%} to {uf::shopcount}
         set {uf::shopids::%{uf::shopcount}%} to {_id}
+
+function uf_cshopdef(id: text, price: number, enabled: boolean):
+    if {uf::cshop::%{_id}%::price} is not set:
+        set {uf::cshop::%{_id}%::price} to {_price}
+        set {uf::cshop::%{_id}%::enabled} to {_enabled}
+    if {uf::cshoporder::%{_id}%} is not set:
+        add 1 to {uf::cshopcount}
+        set {uf::cshoporder::%{_id}%} to {uf::cshopcount}
+        set {uf::cshopids::%{uf::cshopcount}%} to {_id}
 
 function uf_selldef(k: text, v: number, cat: text):
     if {uf::selldone::%{_k}%} is not set:

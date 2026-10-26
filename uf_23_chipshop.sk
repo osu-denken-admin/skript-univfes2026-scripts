@@ -1,0 +1,155 @@
+# ============================================================
+# uf_23_chipshop.sk : カジノ限定ショップ（チップで交換）と、カジノ限定の武具
+#   サバイバルを楽しむ人向け: 作物などを売ったポイント → チップ → カジノで増やす → ここで交換
+#   カジノの画面（uf_10_casino.sk）の 49 から開く。casino モジュールで動く
+#   商品と価格（チップ）は uf_00_core.sk の uf_cshopdef。管理者ツールの「カジノ」→「カジノ限定ショップ」で販売と価格を変えられる
+#   変数: {uf::cshop::<id>::price|enabled}、並び順 {uf::cshopids::*}
+#   商品の id:
+#     特殊アイテム（uf_item）: tool_pick3 など。cg_ で始まるものはカジノ限定の武具（uf_cgitem）
+#     v_ で始まるものは、ふつうのアイテム（uf_cshopvanilla）。修繕の本は Skript では金床で使える形にできないので置かない
+#   カジノ限定の武具
+#     cg_sword ディーラーの剣（はじめからの能力: 会心）/ cg_bow ギャンブラーの弓（無限、はじめからの能力: 疾風）
+#     cg_helmet / cg_chest / cg_legs / cg_boots ラッキーセット（金の防具。4 つそろえると採掘が速くなり、幸運が付く）
+#     どれも鍛冶屋（uf_22_smith.sk）で強化・能力付けができる
+# ============================================================
+
+function uf_cgitem(id: text, lv: number) :: item:
+    if {_id} is "cg_sword":
+        set {_b} to diamond sword
+        set {_n} to "&6&lディーラーの剣"
+        add "&7カジノでしか手に入らない剣" to {_d::*}
+        add "&dはじめからの能力: 会心" to {_d::*}
+        set {_w} to true
+    else if {_id} is "cg_bow":
+        set {_b} to bow
+        enchant {_b} with infinity 1
+        set {_n} to "&6&lギャンブラーの弓"
+        add "&7カジノでしか手に入らない弓。矢が 1 本あればいくらでも撃てる" to {_d::*}
+        add "&dはじめからの能力: 疾風" to {_d::*}
+        set {_w} to true
+    else if {_id} is "cg_helmet":
+        set {_b} to golden helmet
+        set {_n} to "&eラッキーハット"
+    else if {_id} is "cg_chest":
+        set {_b} to golden chestplate
+        set {_n} to "&eラッキージャケット"
+    else if {_id} is "cg_legs":
+        set {_b} to golden leggings
+        set {_n} to "&eラッキーパンツ"
+    else if {_id} is "cg_boots":
+        set {_b} to golden boots
+        set {_n} to "&eラッキーブーツ"
+    else:
+        return {_none}
+    if {_w} is not set:
+        enchant {_b} with protection 2 and unbreaking 3
+        add "&7ラッキーセット（カジノ限定）" to {_d::*}
+        add "&74 つそろえると、採掘が速くなり、幸運が付く" to {_d::*}
+    add "&8uf:%{_id}%" to {_d::*}
+    if {_w} is true:
+        add "&7強化レベル: &e%{_lv}%" to {_d::*}
+        add "&8uflv:%{_lv}%" to {_d::*}
+    return ({_b} named {_n}) with lore {_d::*}
+
+# ふつうのアイテムの商品（v_<名前>）
+function uf_cshopvanilla(id: text) :: item:
+    if {_id} is "v_elytra":
+        return elytra
+    if {_id} is "v_totem":
+        return totem of undying
+    if {_id} is "v_xp":
+        return 32 of bottle o' enchanting
+    if {_id} is "v_nametag":
+        return name tag
+    if {_id} is "v_shulker":
+        return shulker box
+    return {_none}
+
+function uf_cshopitem(id: text) :: item:
+    if {_id} starts with "v_":
+        return uf_cshopvanilla({_id})
+    return uf_item({_id})
+
+function uf_cshopname(id: text) :: text:
+    if {_id} is "v_elytra":
+        return "&dエリトラ"
+    if {_id} is "v_totem":
+        return "&e不死のトーテム"
+    if {_id} is "v_xp":
+        return "&a経験値のビン ×32"
+    if {_id} is "v_nametag":
+        return "&f名札"
+    if {_id} is "v_shulker":
+        return "&5シュルカーボックス"
+    return name of uf_item({_id})
+
+function uf_cshopgui(p: player):
+    if uf_on("casino") is false:
+        uf_msg({_p}, "&cカジノは現在停止中です")
+        stop
+    set {_g} to chest inventory with 6 rows named "&8カジノ限定ショップ（所持チップ %uf_chip({_p})%）"
+    uf_guiclear({_p})
+    set {_s} to 0
+    loop {uf::cshopids::*}:
+        set {_id} to loop-value
+        if {uf::cshop::%{_id}%::enabled} is true:
+            if {_s} < 45:
+                set {_it} to uf_cshopitem({_id})
+                if {_it} is set:
+                    set {_price} to {uf::cshop::%{_id}%::price}
+                    set slot {_s} of {_g} to {_it} named uf_cshopname({_id}) with lore "&7価格: &6チップ %{_price}% 枚", "&8ここでしか買えない" and "&eクリックで交換"
+                    set {-uf::guictx::%uuid of {_p}%::%{_s}%} to {_id}
+                    add 1 to {_s}
+    set slot 49 of {_g} to arrow named "&fカジノに戻る"
+    uf_gui({_p}, "cshop", {_g})
+
+function uf_cshopbuy(p: player, id: text):
+    if {uf::cshop::%{_id}%::enabled} is not true:
+        uf_msg({_p}, "&cこの商品は今は交換できません")
+        stop
+    set {_price} to {uf::cshop::%{_id}%::price}
+    set {_it} to uf_cshopitem({_id})
+    if {_it} is not set:
+        stop
+    if {_p} cannot hold {_it}:
+        uf_msg({_p}, "&cインベントリに空きがありません")
+        stop
+    if uf_takechip({_p}, {_price}, "cshop:%{_id}%") is false:
+        uf_msg({_p}, "&cチップが足りません（必要 %{_price}% 枚 / 所持 %uf_chip({_p})% 枚）")
+        stop
+    give {_it} to {_p}
+    if {_id} is "cg_bow":
+        if {_p} doesn't have arrow:
+            give arrow to {_p}
+    add 1 to {uf::stat::%uuid of {_p}%::bought}
+    uf_msg({_p}, "&a交換しました: %uf_cshopname({_id})% &7（-チップ %{_price}% 枚 / 残り %uf_chip({_p})% 枚）")
+    play sound "entity.player.levelup" with volume 0.7 at {_p}
+    uf_log("casino", "cshop %{_p}% (%uuid of {_p}%) %{_id}% price=%{_price}%")
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "cshop"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 49:
+        wait 1 tick
+        if player is online:
+            uf_casinogui(player)
+        stop
+    set {_id} to {-uf::guictx::%uuid of player%::%{_s}%}
+    {_id} is set
+    uf_cshopbuy(player, {_id})
+    wait 1 tick
+    if player is online:
+        uf_cshopgui(player)
+
+# ラッキーセット（4 つそろえると採掘が速くなり、幸運が付く）
+every 2 seconds:
+    uf_on("casino") is true
+    loop all players:
+        if uf_id(helmet of loop-player) is "cg_helmet":
+            if uf_id(chestplate of loop-player) is "cg_chest":
+                if uf_id(leggings of loop-player) is "cg_legs":
+                    if uf_id(boots of loop-player) is "cg_boots":
+                        apply haste 2 to loop-player for 3 seconds
+                        apply luck 1 to loop-player for 3 seconds

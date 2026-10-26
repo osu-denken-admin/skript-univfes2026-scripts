@@ -50,6 +50,8 @@ function uf_casinogui(p: player):
         set slot 41 of {_g} to ender chest named "&dガチャ" with lore "&c休止中" and {_gc}
     set slot 47 of {_g} to uf_gameicon("target", target, "&c的当て")
     set slot 51 of {_g} to uf_gameicon("timed", clock, "&b時間制限チャレンジ")
+    # カジノ限定ショップ（uf_23_chipshop.sk）
+    set slot 49 of {_g} to emerald block named "&d&lカジノ限定ショップ" with lore "&7チップで、ここでしか手に入らない武具や便利なアイテムと交換" and "&eクリックで開く"
     uf_gui({_p}, "casino", {_g})
 
 function uf_gameicon(game: text, icon: item, name: text) :: item:
@@ -117,6 +119,11 @@ on inventory click:
         wait 1 tick
         if player is online:
             uf_tmstart(player)
+        stop
+    else if {_s} is 49:
+        wait 1 tick
+        if player is online:
+            uf_cshopgui(player)
         stop
     else if {_s} is 31:
         set {_b} to uf_bet(player)

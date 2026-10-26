@@ -368,7 +368,12 @@ on damage:
     {_a} is a player
     set {_t} to tool of {_a}
     set {_id} to uf_id({_t})
-    {_id} starts with "dgb_"
+    set {_ok} to false
+    if {_id} starts with "dgb_":
+        set {_ok} to true
+    else if {_id} is "cg_bow":
+        set {_ok} to true
+    {_ok} is true
     uf_on("dungeon") is true
     set {_v} to victim
     {_v} is not a player
@@ -404,6 +409,10 @@ function uf_weaponabs(i: item) :: texts:
         add uf_rareab((last (length of {_id} - 4) characters of {_id}) parsed as number) to {_out::*}
     else if {_id} starts with "dgb_":
         add uf_rareab((last (length of {_id} - 4) characters of {_id}) parsed as number) to {_out::*}
+    else if {_id} is "cg_sword":
+        add "crit" to {_out::*}
+    else if {_id} is "cg_bow":
+        add "haste" to {_out::*}
     set {_x} to uf_abof({_i})
     if {_x} is not "":
         if {_out::*} does not contain {_x}:
@@ -421,12 +430,16 @@ on damage:
         set {_ok} to true
     else if {_id} starts with "melee_":
         set {_ok} to true
+    else if {_id} is "cg_sword":
+        set {_ok} to true
     {_ok} is true
     uf_on("dungeon") is true
     set {_v} to victim
     {_v} is not a player
     if {_id} starts with "dgw_":
         set damage to damage * uf_gearmult({_id}) * (1 + 0.1 * uf_lv({_t}))
+    else if {_id} is "cg_sword":
+        set damage to damage * 1.15 * (1 + 0.1 * uf_lv({_t}))
     set {_abs::*} to uf_weaponabs({_t})
     if {_abs::*} contains "crit":
         if random number between 0 and 1 < 0.15:

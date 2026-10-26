@@ -25,6 +25,8 @@ function uf_canlevel(id: text) :: boolean:
         return true
     if {_id} starts with "dgb_":
         return true
+    if {_id} is "cg_sword" or "cg_bow":
+        return true
     if {_id} starts with "melee_":
         return true
     if {_id} starts with "gun_":
@@ -37,8 +39,12 @@ function uf_abkind(id: text) :: text:
         return "weapon"
     if {_id} starts with "dgb_":
         return "weapon"
+    if {_id} is "cg_sword" or "cg_bow":
+        return "weapon"
     if {_id} starts with "melee_":
         return "weapon"
+    if {_id} is "cg_helmet", "cg_chest", "cg_legs" or "cg_boots":
+        return "armor"
     if {_id} starts with "dga_":
         return "armor"
     if {_id} is "armor_special":

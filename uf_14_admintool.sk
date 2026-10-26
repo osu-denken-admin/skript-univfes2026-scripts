@@ -330,6 +330,10 @@ function uf_adminopen(p: player, page: text):
         uf_ap_players({_p})
     else if {_k} is "ops":
         uf_ap_ops({_p})
+    else if {_k} is "cshop":
+        uf_ap_cshop({_p})
+    else if {_k} is "cshopitem":
+        uf_ap_cshopitem({_p}, {_q::2})
     else if {_k} is "boards":
         uf_ap_boards({_p})
     else if {_k} is "npcs":
@@ -489,6 +493,36 @@ function uf_ap_shop(p: player):
             add 1 to {_s}
     uf_ashow({_p}, {_g}, "hub")
 
+# カジノ限定ショップ（uf_23_chipshop.sk）
+function uf_ap_cshop(p: player):
+    set {_g} to uf_apage({_p}, "&4カジノ限定ショップ（クリックで商品の設定）")
+    set {_s} to 0
+    loop {uf::cshopids::*}:
+        if {_s} < 45:
+            set {_id} to loop-value
+            set {_icon} to uf_cshopitem({_id})
+            if {_icon} is not set:
+                set {_icon} to paper
+            uf_abtn({_p}, {_g}, {_s}, {_icon}, uf_cshopname({_id}), "%uf_onoff({uf::cshop::%{_id}%::enabled})%|&7価格: &6チップ %{uf::cshop::%{_id}%::price}% 枚|&eクリックで設定", "open/cshopitem/%{_id}%")
+            add 1 to {_s}
+    uf_ashow({_p}, {_g}, "casino")
+
+function uf_ap_cshopitem(p: player, id: text):
+    if {uf::cshop::%{_id}%::price} is not set:
+        uf_ap_cshop({_p})
+        stop
+    set {_g} to uf_apage({_p}, "&4カジノ限定: %uf_cshopname({_id})%")
+    set {_icon} to uf_cshopitem({_id})
+    if {_icon} is not set:
+        set {_icon} to paper
+    uf_abtn({_p}, {_g}, 4, {_icon}, uf_cshopname({_id}), "&7ID: %{_id}%", "")
+    if {uf::cshop::%{_id}%::enabled} is true:
+        uf_abtn({_p}, {_g}, 20, lime concrete, "&a交換できる", "&eクリックで止める", "cshoptoggle/%{_id}%")
+    else:
+        uf_abtn({_p}, {_g}, 20, red concrete, "&c交換を止めている", "&eクリックで交換できるようにする", "cshoptoggle/%{_id}%")
+    uf_abtn({_p}, {_g}, 22, gold nugget, "&e価格（チップ）", "&7現在: %{uf::cshop::%{_id}%::price}% 枚|&eクリックで変更", "edit/cshopprice/%{_id}%")
+    uf_ashow({_p}, {_g}, "cshop")
+
 function uf_ap_shopitem(p: player, id: text):
     if {uf::shop::%{_id}%::price} is not set:
         uf_ap_shop({_p})
@@ -524,6 +558,7 @@ function uf_ap_casino(p: player):
     set {_s8} to uf_casinosum("timed")
     uf_abtn({_p}, {_g}, 38, target, "&c的当て", "%uf_onoff({uf::cfg::casino::target::enabled})%|%{_s7}%|&eクリックで設定", "open/casinogame/target")
     uf_abtn({_p}, {_g}, 42, clock, "&b時間制限チャレンジ", "%uf_onoff({uf::cfg::casino::timed::enabled})%|%{_s8}%|&eクリックで設定", "open/casinogame/timed")
+    uf_abtn({_p}, {_g}, 40, emerald block, "&dカジノ限定ショップ", "&7チップで交換する商品の販売と価格", "open/cshop")
     uf_ashow({_p}, {_g}, "hub")
 
 # 設定と集計の要約（"|" 区切り）
@@ -990,7 +1025,7 @@ function uf_ap_protarea(p: player, n: text):
 function uf_ap_items(p: player, pg: number = 1):
     if {_pg} is not set:
         set {_pg} to 1
-    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9" and "admin_tool"
+    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "cg_sword", "cg_bow", "cg_helmet", "cg_chest", "cg_legs", "cg_boots", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9" and "admin_tool"
     set {_last} to ceil(size of {_ids::*} / 45)
     set {_pg} to max(1, min({_pg}, {_last}))
     set {_g} to uf_apage({_p}, "&4特殊アイテム %{_pg}% / %{_last}%（クリックで1個受け取る）")
@@ -1045,6 +1080,9 @@ function uf_edopen(p: player, target: text):
     else if {_kind} is "shopprice":
         set {_cur} to {uf::shop::%{_x::2}%::price}
         set {_label} to "%uncolored uf_shopname({_x::2})% の価格（pt）"
+    else if {_kind} is "cshopprice":
+        set {_cur} to {uf::cshop::%{_x::2}%::price}
+        set {_label} to "%uncolored uf_cshopname({_x::2})% の価格（チップ）"
     else if {_kind} is "shopreq":
         set {_cur} to {uf::shop::%{_x::2}%::req}
         set {_label} to "%uncolored uf_shopname({_x::2})% の解放条件（クリア階、0=なし）"
@@ -1166,6 +1204,8 @@ function uf_edapply(p: player) :: boolean:
         set {uf::cfg::%{_k}%} to {_v}
     else if {_kind} is "shopprice":
         set {uf::shop::%{_x::2}%::price} to {_v}
+    else if {_kind} is "cshopprice":
+        set {uf::cshop::%{_x::2}%::price} to {_v}
     else if {_kind} is "shopreq":
         set {uf::shop::%{_x::2}%::req} to {_v}
     else if {_kind} is "casino":
@@ -1296,6 +1336,11 @@ function uf_aact(p: player, a: text):
     else if {_c} is "fskip":
         uf_dskip({_x::2} parsed as number)
         uf_msg({_p}, "&e次の段階へ進めました")
+    else if {_c} is "cshoptoggle":
+        if {uf::cshop::%{_x::2}%::enabled} is true:
+            set {uf::cshop::%{_x::2}%::enabled} to false
+        else:
+            set {uf::cshop::%{_x::2}%::enabled} to true
     else if {_c} is "shoptoggle":
         if {uf::shop::%{_x::2}%::enabled} is true:
             set {uf::shop::%{_x::2}%::enabled} to false
