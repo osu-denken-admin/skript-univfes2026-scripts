@@ -6,6 +6,8 @@
 #   走ると、前にある草・花・葉をなぎ倒す（常設サバイバルのワールドだけ。保護区域と、プレイヤーが置いたブロックは壊さない）
 #     原木は家を壊すおそれがあるので壊さない
 #   ダンジョンの中では呼べない
+#   見た目: 馬は見えなくして、ブロックの部品（block display）で組んだ車体を重ねる（uf_bikebody）
+#     部品は毎 tick 馬の位置と向きに合わせて動かす（2 tick かけてなめらかに）。車体の色は強化の段階で変わる
 #   ※2026-10-26 までは -uf_13_bike.sk（無効）の試作だった
 # ============================================================
 
@@ -42,7 +44,9 @@ on right click:
         set {_lv} to 0
     set movement speed attribute of {_h} to uf_bikespeed({_lv})
     set jump strength attribute of {_h} to uf_bikejump({_lv})
+    set scale attribute of {_h} to 0.8
     set {-uf::bike::%{_u}%} to {_h}
+    uf_bikebody({_u}, {_h}, {_lv})
     make player ride {_h}
     play sound "entity.minecart.riding" with volume 0.8 at {_h}
     play 10 large smoke at location of {_h}
@@ -69,6 +73,7 @@ every 1 second:
             add loop-index to {_gone::*}
     loop {_gone::*}:
         delete {-uf::bike::%loop-value%}
+        uf_bikepartsdel(loop-value)
 
 # 走っている間: 煙・音・草花をなぎ倒す
 every 5 ticks:
@@ -113,8 +118,74 @@ on right click on horse:
     uf_msg(player, "&cこれは他の人のバイクです")
 
 on quit:
+    uf_bikepartsdel(uuid of player)
     set {_h} to {-uf::bike::%uuid of player%}
     {_h} is set
     if {_h} is alive:
         kill {_h}
     delete {-uf::bike::%uuid of player%}
+
+# ------------------------------------------------------------
+# 車体（ブロックの部品）
+#   1 行が「ブロック|位置 x,y,z|大きさ x,y,z」。位置は馬の足元からの距離で、+z が前、+y が上
+#   FRAME は強化の段階の色（uf_bikecolor）
+# ------------------------------------------------------------
+function uf_bikeparts() :: texts:
+    return "coal block|-0.07,0,0.5|0.14,0.62,0.62", "coal block|-0.07,0,-1.12|0.14,0.62,0.62", "FRAME|-0.14,0.38,-0.75|0.28,0.3,1.35", "black wool|-0.18,0.68,-0.62|0.36,0.12,0.6", "iron block|-0.05,0.55,0.62|0.1,0.62,0.1", "iron block|-0.38,1.12,0.62|0.76,0.08,0.08", "sea lantern|-0.1,0.62,0.74|0.2,0.18,0.1" and "FRAME|-0.14,0.3,0.45|0.28,0.25,0.25"
+
+function uf_bikecolor(lv: number) :: text:
+    if {_lv} >= 3:
+        return "diamond block"
+    if {_lv} is 2:
+        return "gold block"
+    if {_lv} is 1:
+        return "blue concrete"
+    return "red concrete"
+
+function uf_bikebody(u: text, h: entity, lv: number):
+    uf_bikepartsdel({_u})
+    set {_l} to location of {_h}
+    set pitch of {_l} to 0
+    loop uf_bikeparts():
+        set {_p::*} to split loop-value at "|"
+        set {_b} to {_p::1}
+        if {_b} is "FRAME":
+            set {_b} to uf_bikecolor({_lv})
+        set {_t::*} to split {_p::2} at ","
+        set {_s::*} to split {_p::3} at ","
+        spawn a block display at {_l}
+        set {_d} to last spawned entity
+        set block data of {_d} to ({_b} parsed as block data)
+        set display translation of {_d} to vector({_t::1} parsed as number, {_t::2} parsed as number, {_t::3} parsed as number)
+        set display scale of {_d} to vector({_s::1} parsed as number, {_s::2} parsed as number, {_s::3} parsed as number)
+        set teleport duration of {_d} to 2 ticks
+        add "uf_bikepart" to scoreboard tags of {_d}
+        add {_d} to {-uf::bikeparts::%{_u}%::*}
+
+function uf_bikepartsdel(u: text):
+    loop {-uf::bikeparts::%{_u}%::*}:
+        kill loop-value
+    delete {-uf::bikeparts::%{_u}%::*}
+
+# 車体を馬に合わせて動かす
+every tick:
+    loop {-uf::bike::*}:
+        set {_h} to loop-value
+        if {_h} is alive:
+            set {_l} to location of {_h}
+            set pitch of {_l} to 0
+            loop {-uf::bikeparts::%loop-index-1%::*}:
+                teleport loop-value-2 to {_l}
+
+# 再起動や読み込み直しで残った部品を消し、乗っている人の車体は作り直す
+on load:
+    loop all block displays:
+        if scoreboard tags of loop-value contains "uf_bikepart":
+            kill loop-value
+    loop {-uf::bike::*}:
+        delete {-uf::bikeparts::%loop-index%::*}
+        if loop-value is alive:
+            set {_lv} to {uf::bikelv::%loop-index%}
+            if {_lv} is not set:
+                set {_lv} to 0
+            uf_bikebody(loop-index, loop-value, {_lv})

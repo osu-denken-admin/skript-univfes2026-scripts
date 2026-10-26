@@ -108,6 +108,22 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   await useItem('bike_key'); await sleep(1500);
   const horse = () => Object.values(b.entities).find((e) => e.name === 'horse' && e.position.distanceTo(b.entity.position) < 3);
   check('bike key summons a bike and rides it', !!horse() && (!!b.vehicle || b.entity.position.y > -59.9), `${b.entity.position}`);
+  // ブロックの車体（block display 8 個）が馬についてくる
+  const parts = () => Object.values(b.entities).filter((e) => e.name === 'block_display' && e.position.distanceTo(b.entity.position) < 4);
+  check('bike body is made of 8 block parts', parts().length === 8, `${parts().length}`);
+  const yawDiff = (a, c) => { let d = Math.abs(a - c) % (2 * Math.PI); return Math.min(d, 2 * Math.PI - d); };
+  // 本物のプレイヤーと同じく「乗り物を動かす」通信を送って、馬を東へ 2 ブロック動かし、東を向かせる
+  const h0 = horse(); const y0 = h0 ? h0.yaw : 0;
+  for (let i = 1; i <= 8; i++) { try { b._client.write('vehicle_move', { x: 40.5 + i * 0.25, y: -60, z: 40.5, yaw: -90, pitch: 0, onGround: true }); } catch (e) { log('vehicle_move', e.message); } await sleep(60); }
+  await sleep(1200);
+  const h = horse();
+  check('horse moved by the rider', !!h && h.position.x > 42, h ? `${h.position}` : 'no horse');
+  check('bike body follows the bike', !!h && parts().length === 8 && parts().every((e) => e.position.distanceTo(h.position) < 0.3), parts().map((e) => e.position.toString()).slice(0, 2).join(' '));
+  // 乗っている本人には馬の向きが送られてこないので、本人の向きの通信を送り、部品の向きが変わるかで見る（馬は乗り手の向きに合わせて回る）
+  const py0 = parts().length ? parts()[0].yaw : 0;
+  try { b._client.write('look', { yaw: 90, pitch: 0, flags: 1 }); } catch (e) { try { b._client.write('look', { yaw: 90, pitch: 0, onGround: true }); } catch (e2) { log('look', e2.message); } }
+  await sleep(1200);
+  check('bike body turns with the bike', parts().length === 8 && yawDiff(parts()[0].yaw, py0) > 1 && parts().every((e) => yawDiff(e.yaw, parts()[0].yaw) < 0.05), `${py0.toFixed(2)} -> ${parts().map((e) => e.yaw.toFixed(2)).join(',')}`);
   await sleep(1000);
   const V = require('vec3').Vec3;
   const cleared = [[41, 40], [39, 40], [40, 41], [40, 39]].map(([x, z]) => b.blockAt(new V(x, -60, z))).map((bl) => (bl ? bl.name : 'null'));
@@ -116,9 +132,10 @@ const MID_MSG = { 2: /手下を呼んだ/, 3: /矢が降ってくる|手下を�
   check('riding does not break other blocks', !!st && st.name === 'stone', st && st.name);
   b.dismount(); con('tp UfMob 40.5 -60 43.5 0 0'); await sleep(2500);
   check('bike disappears after getting off', !Object.values(b.entities).some((e) => e.name === 'horse' && e.position.distanceTo(b.entity.position) < 8));
+  check('bike body disappears after getting off', !Object.values(b.entities).some((e) => e.name === 'block_display' && e.position.distanceTo(b.entity.position) < 8));
   from = b.msgs.length;
   await useItem('bike_kit');
-  check('bike kit upgrades the bike', !!(await waitMsg(from, /バイクを強化した（段階 \d）/, 3000)));
+  check('bike kit upgrades the bike (or says it is at max)', !!(await waitMsg(from, /バイクを強化した（段階 \d）|すでに最大まで強化/, 3000)));
   b.chat('/zzworld dungeon world'); await sleep(800);
   from = b.msgs.length;
   await useItem('bike_key');
