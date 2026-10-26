@@ -583,6 +583,8 @@ on death:
                 uf_msg({_p}, "&a討伐報酬 &e+%{_pt}%pt")
             if {_tier} is "mid":
                 uf_geardrop({_p}, {_f}, "mid")
+            # 強化素材・レアドロップ品（uf_19_gear.sk）
+            uf_mobdrop({_p}, {_f}, {_tier})
     delete {-uf::dmg::%{_mid}%::*}
     if {_tier} is "mid":
         uf_bbclear({_f})

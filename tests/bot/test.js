@@ -308,6 +308,8 @@ T.dungeon = async ({ A, P }) => {
   await killAll(P, 30000);
   check('kill rewards', (await points(P)) > mid);
   from = P.msgs.length;
+  // ボスのレアドロップを必ず出す（uf_19_gear.sk の uf_mobdrop）
+  A.chat('/ufadmin cfg drop::boss::rare 100'); A.chat('/ufadmin cfg drop::boss::mat_special 100'); await sleep(600);
   A.chat('/ufd skip 2'); await sleep(800);
   A.chat('/ufd skip 2');
   check('floor boss appears', !!(await waitMsg(P, from, /受付に残る影 が現れた/, 6000)));
@@ -320,6 +322,9 @@ T.dungeon = async ({ A, P }) => {
   await killAll(P, 60000);
   check('boss reward', !!(await waitMsg(P, from, /討伐報酬 \+300pt/, 8000)));
   check('first clear reward', !!(await waitMsg(P, from, /初回突破報酬 \+200pt/, 8000)));
+  check('boss drops upgrade materials (2 for sure)', !!(await waitMsg(P, from, /ドロップ: 武器強化素材 ×2/, 3000)));
+  check('boss drops the floor rare item', !!(await waitMsg(P, from, /レアドロップ！ 先生の赤ペン ×1/, 3000)) && !!invFind(P, '先生の赤ペン'));
+  check('boss drops special material', !!(await waitMsg(P, from, /レアドロップ！ 特殊素材 ×1/, 3000)));
   check('first clear gives the floor weapon', !!(await waitMsg(P, from, /武具を手に入れた！ さしぼうソード/, 4000)) && !!invFind(P, 'さしぼうソード'));
   check('floor 3 unlocked', !!(await waitMsg(P, from, /3階 が解放された/, 5000)));
   check('3F not ready -> run ends', !!(await waitMsg(P, from, /3階は準備中/, 8000)));

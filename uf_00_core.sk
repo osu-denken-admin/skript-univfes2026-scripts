@@ -53,6 +53,20 @@ function uf_defaults():
     uf_setdef("gear::boss_weapon", 0.3)
     uf_setdef("gear::boss_armor", 0.3)
     uf_setdef("gear::mid_armor", 0.25)
+    # 敵のドロップ（％。sure は必ず落ちる数）。uf_19_gear.sk の uf_mobdrop
+    uf_setdef("drop::normal::mat_upgrade", 4)
+    uf_setdef("drop::strong::mat_upgrade", 8)
+    uf_setdef("drop::strong::rare", 2)
+    uf_setdef("drop::elite::mat_upgrade", 15)
+    uf_setdef("drop::elite::rare", 8)
+    uf_setdef("drop::elite::mat_special", 3)
+    uf_setdef("drop::mid::mat_upgrade::sure", 1)
+    uf_setdef("drop::mid::rare", 25)
+    uf_setdef("drop::mid::mat_special", 10)
+    uf_setdef("drop::boss::mat_upgrade::sure", 2)
+    uf_setdef("drop::boss::rare", 50)
+    uf_setdef("drop::boss::mat_special", 20)
+    uf_setdef("drop::boss::mat_part", 10)
 
     # ダンジョン：初回クリア報酬
     uf_setdef("clear_pt::2", 200)

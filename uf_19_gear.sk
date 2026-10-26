@@ -112,6 +112,159 @@ function uf_gearmult(id: text) :: number:
         return 1
     return 1.1
 
+# ------------------------------------------------------------
+# 特殊能力の一覧。階ごとに、武器の能力と防具の能力が 1 つずつ決まっている
+#   その階の武器（dgw_<階>）は、はじめからその階の武器の能力を持つ
+#   鍛冶屋（uf_22_smith.sk）で、その階のレアドロップ品を使って武具に能力を 1 つ付けられる
+# ------------------------------------------------------------
+function uf_rareab(f: number) :: text:
+    if {_f} is 2:
+        return "haste"
+    if {_f} is 3:
+        return "knock"
+    if {_f} is 4:
+        return "poison"
+    if {_f} is 5:
+        return "zap"
+    if {_f} is 6:
+        return "slow"
+    if {_f} is 7:
+        return "crit"
+    if {_f} is 8:
+        return "drain"
+    return "fire"
+
+function uf_rareabarmor(f: number) :: text:
+    if {_f} is 2:
+        return "swift"
+    if {_f} is 3:
+        return "guard"
+    if {_f} is 4:
+        return "antidote"
+    if {_f} is 5:
+        return "thorns"
+    if {_f} is 6:
+        return "regen"
+    if {_f} is 7:
+        return "lucky"
+    if {_f} is 8:
+        return "dodge"
+    return "might"
+
+function uf_abname(ab: text) :: text:
+    if {_ab} is "haste":
+        return "疾風"
+    if {_ab} is "knock":
+        return "ふきとばし"
+    if {_ab} is "poison":
+        return "毒"
+    if {_ab} is "zap":
+        return "雷"
+    if {_ab} is "slow":
+        return "足止め"
+    if {_ab} is "crit":
+        return "会心"
+    if {_ab} is "drain":
+        return "吸収"
+    if {_ab} is "fire":
+        return "業火"
+    if {_ab} is "swift":
+        return "俊足"
+    if {_ab} is "guard":
+        return "鉄壁"
+    if {_ab} is "antidote":
+        return "解毒"
+    if {_ab} is "thorns":
+        return "反撃"
+    if {_ab} is "regen":
+        return "再生"
+    if {_ab} is "lucky":
+        return "幸運"
+    if {_ab} is "dodge":
+        return "回避"
+    if {_ab} is "might":
+        return "剛力"
+    return {_ab}
+
+# ------------------------------------------------------------
+# 階ごとのレアドロップ品（rare_<階>）と、敵のドロップ
+#   レアドロップ品は鍛冶屋（uf_22_smith.sk）で、その階のテーマの特殊能力を武具に付ける材料になる
+#   ドロップは、倒した敵にダメージを与えた人それぞれに直接渡す（地面に落とさない＝横取りされない）
+#   確率は uf_00_core.sk の drop::<tier>::<素材>（％）。ボスが呼ぶ手下（minion）からは落ちない
+# ------------------------------------------------------------
+function uf_rarename(f: number) :: text:
+    if {_f} is 2:
+        return "&c先生の赤ペン"
+    if {_f} is 3:
+        return "&6古文書のページ"
+    if {_f} is 4:
+        return "&a光る試薬"
+    if {_f} is 5:
+        return "&b壊れた基板"
+    if {_f} is 6:
+        return "&e警備員の鍵束"
+    if {_f} is 7:
+        return "&d教授の研究ノート"
+    if {_f} is 8:
+        return "&8錆びた封鎖の鍵"
+    return "&5&l15号館の主のかけら"
+
+function uf_rareitem(id: text) :: item:
+    set {_f} to (last (length of {_id} - 5) characters of {_id}) parsed as number
+    if {_f} is not set:
+        return {_none}
+    if {_f} < 2:
+        return {_none}
+    if {_f} > 9:
+        return {_none}
+    if {_f} is 2:
+        set {_b} to red dye
+    else if {_f} is 3:
+        set {_b} to paper
+    else if {_f} is 4:
+        set {_b} to glow ink sac
+    else if {_f} is 5:
+        set {_b} to redstone
+    else if {_f} is 6:
+        set {_b} to tripwire hook
+    else if {_f} is 7:
+        set {_b} to writable book
+    else if {_f} is 8:
+        set {_b} to iron nugget
+    else:
+        set {_b} to echo shard
+    add "&7%{_f}%階の敵がまれに落とすレアドロップ品" to {_d::*}
+    add "&7鍛冶屋で、武器に「%uf_abname(uf_rareab({_f}))%」、防具に「%uf_abname(uf_rareabarmor({_f}))%」の能力を付ける材料" to {_d::*}
+    add "&8uf:%{_id}%" to {_d::*}
+    return ({_b} named uf_rarename({_f})) with lore {_d::*}
+
+# 倒した人 1 人ぶんのドロップ
+function uf_mobdrop(p: player, f: number, tier: text):
+    if {_tier} is "minion":
+        stop
+    loop "mat_upgrade", "rare", "mat_special" and "mat_part":
+        set {_k} to loop-value
+        set {_n} to 0
+        set {_sure} to {uf::cfg::drop::%{_tier}%::%{_k}%::sure}
+        if {_sure} is set:
+            set {_n} to {_sure}
+        set {_rate} to {uf::cfg::drop::%{_tier}%::%{_k}%}
+        if {_rate} is set:
+            if random number between 0 and 100 < {_rate}:
+                add 1 to {_n}
+        if {_n} > 0:
+            if {_k} is "rare":
+                set {_it} to uf_item("rare_%{_f}%")
+            else:
+                set {_it} to uf_item({_k})
+            uf_give({_p}, {_it}, {_n})
+            if {_k} is "mat_upgrade":
+                uf_msg({_p}, "&7ドロップ: &f%name of {_it}% ×%{_n}%")
+            else:
+                uf_msg({_p}, "&6レアドロップ！ &f%name of {_it}% ×%{_n}%")
+                play sound "entity.player.levelup" with volume 0.6 at {_p}
+            uf_log("item", "drop %{_p}% (%uuid of {_p}%) %uf_id({_it})% x%{_n}% f=%{_f}% tier=%{_tier}%")
+
 # 階に合う防具のセット
 function uf_gearsetof(f: number) :: text:
     if {_f} <= 4:
