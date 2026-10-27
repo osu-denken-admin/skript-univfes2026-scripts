@@ -130,6 +130,7 @@ function uf_item(id: text, lv: number = 0) :: item:
         set {_b} to compass
         set {_n} to "&eフロアマップ"
         add "&7右クリックで15号館のフロア選択を開く" to {_d::*}
+        add "&7挑戦中は、ここからダンジョンを出られる" to {_d::*}
     else if {_id} is "tool_pick3":
         set {_b} to diamond pickaxe
         set {_n} to "&b3×3ピッケル"

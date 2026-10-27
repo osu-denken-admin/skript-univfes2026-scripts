@@ -373,6 +373,46 @@ T.death = async ({ A, P }) => {
 };
 
 // ---------------------------------------------------------------
+// ダンジョンの出かた（フロアマップ → 退出）と、ダンジョンの中で死んでも持ち物を落とさないこと
+//   15号館はサバイバルと同じワールドなので、ゲームルールは keepInventory false にして確かめる
+T.dungeonexit = async ({ A, P }) => {
+  const dirt = (b) => b.inventory.items().filter((it) => it.name === 'dirt').reduce((a, it) => a + it.count, 0);
+  const respawn = async () => { await sleep(1200); if (!P.entity || P.health <= 0) { P.respawn(); } await sleep(1500); };
+  con('gamerule keepInventory false'); con('gamerule keep_inventory false');
+  // ダンジョンの区域を受付・2 階の開始地点のまわりだけにする（管理者は敵に倒されないようクリエイティブ）
+  con(`gamemode creative ${A.username}`);
+  con(`tp ${A.username} -2 -60 -2`); await sleep(800); A.chat('/ufadmin area dungeon1 pos1');
+  con(`tp ${A.username} 14 -55 14`); await sleep(800); A.chat('/ufadmin area dungeon1 pos2'); await sleep(400);
+  con(`tp ${A.username} 0 -60 0`); await sleep(400);
+  con(`gamemode survival ${P.username}`); con(`clear ${P.username}`); con(`tp ${P.username} 0 -60 0`); await sleep(800);
+  con(`give ${P.username} dirt 5`); await sleep(500);
+  let from = P.msgs.length;
+  let w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
+  check('entering shows how to leave', !!(await waitMsg(P, from, /フロアマップ.*退出する/)));
+  check('floor map given on entry', !!invFind(P, 'フロアマップ'));
+  // ダンジョンの中で死ぬ → 持ち物はそのまま
+  con(`tp ${P.username} 6 -60 6`); await sleep(800);
+  con(`kill ${P.username}`); await respawn();
+  check('items kept on death in the dungeon', dirt(P) === 5 && !!invFind(P, 'フロアマップ'), `dirt=${dirt(P)}`);
+  // もう一度入って、フロアマップから退出する
+  con(`tp ${P.username} 0 -60 0`); await sleep(800);
+  w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
+  check('in the dungeon again', P.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3, P.entity.position.toString());
+  await hold(P, 'フロアマップ'); await P.look(0, Math.PI / 2, true);
+  const p = waitWindow(P); P.activateItem(); w = await p; P.deactivateItem();
+  check('floor map has a leave button while in the dungeon', !!w && itemText(w.slots[22]).includes('退出する'));
+  from = P.msgs.length; await P.clickWindow(22, 0, 0).catch(() => {}); await sleep(1500);
+  check('leave from the floor map', !!(await waitMsg(P, from, /ダンジョンから退出しました/)) && P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
+  // ダンジョンの外で死ぬ → いつもどおり落とす（ゲームルールのとおり）
+  con(`tp ${P.username} 30 -60 30`); await sleep(800);
+  con(`kill ${P.username}`); await respawn();
+  check('items still drop outside the dungeon', dirt(P) === 0, `dirt=${dirt(P)}`);
+  // 片付け
+  A.chat('/ufadmin area dungeon1 del'); con('kill @e[type=item]');
+  con('gamerule keepInventory true'); con('gamerule keep_inventory true'); con(`clear ${P.username}`); await sleep(500);
+};
+
+// ---------------------------------------------------------------
 T.revive = async ({ A, P }) => {
   // 敵に押されて死亡地点がずれないよう、二人ともクリエイティブ（/kill は効く）
   con(`gamemode creative ${A.username}`);
@@ -839,7 +879,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

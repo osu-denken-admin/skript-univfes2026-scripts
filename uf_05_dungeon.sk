@@ -114,7 +114,7 @@ function uf_floorgui(p: player):
         set slot {_s} of {_g} to ({_icon} named "&f%{_f}%階から") with lore {_lore::*}
         set {-uf::guictx::%{_u}%::%{_s}%} to {_f}
     if {-uf::insess::%{_u}%} is set:
-        set slot 22 of {_g} to barrier named "&cダンジョンから退出する"
+        set slot 22 of {_g} to barrier named "&cダンジョンから退出する" with lore "&7挑戦をやめて 1 階のロビーへ戻る" and "&7突破した階と報酬はそのまま"
     uf_gui({_p}, "floor", {_g})
 
 on inventory click:
@@ -192,6 +192,7 @@ function uf_dbegin(f: number, mem: players, teleport: boolean = true):
             delete {-uf::down::%uuid of loop-value%}
             if {_teleport} is true:
                 teleport loop-value to {uf::floor::%{_f}%::start}
+                uf_dexithint(loop-value)
             else if uf_inbox(location of loop-value, {uf::floor::%{_f}%::p1}, {uf::floor::%{_f}%::p2}) is false:
                 teleport loop-value to {uf::floor::%{_f}%::start}
                 uf_msg(loop-value, "&7パーティーに合流しました")
@@ -199,6 +200,22 @@ function uf_dbegin(f: number, mem: players, teleport: boolean = true):
     uf_log("dungeon", "floor start f=%{_f}%")
     uf_placechests({_f})
     uf_spawnwave({_f})
+
+# 受付から入った人に、出かたを伝える。フロアマップ（退出のボタンがある）を持っていなければ渡す
+function uf_dexithint(p: player):
+    set {_has} to false
+    loop all items in inventory of {_p}:
+        if uf_id(loop-value) is "map":
+            set {_has} to true
+    if {_has} is false:
+        uf_give({_p}, uf_item("map"))
+    uf_msg({_p}, "&7ダンジョンを出るときは &eフロアマップ（コンパス）&7を右クリック →「ダンジョンから退出する」")
+
+# ダンジョンの中で死んでも、持ち物と経験値は落とさない（失うのはポイントの半分だけ。uf_06_death.sk）
+#   15号館はサバイバルと同じワールドにあるので、ワールドのゲームルールではなくここで決める
+on death of player:
+    uf_inworld(location of victim, "dungeon") is true
+    keep the inventory and experience
 
 # 階ごとの出現数（/ufd count で上書き可能）
 function uf_dcount(f: number, tier: text) :: number:
