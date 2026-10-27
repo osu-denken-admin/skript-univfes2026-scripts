@@ -102,28 +102,30 @@ function uf_defaults():
 
     # 特殊武器（cd は tick 単位）
     uf_setdef("gun_scope", "dungeon")
-    uf_setdef("gun::gun_handgun::dmg", 6)
+    # 武具のスキン（uf_24_skin.sk）
+    uf_setdef("skin::enabled", true)
+    uf_setdef("gun::gun_handgun::dmg", 10)
     uf_setdef("gun::gun_handgun::cd", 8)
     uf_setdef("gun::gun_handgun::ammo", 1)
     uf_setdef("gun::gun_handgun::pellets", 1)
     uf_setdef("gun::gun_handgun::speed", 3)
-    uf_setdef("gun::gun_rifle::dmg", 4)
+    uf_setdef("gun::gun_rifle::dmg", 5)
     uf_setdef("gun::gun_rifle::cd", 3)
     uf_setdef("gun::gun_rifle::ammo", 1)
     uf_setdef("gun::gun_rifle::pellets", 1)
     uf_setdef("gun::gun_rifle::speed", 3.5)
-    uf_setdef("gun::gun_shotgun::dmg", 3)
+    uf_setdef("gun::gun_shotgun::dmg", 4)
     uf_setdef("gun::gun_shotgun::cd", 20)
     uf_setdef("gun::gun_shotgun::ammo", 1)
-    uf_setdef("gun::gun_shotgun::pellets", 5)
+    uf_setdef("gun::gun_shotgun::pellets", 6)
     uf_setdef("gun::gun_shotgun::speed", 2.5)
-    uf_setdef("gun::gun_energy::dmg", 12)
+    uf_setdef("gun::gun_energy::dmg", 30)
     uf_setdef("gun::gun_energy::cd", 30)
     uf_setdef("gun::gun_energy::ammo", 0)
     uf_setdef("gun::gun_energy::pellets", 1)
     uf_setdef("gun::gun_energy::speed", 4)
-    uf_setdef("melee::melee_basic", 1.2)
-    uf_setdef("melee::melee_adv", 1.4)
+    uf_setdef("melee::melee_basic", 2)
+    uf_setdef("melee::melee_adv", 3.2)
 
     # RPG
     uf_setdef("level::max", 50)
@@ -202,12 +204,12 @@ function uf_defaults():
     uf_cshopdef("hook", 1500, true)
     uf_cshopdef("mat_upgrade", 150, true)
     uf_cshopdef("mat_special", 800, true)
-    uf_cshopdef("cg_sword", 4000, true)
-    uf_cshopdef("cg_bow", 3500, true)
-    uf_cshopdef("cg_helmet", 1500, true)
-    uf_cshopdef("cg_chest", 2000, true)
-    uf_cshopdef("cg_legs", 1800, true)
-    uf_cshopdef("cg_boots", 1500, true)
+    uf_cshopdef("cg_sword", 30000, true)
+    uf_cshopdef("cg_bow", 25000, true)
+    uf_cshopdef("cg_helmet", 12000, true)
+    uf_cshopdef("cg_chest", 18000, true)
+    uf_cshopdef("cg_legs", 15000, true)
+    uf_cshopdef("cg_boots", 12000, true)
     uf_cshopdef("v_elytra", 20000, true)
     uf_cshopdef("v_totem", 5000, true)
     uf_cshopdef("v_xp", 600, true)
@@ -253,6 +255,26 @@ function uf_defaults():
     uf_selldef("salmon", 6, "fish")
     uf_selldef("tropical fish", 10, "fish")
     uf_selldef("pufferfish", 8, "fish")
+
+    # 強さの見直し（2026-10-28）。上の uf_setdef は値がないときだけ入れるので、前の値が入っている本番でも 1 回だけ新しい値にする
+    #   管理者ツールで変えていた値も、このときだけ上書きされる
+    if {uf::cfg::balance_v} is not set:
+        set {uf::cfg::balance_v} to 1
+    if {uf::cfg::balance_v} < 2:
+        set {uf::cfg::gun::gun_handgun::dmg} to 10
+        set {uf::cfg::gun::gun_rifle::dmg} to 5
+        set {uf::cfg::gun::gun_shotgun::dmg} to 4
+        set {uf::cfg::gun::gun_shotgun::pellets} to 6
+        set {uf::cfg::gun::gun_energy::dmg} to 30
+        set {uf::cfg::melee::melee_basic} to 2
+        set {uf::cfg::melee::melee_adv} to 3.2
+        set {uf::cshop::cg_sword::price} to 30000
+        set {uf::cshop::cg_bow::price} to 25000
+        set {uf::cshop::cg_helmet::price} to 12000
+        set {uf::cshop::cg_chest::price} to 18000
+        set {uf::cshop::cg_legs::price} to 15000
+        set {uf::cshop::cg_boots::price} to 12000
+        set {uf::cfg::balance_v} to 2
 
 function uf_shopdef(id: text, price: number, req: number, enabled: boolean):
     if {uf::shop::%{_id}%::price} is not set:
@@ -494,8 +516,12 @@ function uf_hasdarea() :: boolean:
                 return true
     return false
 
-# ダンジョンの区域（建物・闘技場）の中か
+# ダンジョンの区域（建物・闘技場）の中か。地下カジノ（chall。uf_25_casinohall.sk）は建物の区域の中でも外す
 function uf_indarea(l: location) :: boolean:
+    if {uf::area::chall::a} is set:
+        if {uf::area::chall::b} is set:
+            if uf_inbox({_l}, {uf::area::chall::a}, {uf::area::chall::b}) is true:
+                return false
     loop "dungeon1" and "dungeon2":
         set {_a} to {uf::area::%loop-value%::a}
         set {_b} to {uf::area::%loop-value%::b}

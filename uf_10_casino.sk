@@ -54,6 +54,21 @@ function uf_casinogui(p: player):
     set slot 49 of {_g} to emerald block named "&d&lカジノ限定ショップ" with lore "&7チップで、ここでしか手に入らない武具や便利なアイテムと交換" and "&eクリックで開く"
     uf_gui({_p}, "casino", {_g})
 
+# 賭け金を次の段階にする（10 → 50 → 100 → 500 → 1000 → 10）。地下カジノのカウンターのボタンからも
+function uf_betnext(p: player):
+    set {_b} to uf_bet({_p})
+    if {_b} is 10:
+        set {_b} to 50
+    else if {_b} is 50:
+        set {_b} to 100
+    else if {_b} is 100:
+        set {_b} to 500
+    else if {_b} is 500:
+        set {_b} to 1000
+    else:
+        set {_b} to 10
+    set {-uf::bet::%uuid of {_p}%} to {_b}
+
 function uf_gameicon(game: text, icon: item, name: text) :: item:
     delete {_lore::*}
     if {uf::cfg::casino::%{_game}%::enabled} is true:
@@ -126,18 +141,7 @@ on inventory click:
             uf_cshopgui(player)
         stop
     else if {_s} is 31:
-        set {_b} to uf_bet(player)
-        if {_b} is 10:
-            set {_b} to 50
-        else if {_b} is 50:
-            set {_b} to 100
-        else if {_b} is 100:
-            set {_b} to 500
-        else if {_b} is 500:
-            set {_b} to 1000
-        else:
-            set {_b} to 10
-        set {-uf::bet::%uuid of player%} to {_b}
+        uf_betnext(player)
     else:
         stop
     wait 1 tick

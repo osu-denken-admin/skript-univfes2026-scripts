@@ -4,7 +4,7 @@
 #       gun_scope = dungeon（既定）ならダンジョンワールドでのみ撃てる。
 #       プレイヤーには当たってもダメージなし。
 #   近接武器: 通常の攻撃ダメージに倍率をかける。
-#   強化レベル 1 につき +10％。
+#   強化レベル 1 につき +15％（uf_19_gear.sk の uf_lvmult）。
 #   ※統合版で右クリック（空中）が届くかは要検証
 # ============================================================
 
@@ -54,7 +54,7 @@ on damage:
     if {_v} is a player:
         cancel event
         stop
-    set damage to {uf::cfg::gun::%{_id}%::dmg} * (1 + 0.1 * uf_lv(tool of {_a}))
+    set damage to {uf::cfg::gun::%{_id}%::dmg} * uf_lvmult(uf_lv(tool of {_a}))
 
 on damage:
     damage cause is attack
@@ -65,4 +65,4 @@ on damage:
     uf_on("weapons") is true
     set {_m} to {uf::cfg::melee::%{_id}%}
     {_m} is set
-    set damage to damage * {_m} * (1 + 0.1 * uf_lv(tool of {_a}))
+    set damage to damage * {_m} * uf_lvmult(uf_lv(tool of {_a}))

@@ -338,6 +338,8 @@ function uf_adminopen(p: player, page: text):
         uf_ap_boards({_p})
     else if {_k} is "npcs":
         uf_ap_npcs({_p})
+    else if {_k} is "chall":
+        uf_ap_chall({_p})
     else if {_k} is "player":
         uf_ap_player({_p}, {_q::2})
     else if {_k} is "areas":
@@ -375,6 +377,11 @@ function uf_ap_hub(p: player):
     uf_abtn({_p}, {_g}, 34, book, "&e操作履歴", "&7管理者の操作の記録", "open/logs")
     uf_abtn({_p}, {_g}, 37, oak sign, "&eランキングの掲示板", "&7壁に貼りつける浮かぶ文字の掲示板", "open/boards")
     uf_abtn({_p}, {_g}, 38, villager spawn egg, "&eNPC（受付・ショップ・カジノ）", "&7話しかけると画面が開く村人", "open/npcs")
+    uf_abtn({_p}, {_g}, 39, gilded blackstone, "&e地下カジノ", "&715号館の地下のカジノ（建物）を作る・埋め戻す", "open/chall")
+    if {uf::cfg::skin::enabled} is true:
+        uf_abtn({_p}, {_g}, 40, painting, "&a武具のスキン: 送る", "&7入ってきた人にリソースパック（武具の絵）を送る|&7統合版には送られない|&eクリックで送らないようにする", "skin")
+    else:
+        uf_abtn({_p}, {_g}, 40, painting, "&c武具のスキン: 送らない", "&7入ってきた人にリソースパック（武具の絵）を送らない|&eクリックで送るようにする", "skin")
     # OP の付け外しは OP の人だけ（univfes.admin だけの人が自分に OP を付けられないように）
     if {_p} is op:
         uf_abtn({_p}, {_g}, 35, nether star, "&eOP の一覧", "&7オフラインの人も含めて表示|&7開発用のボット（ClaudeBot）の OP もここで外せる", "open/ops")
@@ -955,6 +962,19 @@ function uf_ap_npcs(p: player):
     uf_abtn({_p}, {_g}, 31, tnt, "&c近くの NPC を消す", "&73 ブロック以内の NPC を消す|&7確認画面が出ます", "ask/近く（3 ブロック以内）の NPC を消す|npcdel")
     uf_ashow({_p}, {_g}, "hub")
 
+# 地下カジノ（uf_25_casinohall.sk）
+function uf_ap_chall(p: player):
+    set {_g} to uf_apage({_p}, "&4地下カジノ")
+    if {uf::chall::built} is set:
+        set {_st} to "&a作ってある（%{uf::chall::built}%）"
+    else:
+        set {_st} to "&7まだ作っていない"
+    uf_abtn({_p}, {_g}, 4, gilded blackstone, "&e地下カジノ", "%{_st}%|&715号館の 1 階の西の端の階段から下りた先|&7中は x -276〜-233・y 56〜60・z 94〜124", "")
+    uf_abtn({_p}, {_g}, 11, gold block, "&a地下カジノを作る", "&7階段の先の土を掘って、部屋・台・浮かぶ文字・カジノの NPC を置く|&7もう作ってあれば、作り直す（台を置き直す）|&7カジノの区域をこの部屋にする|&7確認画面が出ます", "ask/15号館の地下を掘ってカジノを作る（作り直す）|chall/build")
+    uf_abtn({_p}, {_g}, 13, ender pearl, "&e地下カジノへ行く", "&7入口（階段の下）へ移動", "chall/tp")
+    uf_abtn({_p}, {_g}, 15, dirt, "&c地下カジノを埋め戻す", "&7部屋を土に戻し、台・浮かぶ文字・NPC・カジノの区域を消す|&7確認画面が出ます", "ask/地下カジノを土で埋め戻す|chall/fill")
+    uf_ashow({_p}, {_g}, "hub")
+
 # OP の一覧（オフラインの人も含む）。OP の人だけが開ける
 function uf_ap_ops(p: player):
     if {_p} is not op:
@@ -1456,6 +1476,25 @@ function uf_aact(p: player, a: text):
     else if {_c} is "npcset":
         uf_npcspawn({_p}, {_x::2})
         uf_msg({_p}, "&a%uf_npcname({_x::2})% &aを置きました")
+    else if {_c} is "chall":
+        if {_x::2} is "build":
+            uf_chbuild({_p})
+        else if {_x::2} is "fill":
+            uf_chfill({_p})
+        else:
+            set {_w} to uf_chworld()
+            if {_w} is not set:
+                uf_msg({_p}, "&c先に「ワールドとロビー」で15号館（ダンジョン）のワールドを登録してください")
+                stop
+            teleport {_p} to location(-271.5, 56, 95.5, {_w})
+    else if {_c} is "skin":
+        if {uf::cfg::skin::enabled} is true:
+            set {uf::cfg::skin::enabled} to false
+            uf_msg({_p}, "&e武具のスキン（リソースパック）を送らないようにしました（次に入ってきた人から）")
+        else:
+            set {uf::cfg::skin::enabled} to true
+            uf_msg({_p}, "&a武具のスキン（リソースパック）を送るようにしました（次に入ってきた人から。自分には今送ります）")
+            uf_sendpack({_p})
     else if {_c} is "npcdel":
         uf_msg({_p}, "&e近くの NPC を %uf_npcdel({_p})% 人消しました")
     else if {_c} is "opset":

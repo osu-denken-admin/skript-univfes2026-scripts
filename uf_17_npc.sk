@@ -21,7 +21,11 @@ function uf_npckind(e: entity) :: text:
             return last (length of loop-value - 7) characters of loop-value
 
 function uf_npcspawn(p: player, k: text):
-    spawn a villager at location of {_p}
+    uf_npcspawnat(location of {_p}, yaw of {_p}, {_k})
+
+# 場所と向き（yaw）を決めて置く（地下カジノの NPC は uf_25_casinohall.sk から）
+function uf_npcspawnat(l: location, yaw: number, k: text):
+    spawn a villager at {_l}
     set {_e} to last spawned entity
     set ai of {_e} to false
     make {_e} invulnerable
@@ -35,7 +39,7 @@ function uf_npcspawn(p: player, k: text):
         set villager profession of {_e} to armorer profession
     else:
         set villager profession of {_e} to cleric profession
-    set yaw of {_e} to yaw of {_p}
+    set yaw of {_e} to {_yaw}
     add "uf_npc:%{_k}%" to scoreboard tags of {_e}
 
 # 近く（3 ブロック以内）の NPC を消す。消した数を返す

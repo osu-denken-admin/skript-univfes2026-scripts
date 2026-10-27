@@ -1,0 +1,119 @@
+# ============================================================
+# uf_24_skin.sk : 武具のスキン（リソースパック）
+#   武具には見た目の番号（custom model data）を付け、リソースパック（pack/uf_pack.zip、tools/pack/build.py で作る）で絵を差し替える
+#   リソースパックは入ってきた人に送る（GitHub の公開リポジトリから。断っても遊べる）。管理者ツールの「スキン」で送る・送らないを切り替える
+#   統合版（Geyser）には送られない（統合版は今の見た目のまま）。身に着けた防具の見た目は変わらない（持ち物の絵だけ）
+#   前に手に入れた武具は、入ってきたときに作り直す（強化レベル・能力・あとから付けたエンチャントはそのまま）
+#   変数: {uf::cfg::skin::enabled}
+# ============================================================
+
+# 見た目の番号（0 ならスキンなし）。リソースパックの番号と合わせる（tools/pack/build.py）
+function uf_skinid(id: text) :: number:
+    if {_id} starts with "dgw_":
+        set {_f} to (last (length of {_id} - 4) characters of {_id}) parsed as number
+        if {_f} is set:
+            return 1000 + {_f}
+        return 0
+    if {_id} starts with "dgb_":
+        set {_f} to (last (length of {_id} - 4) characters of {_id}) parsed as number
+        if {_f} is set:
+            return 1100 + {_f}
+        return 0
+    if {_id} starts with "dga_":
+        set {_q::*} to split {_id} at "_"
+        if {_q::2} is "uniform":
+            set {_n} to 1210
+        else if {_q::2} is "labcoat":
+            set {_n} to 1220
+        else if {_q::2} is "lord":
+            set {_n} to 1230
+        else:
+            return 0
+        if {_q::3} is "helmet":
+            return {_n} + 1
+        if {_q::3} is "chest":
+            return {_n} + 2
+        if {_q::3} is "legs":
+            return {_n} + 3
+        return {_n} + 4
+    if {_id} is "cg_sword":
+        return 1301
+    if {_id} is "cg_bow":
+        return 1302
+    if {_id} is "cg_helmet":
+        return 1303
+    if {_id} is "cg_chest":
+        return 1304
+    if {_id} is "cg_legs":
+        return 1305
+    if {_id} is "cg_boots":
+        return 1306
+    if {_id} is "melee_basic":
+        return 1401
+    if {_id} is "melee_adv":
+        return 1402
+    if {_id} is "gun_handgun":
+        return 1501
+    if {_id} is "gun_rifle":
+        return 1502
+    if {_id} is "gun_shotgun":
+        return 1503
+    if {_id} is "gun_energy":
+        return 1504
+    if {_id} is "armor_special":
+        return 1601
+    return 0
+
+function uf_skin(i: item, id: text) :: item:
+    set {_n} to uf_skinid({_id})
+    if {_n} > 0:
+        set custom model data of {_i} to {_n}
+    return {_i}
+
+# ------------------------------------------------------------
+# リソースパックを送る
+# ------------------------------------------------------------
+function uf_packurl() :: text:
+    return "https://raw.githubusercontent.com/osu-denken-admin/skript-univfes2026-scripts/main/pack/uf_pack.zip"
+
+function uf_sendpack(p: player):
+    set {_u} to uf_packurl()
+    set {_h} to uf_packhash()
+    send the resource pack from the url {_u} with hash {_h} to {_p}
+
+on join:
+    wait 2 seconds
+    player is online
+    uf_refreshgear(player)
+    {uf::cfg::skin::enabled} is true
+    uf_sendpack(player)
+
+on resource pack response:
+    the resource pack was declined
+    uf_msg(player, "&7スキン（リソースパック）を断りました。武具の見た目が変わらないだけで、遊ぶのには困りません")
+
+# ------------------------------------------------------------
+# 前に手に入れた武具を作り直す（スキン・壊れない・今の説明にする）
+# ------------------------------------------------------------
+function uf_refreshgear(p: player):
+    set {_n} to 0
+    loop integers between 0 and 40:
+        set {_s} to loop-value
+        set {_it} to slot {_s} of inventory of {_p}
+        set {_id} to uf_id({_it})
+        if {_id} is not "":
+            set {_k} to uf_skinid({_id})
+            if {_k} > 0:
+                if custom model data of {_it} is not {_k}:
+                    set {_new} to uf_rebuild({_it}, -1, uf_abof({_it}))
+                    loop enchantments of {_it}:
+                        if {_new} is not enchanted with loop-value-2:
+                            enchant {_new} with loop-value-2
+                    set slot {_s} of inventory of {_p} to {_new}
+                    add 1 to {_n}
+    if {_n} > 0:
+        uf_msg({_p}, "&7持っている武具 %{_n}% 個を新しくした（強くなった・スキンが付いた）")
+
+# リソースパックの SHA-1（tools/pack/build.py が書き換える。変わると、入ってきた人がもう一度読み込む）
+function uf_packhash() :: text:
+    return "d7206225457da7380762f47c34bf63b142b6050d"

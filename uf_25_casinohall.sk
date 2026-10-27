@@ -1,0 +1,284 @@
+# ============================================================
+# uf_25_casinohall.sk : 15号館の地下カジノ（建物）
+#   1 階の西の端から地下へ下りる階段（x -275〜-272・z 89〜92、下は y 55）の先を掘り抜いて作る
+#   管理者ツールの「地下カジノ」→「地下カジノを作る」で建つ（15号館のワールドに。下は土なので、土を掘って部屋にする）
+#   部屋: 中は x -276〜-233・y 56〜60・z 94〜124。床 y 55、天井 y 61（1 階の床のすぐ下。土と空気のところだけ天井にする）
+#   台（ボタンかブロックを右クリック）で遊ぶ。賭け金は受付のカウンターのボタンで変える（カジノの画面の賭け金と同じ）
+#     西の壁: スロット 9 台 / 真ん中: ルーレット（赤・黒のボタン）/ サイコロ・ハイ＆ローの台 / 北: ガチャ 2 台
+#     東の壁: 的当て・時間制限チャレンジ・反応速度 / 北のカウンター: 賭け金・チップの交換・カジノ限定ショップ、カジノの NPC
+#   台の場所は {uf::cmach::<x>,<y>,<z>} = ゲーム。浮かぶ文字には scoreboard tag「uf_chall」
+#   作ると、カジノの区域（casino。/casino が使える範囲）をこの部屋にし、ここはダンジョンの区域から外す（chall。uf_00_core.sk の uf_indarea）
+# ============================================================
+
+function uf_chworld() :: world:
+    set {_w} to {uf::cfg::world::dungeon}
+    if {_w} is not set:
+        return {_none}
+    return {_w} parsed as world
+
+function uf_cmkey(l: location) :: text:
+    return "%floor(x-coordinate of {_l})%,%floor(y-coordinate of {_l})%,%floor(z-coordinate of {_l})%"
+
+function uf_chset(w: world, x: number, y: number, z: number, data: text):
+    set block at location({_x}, {_y}, {_z}, {_w}) to ({_data} parsed as block data)
+
+# 台を登録する（右クリックで遊べるようにする）
+function uf_chmach(w: world, x: number, y: number, z: number, game: text):
+    set {_k} to uf_cmkey(location({_x}, {_y}, {_z}, {_w}))
+    set {uf::cmach::%{_k}%} to {_game}
+
+function uf_chlabel(w: world, x: number, y: number, z: number, txt: text):
+    spawn a text display at location({_x}, {_y}, {_z}, {_w})
+    set {_e} to last spawned entity
+    set text of {_e} to {_txt}
+    set billboard of {_e} to center
+    add "uf_chall" to scoreboard tags of {_e}
+
+function uf_chlabelsdel():
+    loop all text displays:
+        if scoreboard tags of loop-value contains "uf_chall":
+            kill loop-value
+
+# 作る。p は作った人（終わったら知らせる）
+function uf_chbuild(p: player):
+    set {_w} to uf_chworld()
+    if {_w} is not set:
+        uf_msg({_p}, "&c先に「ワールドとロビー」で15号館（ダンジョン）のワールドを登録してください")
+        stop
+    uf_msg({_p}, "&e地下カジノを作っています（数秒かかります）")
+    delete {uf::cmach::*}
+    uf_chlabelsdel()
+    # 外側（壁・床・天井）と中（空気）
+    loop integers between 55 and 61:
+        set {_y} to loop-value
+        loop integers between -277 and -232:
+            set {_x} to loop-value-2
+            loop integers between 93 and 125:
+                set {_z} to loop-value-3
+                set {_l} to location({_x}, {_y}, {_z}, {_w})
+                set {_edge} to false
+                if {_x} is -277 or -232:
+                    set {_edge} to true
+                if {_z} is 93 or 125:
+                    set {_edge} to true
+                if {_y} is 55:
+                    if mod({_x} + {_z}, 2) is 0:
+                        set block at {_l} to black concrete
+                    else:
+                        set block at {_l} to red concrete
+                else if {_y} is 61:
+                    if block at {_l} is dirt or air:
+                        if mod({_x}, 4) is 0:
+                            if mod({_z}, 4) is 0:
+                                set block at {_l} to sea lantern
+                            else:
+                                set block at {_l} to black concrete
+                        else:
+                            set block at {_l} to black concrete
+                else if {_edge} is true:
+                    if {_y} is 56:
+                        set block at {_l} to polished blackstone bricks
+                    else if {_y} is 60:
+                        set block at {_l} to gilded blackstone
+                    else:
+                        set block at {_l} to crimson planks
+                else:
+                    set block at {_l} to air
+        wait 1 tick
+    # 入口（階段の下）
+    loop integers between 56 and 58:
+        uf_chset({_w}, -273, loop-value, 93, "air")
+        uf_chset({_w}, -272, loop-value, 93, "air")
+    # 柱
+    loop -266, -255 and -244:
+        set {_x} to loop-value
+        loop 104 and 115:
+            loop integers between 56 and 59:
+                uf_chset({_w}, {_x}, loop-value-3, loop-value-2, "polished_blackstone")
+            uf_chset({_w}, {_x}, 60, loop-value-2, "gilded_blackstone")
+    # 西の壁: スロット 9 台（金のブロック・光る画面・赤いレンガ、画面にボタン）
+    loop integers between 0 and 8:
+        set {_z} to 98 + loop-value * 3
+        uf_chset({_w}, -276, 56, {_z}, "gold_block")
+        uf_chset({_w}, -276, 57, {_z}, "sea_lantern")
+        uf_chset({_w}, -276, 58, {_z}, "red_nether_bricks")
+        uf_chset({_w}, -275, 57, {_z}, "polished_blackstone_button[face=wall,facing=east]")
+        uf_chset({_w}, -275, 56, {_z}, "dark_oak_stairs[facing=west]")
+        uf_chmach({_w}, -276, 56, {_z}, "slot")
+        uf_chmach({_w}, -276, 57, {_z}, "slot")
+        uf_chmach({_w}, -276, 58, {_z}, "slot")
+        uf_chmach({_w}, -275, 57, {_z}, "slot")
+        uf_chlabel({_w}, -275.3, 58.6, {_z} + 0.5, "&b&lスロット")
+    # 真ん中: ルーレット（ふちは木、中は赤と黒、真ん中に金）
+    loop integers between -262 and -258:
+        set {_x} to loop-value
+        loop integers between 107 and 111:
+            uf_chset({_w}, {_x}, 56, loop-value-2, "dark_oak_planks")
+    set {_cells::*} to "-1,-1,red", "0,-1,black", "1,-1,red", "1,0,black", "1,1,red", "0,1,black", "-1,1,red" and "-1,0,black"
+    loop {_cells::*}:
+        set {_q::*} to split loop-value at ","
+        set {_x} to -260 + ({_q::1} parsed as number)
+        set {_z} to 109 + ({_q::2} parsed as number)
+        uf_chset({_w}, {_x}, 56, {_z}, "%{_q::3}%_concrete")
+        uf_chmach({_w}, {_x}, 56, {_z}, "roulette_%{_q::3}%")
+    uf_chset({_w}, -260, 56, 109, "gold_block")
+    uf_chmach({_w}, -260, 56, 109, "roulette_info")
+    # ボタン（北側と南側から押せる）
+    loop "-1,-1,red", "0,-1,black", "-1,1,red" and "0,1,black":
+        set {_q::*} to split loop-value at ","
+        set {_x} to -260 + ({_q::1} parsed as number)
+        set {_z} to 109 + ({_q::2} parsed as number)
+        if {_q::3} is "red":
+            uf_chset({_w}, {_x}, 57, {_z}, "crimson_button[face=floor,facing=south]")
+        else:
+            uf_chset({_w}, {_x}, 57, {_z}, "polished_blackstone_button[face=floor,facing=south]")
+        uf_chmach({_w}, {_x}, 57, {_z}, "roulette_%{_q::3}%")
+    uf_chlabel({_w}, -259.5, 58.8, 109.5, "&c&lルーレット%nl%&7赤か黒のボタンを押す")
+    # サイコロ・ハイ＆ローの台（緑の台の真ん中にボタン）
+    loop "dice,106" and "highlow,112":
+        set {_q::*} to split loop-value at ","
+        set {_z0} to {_q::2} parsed as number
+        loop integers between -250 and -248:
+            set {_x} to loop-value-2
+            loop integers between 0 and 2:
+                uf_chset({_w}, {_x}, 56, {_z0} + loop-value-3, "green_wool")
+                uf_chmach({_w}, {_x}, 56, {_z0} + loop-value-3, {_q::1})
+        uf_chset({_w}, -249, 57, {_z0} + 1, "stone_button[face=floor,facing=south]")
+        uf_chmach({_w}, -249, 57, {_z0} + 1, {_q::1})
+    uf_chlabel({_w}, -248.5, 58.6, 107.5, "&f&lサイコロ")
+    uf_chlabel({_w}, -248.5, 58.6, 113.5, "&e&lハイ＆ロー")
+    # 北: ガチャ 2 台（金の台にエンダーチェスト）
+    loop -240 and -237:
+        uf_chset({_w}, loop-value, 56, 94, "gold_block")
+        uf_chset({_w}, loop-value, 57, 94, "ender_chest[facing=south]")
+        uf_chmach({_w}, loop-value, 56, 94, "gacha")
+        uf_chmach({_w}, loop-value, 57, 94, "gacha")
+        uf_chlabel({_w}, loop-value + 0.5, 58.7, 94.5, "&d&lガチャ")
+    # 東の壁: 的当て・時間制限チャレンジ・反応速度（壁のブロックにボタン）
+    loop "target,104,target", "timed,111,lodestone" and "reaction,118,redstone_lamp":
+        set {_q::*} to split loop-value at ","
+        set {_z} to {_q::2} parsed as number
+        loop integers between 56 and 58:
+            uf_chset({_w}, -233, loop-value-2, {_z}, {_q::3})
+            uf_chmach({_w}, -233, loop-value-2, {_z}, {_q::1})
+        uf_chset({_w}, -234, 57, {_z}, "stone_button[face=wall,facing=west]")
+        uf_chmach({_w}, -234, 57, {_z}, {_q::1})
+    uf_chlabel({_w}, -233.7, 58.9, 104.5, "&c&l的当て")
+    uf_chlabel({_w}, -233.7, 58.9, 111.5, "&b&l時間制限チャレンジ")
+    uf_chlabel({_w}, -233.7, 58.9, 118.5, "&a&l反応速度ゲーム")
+    # 北のカウンター（z 97）。内側（z 95・96）に NPC
+    loop integers between -268 and -256:
+        uf_chset({_w}, loop-value, 56, 97, "dark_oak_planks")
+    loop "-266,bet,&f&l賭け金を変える", "-262,exchange,&e&lチップの交換" and "-258,cshop,&d&lカジノ限定ショップ":
+        set {_q::*} to split loop-value at ","
+        set {_x} to {_q::1} parsed as number
+        uf_chset({_w}, {_x}, 56, 97, "gold_block")
+        uf_chset({_w}, {_x}, 57, 97, "stone_button[face=floor,facing=north]")
+        uf_chmach({_w}, {_x}, 56, 97, {_q::2})
+        uf_chmach({_w}, {_x}, 57, 97, {_q::2})
+        uf_chlabel({_w}, {_x} + 0.5, 58.4, 97.5, {_q::3})
+    uf_chlabel({_w}, -261.5, 59.9, 95.5, "&6&l地下カジノ%nl%&7ボタンを押して遊ぶ（チップで遊ぶ。現実のお金は使わない）")
+    # カジノの NPC（前に置いたものは消してから）
+    loop all villagers:
+        if uf_npckind(loop-value) is "casino":
+            if "%world of loop-value%" is "%{_w}%":
+                if distance between loop-value and location(-261.5, 56, 95.5, {_w}) < 30:
+                    kill loop-value
+    uf_npcspawnat(location(-261.5, 56, 95.5, {_w}), 0, "casino")
+    # 区域
+    set {uf::area::casino::a} to location(-276, 56, 94, {_w})
+    set {uf::area::casino::b} to location(-233, 60, 124, {_w})
+    set {uf::area::chall::a} to location(-277, 55, 93, {_w})
+    set {uf::area::chall::b} to location(-232, 61, 125, {_w})
+    set {uf::chall::built} to now
+    uf_msg({_p}, "&a地下カジノを作りました。カジノの区域をこの部屋にしました")
+    uf_log("admin", "casino hall built by %{_p}%")
+
+# 埋め戻す（土に戻す。入口のところは階段の下の形に戻す）
+function uf_chfill(p: player):
+    set {_w} to uf_chworld()
+    if {_w} is not set:
+        stop
+    delete {uf::cmach::*}
+    uf_chlabelsdel()
+    loop all villagers:
+        if uf_npckind(loop-value) is "casino":
+            if "%world of loop-value%" is "%{_w}%":
+                if distance between loop-value and location(-261.5, 56, 95.5, {_w}) < 30:
+                    kill loop-value
+    loop integers between 55 and 61:
+        set {_y} to loop-value
+        loop integers between -277 and -232:
+            set {_x} to loop-value-2
+            loop integers between 93 and 125:
+                set {_l} to location({_x}, {_y}, loop-value-3, {_w})
+                if {_y} is 61:
+                    if block at {_l} is black concrete or sea lantern:
+                        set block at {_l} to dirt
+                else:
+                    set block at {_l} to dirt
+        wait 1 tick
+    # 階段の下の壁（作る前と同じ）
+    loop integers between 56 and 59:
+        uf_chset({_w}, -273, loop-value, 93, "white_concrete")
+        uf_chset({_w}, -272, loop-value, 93, "white_concrete")
+    delete {uf::area::chall::*}
+    delete {uf::area::casino::*}
+    delete {uf::chall::built}
+    uf_msg({_p}, "&e地下カジノを埋め戻しました（カジノの区域も消しました）")
+    uf_log("admin", "casino hall filled by %{_p}%")
+
+# 浮かぶ文字だけ付け直す（消えたとき用）は、作り直すのと同じなので用意しない
+
+# ------------------------------------------------------------
+# 台で遊ぶ
+# ------------------------------------------------------------
+on right click:
+    event-block is set
+    set {_g} to {uf::cmach::%uf_cmkey(location of event-block)%}
+    {_g} is set
+    cancel event
+    # 両手のぶん 2 回届くので、0.4 秒の間は 1 回だけ
+    set {_u} to uuid of player
+    if {-uf::cmcd::%{_u}%} is set:
+        if {-uf::tick} - {-uf::cmcd::%{_u}%} < 8:
+            stop
+    set {-uf::cmcd::%{_u}%} to {-uf::tick}
+    uf_cmuse(player, {_g}, location of event-block)
+
+function uf_cmuse(p: player, g: text, l: location):
+    if uf_on("casino") is false:
+        uf_msg({_p}, "&cカジノは現在停止中です")
+        stop
+    if {_g} is "slot":
+        play sound "block.note_block.chime" with volume 0.6 at {_l}
+        uf_luck({_p}, "slot", "")
+        send action bar "&7賭け金: &e%uf_bet({_p})% チップ &7/ 所持チップ: &e%uf_chip({_p})%" to {_p}
+    else if {_g} is "roulette_red":
+        uf_luck({_p}, "roulette", "red")
+        send action bar "&7赤に賭けた（賭け金 %uf_bet({_p})%）/ 所持チップ: &e%uf_chip({_p})%" to {_p}
+    else if {_g} is "roulette_black":
+        uf_luck({_p}, "roulette", "black")
+        send action bar "&7黒に賭けた（賭け金 %uf_bet({_p})%）/ 所持チップ: &e%uf_chip({_p})%" to {_p}
+    else if {_g} is "roulette_info":
+        uf_msg({_p}, "&7ルーレット: 赤か黒のボタンを押すと、今の賭け金で賭ける（当たりで %{uf::cfg::casino::roulette::mult}% 倍）")
+    else if {_g} is "dice":
+        uf_dicegui({_p})
+    else if {_g} is "highlow":
+        uf_hlstart({_p})
+    else if {_g} is "gacha":
+        uf_gacha({_p})
+    else if {_g} is "target":
+        uf_tgstart({_p})
+    else if {_g} is "timed":
+        uf_tmstart({_p})
+    else if {_g} is "reaction":
+        uf_reaction({_p})
+    else if {_g} is "exchange":
+        uf_casinogui({_p})
+    else if {_g} is "cshop":
+        uf_cshopgui({_p})
+    else if {_g} is "bet":
+        uf_betnext({_p})
+        uf_msg({_p}, "&f賭け金を &e%uf_bet({_p})% チップ &fにした（スロット・ルーレットなどで使う）")
+        play sound "ui.button.click" with volume 0.6 at {_p}

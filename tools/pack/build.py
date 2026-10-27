@@ -1,0 +1,165 @@
+# -*- coding: utf-8 -*-
+"""
+武具のスキン（リソースパック）を作る。Minecraft Java 版 1.21.4（pack_format 46）
+  python tools/pack/build.py
+  → pack/uf_pack.zip を作り、uf_24_skin.sk の uf_packhash を新しい SHA-1 に書き換える
+
+仕組み:
+  武具には見た目の番号（custom model data。uf_24_skin.sk の uf_skinid）が付いている
+  assets/minecraft/items/<元のアイテム>.json で、番号ごとに uf:item/<id> のモデルへ切り替える（番号がなければ元の見た目）
+  絵（32×32）は art.py で、名前に合わせて 1 つずつ描く（Mojang の絵は使わない。このリポジトリは公開なので）
+"""
+import hashlib
+import io
+import json
+import os
+import re
+import sys
+import zipfile
+
+from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+OUT = os.path.join(ROOT, 'pack', 'uf_pack.zip')
+SKIN_SK = os.path.join(ROOT, 'uf_24_skin.sk')
+
+
+from art import all_textures
+
+
+# 見た目の番号（uf_24_skin.sk の uf_skinid と合わせる）と、元のアイテム
+def entries():
+    E = []  # (元のアイテム, 番号, id, 種類)
+    weap = {2: 'iron_sword', 3: 'iron_sword', 4: 'iron_axe', 5: 'diamond_sword', 6: 'diamond_axe',
+            7: 'diamond_sword', 8: 'netherite_sword', 9: 'netherite_sword'}
+    for f, base in weap.items():
+        E.append((base, 1000 + f, 'dgw_%d' % f, 'handheld'))
+        E.append(('bow', 1100 + f, 'dgb_%d' % f, 'bow'))
+    mats = {'uniform': 'leather', 'labcoat': 'iron', 'lord': 'netherite'}
+    base_n = {'uniform': 1210, 'labcoat': 1220, 'lord': 1230}
+    pn = {'helmet': ('helmet', 1), 'chest': ('chestplate', 2), 'legs': ('leggings', 3), 'boots': ('boots', 4)}
+    for s, m in mats.items():
+        for part, (vn, k) in pn.items():
+            E.append(('%s_%s' % (m, vn), base_n[s] + k, 'dga_%s_%s' % (s, part), 'generated'))
+    E.append(('diamond_sword', 1301, 'cg_sword', 'handheld'))
+    E.append(('bow', 1302, 'cg_bow', 'bow'))
+    for part, (vn, k) in pn.items():
+        E.append(('golden_%s' % vn, 1302 + k, 'cg_%s' % part, 'generated'))
+    E.append(('iron_sword', 1401, 'melee_basic', 'handheld'))
+    E.append(('diamond_sword', 1402, 'melee_adv', 'handheld'))
+    E.append(('carrot_on_a_stick', 1501, 'gun_handgun', 'generated'))
+    E.append(('carrot_on_a_stick', 1502, 'gun_rifle', 'generated'))
+    E.append(('carrot_on_a_stick', 1503, 'gun_shotgun', 'generated'))
+    E.append(('warped_fungus_on_a_stick', 1504, 'gun_energy', 'generated'))
+    E.append(('iron_chestplate', 1601, 'armor_special', 'generated'))
+    return E
+
+
+def tex_name(uid):
+    # 防具の cg_<部位> は絵の名前 cg_<部位>、ほかは id のまま
+    return uid
+
+
+def vanilla_model(base):
+    """元のアイテムの見た目（番号がないとき）。1.21.4 の items/*.json と同じ形"""
+    if base == 'bow':
+        return {
+            'type': 'minecraft:condition', 'property': 'minecraft:using_item',
+            'on_false': {'type': 'minecraft:model', 'model': 'minecraft:item/bow'},
+            'on_true': {
+                'type': 'minecraft:range_dispatch', 'property': 'minecraft:use_duration', 'scale': 0.05,
+                'entries': [
+                    {'threshold': 0.65, 'model': {'type': 'minecraft:model', 'model': 'minecraft:item/bow_pulling_1'}},
+                    {'threshold': 0.9, 'model': {'type': 'minecraft:model', 'model': 'minecraft:item/bow_pulling_2'}},
+                ],
+                'fallback': {'type': 'minecraft:model', 'model': 'minecraft:item/bow_pulling_0'},
+            },
+        }
+    if base.startswith('leather_'):
+        return {'type': 'minecraft:model', 'model': 'minecraft:item/' + base,
+                'tints': [{'type': 'minecraft:dye', 'default': -6265536}]}
+    return {'type': 'minecraft:model', 'model': 'minecraft:item/' + base}
+
+
+def custom_model(uid, kind):
+    if kind == 'bow':
+        return {
+            'type': 'minecraft:condition', 'property': 'minecraft:using_item',
+            'on_false': {'type': 'minecraft:model', 'model': 'uf:item/' + uid},
+            'on_true': {
+                'type': 'minecraft:range_dispatch', 'property': 'minecraft:use_duration', 'scale': 0.05,
+                'entries': [
+                    {'threshold': 0.65, 'model': {'type': 'minecraft:model', 'model': 'uf:item/%s_pulling_1' % uid}},
+                    {'threshold': 0.9, 'model': {'type': 'minecraft:model', 'model': 'uf:item/%s_pulling_2' % uid}},
+                ],
+                'fallback': {'type': 'minecraft:model', 'model': 'uf:item/%s_pulling_0' % uid},
+            },
+        }
+    return {'type': 'minecraft:model', 'model': 'uf:item/' + uid}
+
+
+def build():
+    T = all_textures()
+    files = {}
+    files['pack.mcmeta'] = json.dumps({'pack': {'pack_format': 46, 'description': '電子計算研究部 15号館の武具'}},
+                                      ensure_ascii=False, indent=1)
+    by_base = {}
+    for base, n, uid, kind in entries():
+        by_base.setdefault(base, []).append((n, uid, kind))
+        tn = tex_name(uid)
+        if tn not in T:
+            raise SystemExit('絵がない: ' + tn)
+        parent = {'handheld': 'minecraft:item/handheld', 'generated': 'minecraft:item/generated',
+                  'bow': 'minecraft:item/bow'}[kind]
+        files['assets/uf/models/item/%s.json' % uid] = json.dumps({'parent': parent, 'textures': {'layer0': 'uf:item/' + tn}})
+        files['assets/uf/textures/item/%s.png' % tn] = T[tn].png()
+        if kind == 'bow':
+            for i in range(3):
+                files['assets/uf/models/item/%s_pulling_%d.json' % (uid, i)] = json.dumps(
+                    {'parent': 'minecraft:item/bow', 'textures': {'layer0': 'uf:item/%s_pulling_%d' % (tn, i)}})
+                files['assets/uf/textures/item/%s_pulling_%d.png' % (tn, i)] = T['%s_pulling_%d' % (tn, i)].png()
+    for base, lst in by_base.items():
+        lst.sort()
+        files['assets/minecraft/items/%s.json' % base] = json.dumps({'model': {
+            'type': 'minecraft:range_dispatch', 'property': 'minecraft:custom_model_data', 'index': 0,
+            'entries': [{'threshold': n, 'model': custom_model(uid, kind)} for (n, uid, kind) in lst],
+            'fallback': vanilla_model(base),
+        }}, indent=1)
+    # 毎回同じ中身なら同じ zip になるように（日時を固定）
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+        for name in sorted(files):
+            info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            data = files[name]
+            z.writestr(info, data.encode('utf-8') if isinstance(data, str) else data)
+    data = buf.getvalue()
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, 'wb') as f:
+        f.write(data)
+    sha1 = hashlib.sha1(data).hexdigest()
+    sk = open(SKIN_SK, encoding='utf-8').read()
+    sk2 = re.sub(r'(function uf_packhash\(\) :: text:\n    return ")[0-9a-f]{40}(")', r'\g<1>%s\g<2>' % sha1, sk)
+    if sk2 == sk and sha1 not in sk:
+        raise SystemExit('uf_24_skin.sk の uf_packhash が見つからない')
+    with open(SKIN_SK, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(sk2)
+    print('pack/uf_pack.zip', len(data), 'bytes, sha1', sha1, ',', len(files), 'files')
+    return T
+
+
+if __name__ == '__main__':
+    T = build()
+    # 確認用の一覧（引数に出力先のパスを渡すと、全部の絵を並べた PNG を作る）
+    if len(sys.argv) > 1:
+        names = sorted(k for k in T if '_pulling_' not in k or k.endswith('_pulling_2'))
+        cols = 8
+        rows = (len(names) + cols - 1) // cols
+        sheet = Image.new('RGBA', (cols * 136, rows * 136), (70, 72, 82, 255))
+        for i, k in enumerate(names):
+            im = Image.open(io.BytesIO(T[k].png())).resize((128, 128), Image.NEAREST)
+            sheet.paste(im, ((i % cols) * 136 + 4, (i // cols) * 136 + 4), im)
+        sheet.save(sys.argv[1])
+        print('sheet', sys.argv[1], names)

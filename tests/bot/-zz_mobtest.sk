@@ -104,3 +104,12 @@ command /zzend <number>:
     trigger:
         uf_dend(arg-1, "test", false)
         broadcast "end %arg-1%"
+
+# 地下カジノ（uf_25_casinohall.sk）: /zzchall build|fill
+command /zzchall <text>:
+    trigger:
+        if arg-1 is "build":
+            uf_chbuild(player)
+        else:
+            uf_chfill(player)
+        broadcast "chall %arg-1%"

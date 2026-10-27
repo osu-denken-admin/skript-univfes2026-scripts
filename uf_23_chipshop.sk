@@ -8,8 +8,10 @@
 #     特殊アイテム（uf_item）: tool_pick3 など。cg_ で始まるものはカジノ限定の武具（uf_cgitem）
 #     v_ で始まるものは、ふつうのアイテム（uf_cshopvanilla）。修繕の本は Skript では金床で使える形にできないので置かない
 #   カジノ限定の武具
-#     cg_sword ディーラーの剣（はじめからの能力: 会心）/ cg_bow ギャンブラーの弓（無限、はじめからの能力: 疾風）
-#     cg_helmet / cg_chest / cg_legs / cg_boots ラッキーセット（金の防具。4 つそろえると採掘が速くなり、幸運が付く）
+#     どれも最上級（2026-10-28 に強くして、値段も上げた。少し遊んだだけでは届かない）。壊れない
+#     cg_sword ディーラーの剣（9 階の剣より強い。はじめからの能力: 会心。会心が出やすい）/ cg_bow ギャンブラーの弓（無限、はじめからの能力: 疾風）
+#     cg_helmet / cg_chest / cg_legs / cg_boots ラッキーセット（金の防具。1 つにつき受けるダメージ -12％。
+#       4 つそろえると採掘がとても速くなり、幸運・耐性・再生・力が付く）
 #     どれも鍛冶屋（uf_22_smith.sk）で強化・能力付けができる
 # ============================================================
 
@@ -18,7 +20,7 @@ function uf_cgitem(id: text, lv: number) :: item:
         set {_b} to diamond sword
         set {_n} to "&6&lディーラーの剣"
         add "&7カジノでしか手に入らない剣" to {_d::*}
-        add "&dはじめからの能力: 会心" to {_d::*}
+        add "&dはじめからの能力: 会心（出やすい）" to {_d::*}
         set {_w} to true
     else if {_id} is "cg_bow":
         set {_b} to bow
@@ -42,14 +44,17 @@ function uf_cgitem(id: text, lv: number) :: item:
     else:
         return {_none}
     if {_w} is not set:
-        enchant {_b} with protection 2 and unbreaking 3
+        enchant {_b} with protection 4
         add "&7ラッキーセット（カジノ限定）" to {_d::*}
-        add "&74 つそろえると、採掘が速くなり、幸運が付く" to {_d::*}
+        add "&b守り: 受けるダメージ -%uf_armordefof({_id}) * 100%％（1 つにつき）" to {_d::*}
+        add "&74 つそろえると、採掘がとても速くなり、幸運・耐性・再生・力が付く" to {_d::*}
+    else:
+        add uf_atklore({_id}, {_lv}) to {_d::*}
     add "&8uf:%{_id}%" to {_d::*}
     if {_w} is true:
         add "&7強化レベル: &e%{_lv}%" to {_d::*}
         add "&8uflv:%{_lv}%" to {_d::*}
-    return ({_b} named {_n}) with lore {_d::*}
+    return uf_skin(unbreakable (({_b} named {_n}) with lore {_d::*}), {_id})
 
 # ふつうのアイテムの商品（v_<名前>）
 function uf_cshopvanilla(id: text) :: item:
@@ -143,7 +148,7 @@ on inventory click:
     if player is online:
         uf_cshopgui(player)
 
-# ラッキーセット（4 つそろえると採掘が速くなり、幸運が付く）
+# ラッキーセット（4 つそろえると採掘がとても速くなり、幸運・耐性・再生・力が付く）
 every 2 seconds:
     uf_on("casino") is true
     loop all players:
@@ -151,5 +156,8 @@ every 2 seconds:
             if uf_id(chestplate of loop-player) is "cg_chest":
                 if uf_id(leggings of loop-player) is "cg_legs":
                     if uf_id(boots of loop-player) is "cg_boots":
-                        apply haste 2 to loop-player for 3 seconds
-                        apply luck 1 to loop-player for 3 seconds
+                        apply haste 3 to loop-player for 3 seconds
+                        apply luck 3 to loop-player for 3 seconds
+                        apply resistance 2 to loop-player for 3 seconds
+                        apply regeneration 1 to loop-player for 3 seconds
+                        apply strength 1 to loop-player for 3 seconds

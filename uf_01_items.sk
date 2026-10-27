@@ -149,11 +149,16 @@ function uf_item(id: text, lv: number = 0) :: item:
         add "&7しゃがんでいる間は1ブロックだけ切る" to {_d::*}
     if {_b} is not set:
         return {_none}
+    if {_w} is true:
+        add uf_atklore({_id}, {_lv}) to {_d::*}
+    if {_id} is "armor_special":
+        add "&b守り: 受けるダメージ -%uf_armordefof({_id}) * 100%％" to {_d::*}
     add "&8uf:%{_id}%" to {_d::*}
     if {_w} is true:
         add "&7強化レベル: &e%{_lv}%" to {_d::*}
         add "&8uflv:%{_lv}%" to {_d::*}
-    return ({_b} named {_n}) with lore {_d::*}
+        return uf_skin(unbreakable (({_b} named {_n}) with lore {_d::*}), {_id})
+    return uf_skin(({_b} named {_n}) with lore {_d::*}, {_id})
 
 # ------------------------------------------------------------
 # 消費アイテム（飲む操作は統合版でも確実に届くため、右クリックではなく消費で判定）
