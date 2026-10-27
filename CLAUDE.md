@@ -49,6 +49,7 @@ systemctl --user restart mc-server
 - WARP（Cloudflare、無料の登録）は**プロキシのモード**（`127.0.0.1:40000`）でつないである。経路は変えないので playit と Tailscale には影響しない。`run.sh` が起動のたびに `warp-cli connect` して、Java の外向きの通信をこのプロキシに通す（この回線はマイクラ関係の接続先を切るため。通さないと Geyser が起動できず統合版が入れない）
   - **`warp-cli mode warp`（すべての通信を WARP に通すモード）にはしない。** 前に入れられていた組織 `nyahello` の設定のままつなごうとして playit 経由で入れなくなったことがある（2026-10-26 に `settings reset` で外した）
   - 確かめる: `warp-cli --accept-tos status` が `Connected`、`warp-cli --accept-tos settings | grep Mode` が `WarpProxy on port 40000`
+- Skript の変数は、`config.sk` の `variable changes until save` 回の変更がたまるか、止めるときにだけ `variables.csv` に書かれる。本番は 2026-10-27 に 1000 → **1** にした（変更があれば 5 分以内に書く。`sk reload config` で効く。詳しくは `tools/server/README.md`）。Skript を入れ直したら直し直す
 - 2026-10-25 に SSD の省電力が原因でフリーズ → 省電力を切って再起動した。このときスクリプトが読めず `main.sk` しか読まれていなかった
 
 ## ファイル
