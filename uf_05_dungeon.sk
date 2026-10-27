@@ -213,9 +213,11 @@ function uf_dexithint(p: player):
 
 # ダンジョンの中で死んでも、持ち物と経験値は落とさない（失うのはポイントの半分だけ。uf_06_death.sk）
 #   15号館はサバイバルと同じワールドにあるので、ワールドのゲームルールではなくここで決める
+#   持ち物を残しても、落とす物の一覧はそのまま地面に落ちる（増えてしまう）ので、clear drops で消す（経験値の玉も出なくなる）
 on death of player:
     uf_inworld(location of victim, "dungeon") is true
     keep the inventory and experience
+    clear drops
 
 # 階ごとの出現数（/ufd count で上書き可能）
 function uf_dcount(f: number, tier: text) :: number:

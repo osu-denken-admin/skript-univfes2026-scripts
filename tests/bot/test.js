@@ -392,8 +392,15 @@ T.dungeonexit = async ({ A, P }) => {
   check('floor map given on entry', !!invFind(P, 'フロアマップ'));
   // ダンジョンの中で死ぬ → 持ち物はそのまま
   con(`tp ${P.username} 6 -60 6`); await sleep(800);
+  con('kill @e[type=item]'); con('kill @e[type=experience_orb]'); con(`xp set ${P.username} 5 levels`); await sleep(500);
   con(`kill ${P.username}`); await respawn();
   check('items kept on death in the dungeon', dirt(P) === 5 && !!invFind(P, 'フロアマップ'), `dirt=${dirt(P)}`);
+  check('experience kept on death in the dungeon', P.experience.level === 5, `level=${P.experience.level}`);
+  // 持ち物を残したうえで、地面にも同じ物が落ちて増えていないこと（A から見る）
+  con(`tp ${A.username} 6 -60 9`); await sleep(1500);
+  const dropped = Object.values(A.entities).filter((e) => (e.name === 'item' || e.name === 'experience_orb') && e.position.distanceTo(new Vec3(6.5, -60, 6.5)) < 4).length;
+  check('nothing dropped on the ground when items are kept', dropped === 0, `dropped=${dropped}`);
+  con(`tp ${A.username} 0 -60 0`); await sleep(400);
   // もう一度入って、フロアマップから退出する
   con(`tp ${P.username} 0 -60 0`); await sleep(800);
   w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
