@@ -349,7 +349,7 @@ command /guide:
         send "&6=== 15号館へようこそ ===" to command sender
         send "&f1. まずはサバイバル！ 木・鉱石・作物・魚を集めて &e/sell &fで売るとポイントになる" to command sender
         send "&f2. 1階のショップ（&e/buy&f）で回復キットや武器を買える" to command sender
-        send "&f3. フロアマップ（コンパス）を右クリック、または &e/dungeon &fで2階から挑戦" to command sender
+        send "&f3. 15号館 1階の受付（&e/dungeon&f）で2階から挑戦。中ではフロアマップから外に出られる" to command sender
         send "&f4. 仲間と &e/party invite <名前> &fで協力。倒れた仲間はしゃがんで蘇生" to command sender
         send "&f5. 死ぬとポイントの半分を落とす。死んだ場所に戻れば回収できる" to command sender
         send "&f6. &e/quest &fで今日のクエスト、&e/status &fで自分の記録、&e/ranking &fで順位" to command sender
@@ -363,5 +363,3 @@ on join:
     wait 2 seconds
     if player is online:
         send title "&6ようこそ 15号館へ" with subtitle "&f/guide で遊び方を確認" to player for 5 seconds
-        if uf_on("dungeon") is true:
-            uf_give(player, uf_item("map"))

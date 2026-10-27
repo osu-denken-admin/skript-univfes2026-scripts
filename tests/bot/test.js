@@ -390,11 +390,15 @@ T.dungeonexit = async ({ A, P }) => {
   let w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
   check('entering shows how to leave', !!(await waitMsg(P, from, /フロアマップ.*退出する/)));
   check('floor map given on entry', !!invFind(P, 'フロアマップ'));
+  // コンパスは WorldEdit のナビゲーションの道具（OP が右クリックすると壁を抜けて移動する）なので使わない
+  check('floor map is not a compass', (invFind(P, 'フロアマップ') || {}).name === 'recovery_compass', (invFind(P, 'フロアマップ') || {}).name);
   // ダンジョンの中で死ぬ → 持ち物はそのまま
   con(`tp ${P.username} 6 -60 6`); await sleep(800);
   con('kill @e[type=item]'); con('kill @e[type=experience_orb]'); con(`xp set ${P.username} 5 levels`); await sleep(500);
   con(`kill ${P.username}`); await respawn();
-  check('items kept on death in the dungeon', dirt(P) === 5 && !!invFind(P, 'フロアマップ'), `dirt=${dirt(P)}`);
+  check('items kept on death in the dungeon', dirt(P) === 5, `dirt=${dirt(P)}`);
+  // 1 人で倒れると全滅でその回は終わり、フロアマップも消える
+  check('floor map removed when the run ends', !invFind(P, 'フロアマップ'));
   check('experience kept on death in the dungeon', P.experience.level === 5, `level=${P.experience.level}`);
   // 持ち物を残したうえで、地面にも同じ物が落ちて増えていないこと（A から見る）
   con(`tp ${A.username} 6 -60 9`); await sleep(1500);
@@ -410,6 +414,15 @@ T.dungeonexit = async ({ A, P }) => {
   check('floor map has a leave button while in the dungeon', !!w && itemText(w.slots[22]).includes('退出する'));
   from = P.msgs.length; await P.clickWindow(22, 0, 0).catch(() => {}); await sleep(1500);
   check('leave from the floor map', !!(await waitMsg(P, from, /ダンジョンから退出しました/)) && P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
+  await sleep(500);
+  check('floor map removed after leaving', !invFind(P, 'フロアマップ'));
+  // 出たあと、受付からもう一度入れる
+  from = P.msgs.length;
+  w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
+  check('can enter again after leaving', P.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3 && !P.msgs.slice(from).some((m) => /挑戦中です/.test(m)), P.entity.position.toString());
+  check('floor map given again (only one)', P.inventory.items().filter((it) => itemText(it).includes('フロアマップ')).length === 1);
+  w = await cmdWin(P, '/dungeon'); from = P.msgs.length; await P.clickWindow(22, 0, 0).catch(() => {}); await sleep(1500);
+  check('leave again from the reception screen', !!(await waitMsg(P, from, /ダンジョンから退出しました/)));
   // ダンジョンの外で死ぬ → いつもどおり落とす（ゲームルールのとおり）
   con(`tp ${P.username} 30 -60 30`); await sleep(800);
   con(`kill ${P.username}`); await respawn();

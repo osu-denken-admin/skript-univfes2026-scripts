@@ -201,15 +201,25 @@ function uf_dbegin(f: number, mem: players, teleport: boolean = true):
     uf_placechests({_f})
     uf_spawnwave({_f})
 
-# 受付から入った人に、出かたを伝える。フロアマップ（退出のボタンがある）を持っていなければ渡す
+# 受付から入った人に、フロアマップ（退出のボタンがある）を 1 つ渡して、出かたを伝える
+#   フロアマップは挑戦中だけ持つもの。出たとき・挑戦が終わったときに uf_dtakemap で消す
 function uf_dexithint(p: player):
-    set {_has} to false
+    uf_dtakemap({_p})
+    uf_give({_p}, uf_item("map"))
+    uf_msg({_p}, "&7ダンジョンを出るときは &eフロアマップ&7を右クリック →「ダンジョンから退出する」")
+
+# フロアマップを持ち物から消す（前に配っていたコンパスのものも消える）
+function uf_dtakemap(p: player):
     loop all items in inventory of {_p}:
         if uf_id(loop-value) is "map":
-            set {_has} to true
-    if {_has} is false:
-        uf_give({_p}, uf_item("map"))
-    uf_msg({_p}, "&7ダンジョンを出るときは &eフロアマップ（コンパス）&7を右クリック →「ダンジョンから退出する」")
+            remove loop-value from inventory of {_p}
+
+# 前に配っていて、挑戦していないのに持ったままのフロアマップを片付ける
+on join:
+    wait 1 second
+    player is online
+    {-uf::insess::%uuid of player%} is not set
+    uf_dtakemap(player)
 
 # ダンジョンの中で死んでも、持ち物と経験値は落とさない（失うのはポイントの半分だけ。uf_06_death.sk）
 #   15号館はサバイバルと同じワールドにあるので、ワールドのゲームルールではなくここで決める
@@ -654,6 +664,8 @@ function uf_dend(f: number, reason: text, tolobby: boolean = true):
         delete {-uf::insess::%uuid of {_p}%}
         delete {-uf::down::%uuid of {_p}%}
         uf_soulclear({_p})
+        if {_p} is online:
+            uf_dtakemap({_p})
         if {_tolobby} is true:
             if {_p} is online:
                 if {uf::cfg::lobby} is set:
@@ -715,6 +727,7 @@ function uf_dleave(p: player):
     delete {-uf::insess::%uuid of {_p}%}
     delete {-uf::down::%uuid of {_p}%}
     uf_soulclear({_p})
+    uf_dtakemap({_p})
     if {uf::cfg::lobby} is set:
         teleport {_p} to {uf::cfg::lobby}
     uf_msg({_p}, "&eダンジョンから退出しました")
