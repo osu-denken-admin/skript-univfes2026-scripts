@@ -488,6 +488,41 @@ T.travel = async ({ A, P }) => {
 };
 
 // ---------------------------------------------------------------
+// パーティーをボタンの画面で組む（受付の画面の「パーティー」・/party）
+T.partygui = async ({ A, P }) => {
+  con(`tp ${A.username} 0 -60 0`); con(`tp ${P.username} 2 -60 0`); await sleep(1000);
+  let w = await cmdWin(A, '/dungeon');
+  check('reception screen has a party button', !!w && itemText(w.slots[26]).includes('パーティー'));
+  w = await clickWin(A, 26);
+  check('party screen opens from reception', titleOf(w).includes('パーティー'), titleOf(w));
+  const ps = findSlot(w, P.username);
+  check('nearby player is listed', ps >= 18, `slot=${ps}`);
+  let from = P.msgs.length;
+  w = await clickWin(A, ps);
+  check('invite from the party screen', !!(await waitMsg(P, from, /パーティーに招待されました/)));
+  closeWin(A); await sleep(300);
+  // 断る
+  w = await cmdWin(P, '/party');
+  check('invited player sees accept and decline', !!w && itemText(w.slots[2]).includes('参加する') && itemText(w.slots[6]).includes('断る'));
+  from = A.msgs.length; w = await clickWin(P, 6);
+  check('decline from the party screen', !!(await waitMsg(A, from, /招待を断りました/)));
+  closeWin(P); await sleep(300);
+  // もう一度招待して、参加する
+  w = await cmdWin(A, '/party'); from = P.msgs.length; await clickWin(A, findSlot(w, P.username)); await waitMsg(P, from, /招待されました/); closeWin(A); await sleep(300);
+  w = await cmdWin(P, '/party'); from = A.msgs.length; w = await clickWin(P, 2);
+  check('accept from the party screen', !!(await waitMsg(A, from, /パーティーに参加しました/)));
+  check('party screen shows 2 members', !!w && itemText(w.slots[4]).includes('2 人'), w ? itemText(w.slots[4]).slice(0, 120) : '');
+  // 抜ける
+  from = A.msgs.length; w = await clickWin(P, 8);
+  check('leave from the party screen', !!(await waitMsg(A, from, /がパーティーを抜けました/)));
+  closeWin(P); await sleep(300);
+  // リーダーが解散する
+  w = await cmdWin(A, '/party'); from = A.msgs.length; await clickWin(A, 8);
+  check('leader disbands from the party screen', !!(await waitMsg(A, from, /パーティーが解散しました/)));
+  closeWin(A); await sleep(300);
+};
+
+// ---------------------------------------------------------------
 T.revive = async ({ A, P }) => {
   // 敵に押されて死亡地点がずれないよう、二人ともクリエイティブ（/kill は効く）
   con(`gamemode creative ${A.username}`);
@@ -965,7 +1000,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'travel', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'travel', 'partygui', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

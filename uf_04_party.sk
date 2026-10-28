@@ -3,6 +3,10 @@
 #   パーティー情報はメモリのみ（再起動で解散）。
 #   {-uf::party::<uuid>}            = リーダーの uuid
 #   {-uf::pmem::<リーダーuuid>::<uuid>} = メンバー（player）
+#   {-uf::pinv::<uuid>}             = 招待してくれた人（player）
+#   操作はボタンの画面（uf_pgui）でできる。受付の画面の「パーティー」か /party で開く
+#     近くにいる人の顔を押すと招待、招待されたら「参加する」「断る」、入っていれば「抜ける」
+#   コマンド（/party invite <名前> / accept / decline / leave / list）も残してある
 # ============================================================
 
 function uf_members(p: player) :: players:
@@ -39,8 +43,149 @@ function uf_partyleave(p: player):
         if {_p} is online:
             uf_msg({_p}, "&eパーティーを抜けました")
 
+# 招待する。できたら true
+function uf_pinvite(p: player, t: player) :: boolean:
+    set {_u} to uuid of {_p}
+    if {_t} is {_p}:
+        uf_msg({_p}, "&c自分は招待できません")
+        return false
+    if {-uf::party::%uuid of {_t}%} is set:
+        uf_msg({_p}, "&c%{_t}% はすでに別のパーティーに入っています")
+        return false
+    if uf_isleader({_p}) is false:
+        uf_msg({_p}, "&c招待できるのはリーダーだけです")
+        return false
+    if {-uf::insess::%{_u}%} is set:
+        uf_msg({_p}, "&cダンジョン挑戦中は招待できません")
+        return false
+    if size of uf_members({_p}) >= {uf::cfg::party_max}:
+        uf_msg({_p}, "&cパーティーは最大 %{uf::cfg::party_max}% 人です")
+        return false
+    set {-uf::pinv::%uuid of {_t}%} to {_p}
+    uf_msg({_p}, "&a%{_t}% を招待しました")
+    send title "&aパーティーに招待された！" with subtitle "&f%{_p}% から" to {_t} for 3 seconds
+    uf_msg({_t}, "&a%{_p}% からパーティーに招待されました")
+    # Java 版はチャットの文字を押して参加できる。統合版は受付の画面の「パーティー」から
+    send formatted "<cmd:/party accept><tooltip:パーティーに参加する>&a&l[参加する]<reset>  <cmd:/party decline><tooltip:招待を断る>&c[断る]" to {_t}
+    uf_msg({_t}, "&7または受付の画面の「パーティー」から参加できる")
+    return true
+
+# 招待を受ける。できたら true
+function uf_paccept(p: player) :: boolean:
+    set {_u} to uuid of {_p}
+    set {_lp} to {-uf::pinv::%{_u}%}
+    delete {-uf::pinv::%{_u}%}
+    if {_lp} is not set:
+        uf_msg({_p}, "&c招待が届いていません")
+        return false
+    if {_lp} is not online:
+        uf_msg({_p}, "&c招待した人がオフラインです")
+        return false
+    if {-uf::party::%{_u}%} is set:
+        uf_msg({_p}, "&cすでにパーティーに入っています")
+        return false
+    set {_lid} to uuid of {_lp}
+    if {-uf::party::%{_lid}%} is not set:
+        set {-uf::party::%{_lid}%} to {_lid}
+        set {-uf::pmem::%{_lid}%::%{_lid}%} to {_lp}
+    if {-uf::party::%{_lid}%} is not {_lid}:
+        uf_msg({_p}, "&cそのパーティーには参加できません")
+        return false
+    if size of {-uf::pmem::%{_lid}%::*} >= {uf::cfg::party_max}:
+        uf_msg({_p}, "&cパーティーが満員です")
+        return false
+    set {-uf::party::%{_u}%} to {_lid}
+    set {-uf::pmem::%{_lid}%::%{_u}%} to {_p}
+    loop {-uf::pmem::%{_lid}%::*}:
+        if loop-value is online:
+            uf_msg(loop-value, "&a%{_p}% がパーティーに参加しました")
+    return true
+
+function uf_pdecline(p: player):
+    set {_lp} to {-uf::pinv::%uuid of {_p}%}
+    delete {-uf::pinv::%uuid of {_p}%}
+    if {_lp} is not set:
+        uf_msg({_p}, "&c招待が届いていません")
+        stop
+    uf_msg({_p}, "&7招待を断りました")
+    if {_lp} is online:
+        uf_msg({_lp}, "&7%{_p}% は招待を断りました")
+
+# ------------------------------------------------------------
+# パーティーの画面
+#   4: 自分のパーティー（メンバーの一覧）  2・6: 招待が届いていれば「参加する」「断る」  8: 抜ける
+#   18〜44: 近く（32 ブロック以内）にいて、パーティーに入っていない人。顔を押すと招待
+# ------------------------------------------------------------
+function uf_pgui(p: player):
+    set {_u} to uuid of {_p}
+    set {_g} to chest inventory with 5 rows named "&8パーティー"
+    uf_guiclear({_p})
+    delete {_l::*}
+    if {-uf::party::%{_u}%} is set:
+        loop uf_members({_p}):
+            if uf_isleader(loop-value) is true:
+                add "&6%loop-value% &7（リーダー）" to {_l::*}
+            else:
+                add "&f%loop-value%" to {_l::*}
+        add "&7最大 %{uf::cfg::party_max}% 人。一緒にダンジョンに入り、倒れた仲間はしゃがんで蘇生できる" to {_l::*}
+        set slot 4 of {_g} to (player head named "&eあなたのパーティー（%size of uf_members({_p})% 人）") with lore {_l::*}
+        if uf_isleader({_p}) is true:
+            set slot 8 of {_g} to barrier named "&cパーティーを解散する" with lore "&7メンバー全員がパーティーから抜ける"
+        else:
+            set slot 8 of {_g} to barrier named "&cパーティーを抜ける"
+        set {-uf::guictx::%{_u}%::8} to "leave"
+    else:
+        set slot 4 of {_g} to (player head named "&7パーティーに入っていない") with lore "&7下の顔を押すと、その人を招待できる" and "&7招待した人がリーダーになる"
+    set {_inv} to {-uf::pinv::%{_u}%}
+    if {_inv} is set:
+        if {_inv} is online:
+            set slot 2 of {_g} to lime wool named "&a%{_inv}% のパーティーに参加する" with lore "&eクリックで参加"
+            set {-uf::guictx::%{_u}%::2} to "accept"
+            set slot 6 of {_g} to red wool named "&c招待を断る"
+            set {-uf::guictx::%{_u}%::6} to "decline"
+    if uf_isleader({_p}) is true:
+        set {_s} to 18
+        loop all players:
+            if {_s} <= 44:
+                set {_t} to loop-player
+                if {_t} is not {_p}:
+                    if {-uf::party::%uuid of {_t}%} is not set:
+                        if "%world of {_t}%" is "%world of {_p}%":
+                            if distance between {_t} and {_p} <= 32:
+                                set {_ln} to "&eクリックで招待"
+                                if {-uf::pinv::%uuid of {_t}%} is {_p}:
+                                    set {_ln} to "&7招待済み（もう一度押すと招待し直す）"
+                                set slot {_s} of {_g} to (skull of {_t} named "&f%{_t}%") with lore "&7近くにいる人" and {_ln}
+                                set {-uf::guictx::%{_u}%::%{_s}%} to "inv:%{_t}%"
+                                add 1 to {_s}
+        if {_s} is 18:
+            set slot 22 of {_g} to gray stained glass pane named "&7近くに招待できる人がいない" with lore "&7招待したい人の近く（32 ブロック以内）で開く"
+    uf_gui({_p}, "party", {_g})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "party"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_a} to {-uf::guictx::%uuid of player%::%index of event-slot%}
+    {_a} is set
+    wait 1 tick
+    player is online
+    if {_a} is "accept":
+        uf_paccept(player)
+    else if {_a} is "decline":
+        uf_pdecline(player)
+    else if {_a} is "leave":
+        uf_partyleave(player)
+    else if {_a} starts with "inv:":
+        set {_t} to (last (length of {_a} - 4) characters of {_a}) parsed as player
+        if {_t} is online:
+            uf_pinvite(player, {_t})
+        else:
+            uf_msg(player, "&cその人はもういません")
+    uf_pgui(player)
+
 command /party [<text>] [<text>]:
-    description: パーティー（invite / accept / leave / list）
+    description: パーティー（何も付けないと画面が開く。invite / accept / decline / leave / list）
     aliases: /pa
     executable by: players
     trigger:
@@ -48,56 +193,18 @@ command /party [<text>] [<text>]:
             uf_msg(player, "&cパーティー機能は現在停止中です")
             stop
         set {_u} to uuid of player
-        if arg-1 is "invite":
+        if arg-1 is not set:
+            uf_pgui(player)
+        else if arg-1 is "invite":
             set {_t} to arg-2 parsed as player
             if {_t} is not set:
                 uf_msg(player, "&c使い方: /party invite <プレイヤー名>（オンラインのみ）")
                 stop
-            if {_t} is player:
-                uf_msg(player, "&c自分は招待できません")
-                stop
-            if {-uf::party::%uuid of {_t}%} is set:
-                uf_msg(player, "&c%{_t}% はすでに別のパーティーに入っています")
-                stop
-            if uf_isleader(player) is false:
-                uf_msg(player, "&c招待できるのはリーダーだけです")
-                stop
-            if {-uf::insess::%{_u}%} is set:
-                uf_msg(player, "&cダンジョン挑戦中は招待できません")
-                stop
-            if size of uf_members(player) >= {uf::cfg::party_max}:
-                uf_msg(player, "&cパーティーは最大 %{uf::cfg::party_max}% 人です")
-                stop
-            set {-uf::pinv::%uuid of {_t}%} to player
-            uf_msg(player, "&a%{_t}% を招待しました")
-            uf_msg({_t}, "&a%player% からパーティーに招待されました。&e/party accept &aで参加")
+            uf_pinvite(player, {_t})
         else if arg-1 is "accept":
-            set {_lp} to {-uf::pinv::%{_u}%}
-            delete {-uf::pinv::%{_u}%}
-            if {_lp} is not set:
-                uf_msg(player, "&c招待が届いていません")
-                stop
-            if {_lp} is not online:
-                uf_msg(player, "&c招待した人がオフラインです")
-                stop
-            if {-uf::party::%{_u}%} is set:
-                uf_msg(player, "&cすでにパーティーに入っています")
-                stop
-            set {_lid} to uuid of {_lp}
-            if {-uf::party::%{_lid}%} is not set:
-                set {-uf::party::%{_lid}%} to {_lid}
-                set {-uf::pmem::%{_lid}%::%{_lid}%} to {_lp}
-            if {-uf::party::%{_lid}%} is not {_lid}:
-                uf_msg(player, "&cそのパーティーには参加できません")
-                stop
-            if size of {-uf::pmem::%{_lid}%::*} >= {uf::cfg::party_max}:
-                uf_msg(player, "&cパーティーが満員です")
-                stop
-            set {-uf::party::%{_u}%} to {_lid}
-            set {-uf::pmem::%{_lid}%::%{_u}%} to player
-            loop {-uf::pmem::%{_lid}%::*}:
-                if loop-value is online:
-                    uf_msg(loop-value, "&a%player% がパーティーに参加しました")
+            uf_paccept(player)
+        else if arg-1 is "decline":
+            uf_pdecline(player)
         else if arg-1 is "leave":
             if {-uf::party::%{_u}%} is not set:
                 uf_msg(player, "&cパーティーに入っていません")
@@ -105,7 +212,7 @@ command /party [<text>] [<text>]:
             uf_partyleave(player)
         else:
             if {-uf::party::%{_u}%} is not set:
-                uf_msg(player, "&7パーティーに入っていません。&e/party invite <名前> &7で招待")
+                uf_msg(player, "&7パーティーに入っていません。&e/party &7で画面を開いて招待できる")
                 stop
             uf_msg(player, "&eパーティーメンバー:")
             loop uf_members(player):

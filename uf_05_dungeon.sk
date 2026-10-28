@@ -125,6 +125,10 @@ function uf_floorgui(p: player):
             set {_wl} to "&eクリックで戻る"
         set slot 20 of {_g} to ender pearl named "&d復帰地点に戻る" with lore "&7挑戦中の階の復帰地点へ戻る", "&7中ボス・ボスとの戦いの間は使えない", "&7一度使うと %{uf::cfg::warp_seconds}% 秒は使えない" and {_wl}
         set slot 22 of {_g} to barrier named "&cダンジョンから退出する" with lore "&7挑戦をやめて 1 階のロビーへ戻る" and "&7突破した階と報酬はそのまま"
+    else if uf_on("party") is true:
+        # パーティーの画面（uf_04_party.sk）。仲間を招待してから、リーダーが階を選ぶ
+        set {_pn} to size of uf_members({_p})
+        set slot 26 of {_g} to player head named "&eパーティー（%{_pn}% 人）" with lore "&7近くの人を招待する・招待に参加する・抜ける" and "&7パーティーで挑戦するときは、先に組んでからリーダーが階を選ぶ"
     uf_gui({_p}, "floor", {_g})
 
 # 挑戦中の階の復帰地点（帰還の書・前に売っていた帰還の巻物）。戻れないときは理由を伝えて、何も返さない
@@ -177,6 +181,12 @@ on inventory click:
         wait 1 tick
         close inventory of player
         uf_dleave(player)
+        stop
+    if {_s} is 26:
+        {-uf::insess::%uuid of player%} is not set
+        uf_on("party") is true
+        wait 1 tick
+        uf_pgui(player)
         stop
     if {_s} is 20:
         {-uf::insess::%uuid of player%} is set
