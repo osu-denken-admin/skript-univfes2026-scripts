@@ -166,8 +166,9 @@ async function killAll(b, ms = 60000) {
 const T = {};
 
 // ---------------------------------------------------------------
-T.admintool = async ({ A }) => {
+T.admintool = async ({ A, P }) => {
   check('admin tool delivered on first join', !!invFind(A, '管理者ツール'));
+  check('travel item given on first join', !!invFind(P, '道しるべ'));
   let w = await openTool(A);
   check('admin tool opens hub', titleOf(w).includes('管理者ツール'), titleOf(w).slice(0, 80));
   check('hub links have hover text', !!w && Object.values(w.links).every((l) => l.hover.length > 2));
@@ -389,6 +390,7 @@ T.dungeonexit = async ({ A, P }) => {
   let from = P.msgs.length;
   let w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
   check('entering shows how to leave', !!(await waitMsg(P, from, /帰還の書.*退出する/)));
+  check('adventure mode inside the dungeon area', P.game.gameMode === 'adventure', P.game.gameMode);
   check('return book given on entry', !!invFind(P, '帰還の書'));
   // コンパスは WorldEdit のナビゲーションの道具（OP が右クリックすると壁を抜けて移動する）なので使わない
   check('return book is not a compass', (invFind(P, '帰還の書') || {}).name === 'book', (invFind(P, '帰還の書') || {}).name);
@@ -433,12 +435,56 @@ T.dungeonexit = async ({ A, P }) => {
   w = await cmdWin(P, '/dungeon'); from = P.msgs.length; await P.clickWindow(22, 0, 0).catch(() => {}); await sleep(1500);
   check('leave again from the reception screen', !!(await waitMsg(P, from, /ダンジョンから退出しました/)));
   // ダンジョンの外で死ぬ → いつもどおり落とす（ゲームルールのとおり）
-  con(`tp ${P.username} 30 -60 30`); await sleep(800);
+  con(`tp ${P.username} 30 -60 30`); await sleep(1800);
+  check('back to survival outside the dungeon area', P.game.gameMode === 'survival', P.game.gameMode);
   con(`kill ${P.username}`); await respawn();
   check('items still drop outside the dungeon', dirt(P) === 0, `dirt=${dirt(P)}`);
   // 片付け
   A.chat('/ufadmin area dungeon1 del'); con('kill @e[type=item]');
   con('gamerule keepInventory true'); con('gamerule keep_inventory true'); con(`clear ${P.username}`); await sleep(500);
+};
+
+// ---------------------------------------------------------------
+// 15号館への道しるべ（外 → ロビー → 元の場所）・死んでもなくならない・初期スポーン地点を遠くにする（uf_26_travel.sk）
+T.travel = async ({ A, P }) => {
+  const has = () => !!invFind(P, '道しるべ');
+  const respawn = async () => { await sleep(1200); if (!P.entity || P.health <= 0) { P.respawn(); } await sleep(1500); };
+  const use = async () => { await hold(P, '道しるべ'); await P.look(0, Math.PI / 2, true); P.activateItem(); await sleep(300); P.deactivateItem(); await sleep(1500); };
+  con(`gamemode creative ${A.username}`);
+  con(`tp ${A.username} -2 -60 -2`); await sleep(800); A.chat('/ufadmin area dungeon1 pos1');
+  con(`tp ${A.username} 14 -55 14`); await sleep(800); A.chat('/ufadmin area dungeon1 pos2'); await sleep(400);
+  con(`tp ${A.username} 0 -60 0`); await sleep(400);
+  // ダンジョンの外で死んでも、道しるべはなくならない（落とさずに、復活したときに持っている）
+  con('gamerule keepInventory false'); con('gamerule keep_inventory false');
+  con(`gamemode survival ${P.username}`); con(`clear ${P.username}`); con(`tp ${P.username} 40 -60 40`); await sleep(800);
+  con(`kill ${P.username}`); await respawn();
+  check('travel item is given back after death', has());
+  con(`kill ${P.username}`); await respawn();
+  check('travel item is not lost when dying outside the dungeon', has() && P.inventory.items().filter((it) => itemText(it).includes('道しるべ')).length === 1);
+  con('gamerule keepInventory true'); con('gamerule keep_inventory true');
+  // 外 → 15号館の 1 階（ロビー）
+  con(`tp ${P.username} 40 -60 40`); await sleep(1800);
+  let from = P.msgs.length;
+  await use();
+  check('travel takes you to the dungeon lobby', !!(await waitMsg(P, from, /15号館の 1 階に来た/)) && P.entity.position.distanceTo(new Vec3(0.5, -60, 0.5)) < 2, P.entity.position.toString());
+  await sleep(1000);
+  check('adventure mode after arriving at the dungeon', P.game.gameMode === 'adventure', P.game.gameMode);
+  // 15号館 → 元の場所
+  await sleep(3000);
+  from = P.msgs.length;
+  await use();
+  check('travel takes you back to where you were', !!(await waitMsg(P, from, /元の場所に戻った/)) && P.entity.position.distanceTo(new Vec3(40.5, -60, 40.5)) < 2, P.entity.position.toString());
+  await sleep(1000);
+  check('survival again after going back', P.game.gameMode === 'survival', P.game.gameMode);
+  // 初期スポーン地点をロビーから 300 ブロック先にする
+  from = A.msgs.length; A.chat('/ufadmin farspawn 300');
+  const m = await waitMsg(A, from, /初期スポーン地点を .* にしました/, 15000);
+  const xyz = m && m.match(/(-?\d+), (-?\d+), (-?\d+)/);
+  const d = xyz ? Math.hypot(Number(xyz[1]) - 0.5, Number(xyz[3]) - 0.5) : -1;
+  check('far spawn point is set about 300 blocks from the lobby', !!xyz && Math.abs(d - 300) < 3, m || 'no message');
+  // 片付け（ほかのテストのために元に戻す）
+  con('setworldspawn 0 -60 0'); A.chat('/ufadmin cfg farspawn_dist 5000');
+  A.chat('/ufadmin area dungeon1 del'); con(`clear ${P.username}`); await sleep(500);
 };
 
 // ---------------------------------------------------------------
@@ -919,7 +965,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'travel', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

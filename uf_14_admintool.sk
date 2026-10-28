@@ -435,6 +435,9 @@ function uf_ap_worlds(p: player):
     uf_abtn({_p}, {_g}, 13, oak door, "&e15号館（ダンジョン）", "&7現在: &f%{uf::cfg::world::dungeon}%|&eクリックで今いるワールド（%{_w}%）にする", "world/dungeon")
     uf_abtn({_p}, {_g}, 15, firework rocket, "&eイベント", "&7現在: &f%{uf::cfg::world::event}%|&eクリックで今いるワールド（%{_w}%）にする", "world/event")
     uf_abtn({_p}, {_g}, 31, red bed, "&eロビー（ダンジョンからの退出先）", "&7現在: %uf_locstr({uf::cfg::lobby})%|&eクリックで今いる場所にする", "lobby")
+    # 初期スポーン地点（uf_26_travel.sk）
+    uf_abtn({_p}, {_g}, 33, compass, "&e初期スポーン地点を遠くに決める", "&7現在: %uf_locstr({uf::cfg::farspawn})%|&7ロビーから約 %{uf::cfg::farspawn_dist}% ブロック離れた地面を探して、ワールドのスポーン地点にする|&7初めて入った人・ベッドのない人がここに出る|&7押すたびに別の場所になる|&7確認画面が出ます", "ask/初期スポーン地点をロビーから遠くに決め直す|farspawn")
+    uf_abtn({_p}, {_g}, 34, paper, "&e初期スポーン地点の遠さ", "&7現在: %{uf::cfg::farspawn_dist}% ブロック|&eクリックで変更", "edit/cfg/farspawn_dist")
     uf_ashow({_p}, {_g}, "hub")
 
 function uf_ap_floors(p: player):
@@ -732,6 +735,8 @@ function uf_cfglabel(k: text) :: text:
         return "挑戦の制限時間（分）"
     if {_k} is "warp_seconds":
         return "帰還の書で復帰地点に戻れる間隔（秒）"
+    if {_k} is "farspawn_dist":
+        return "初期スポーン地点の、ロビーからの距離（ブロック）"
     if {_k} is "party_max":
         return "パーティーの最大人数"
     if {_k} is "death_loss_scope":
@@ -843,6 +848,8 @@ function uf_cfgdec(k: text) :: boolean:
 function uf_cfgmin(k: text) :: number:
     if {_k} starts with "power::":
         return 0.1
+    if {_k} is "farspawn_dist":
+        return 200
     if {_k} is "party_max", "revive_seconds", "revive_range", "tree::max", "tree::height", "tree::radius", "ore::radius", "level::max", "level::base", "skill::max" or "session_minutes":
         return 1
     if {_k} ends with "::cd":
@@ -900,6 +907,8 @@ function uf_cfgmax(k: text) :: number:
         return 120
     if {_k} is "warp_seconds":
         return 600
+    if {_k} is "farspawn_dist":
+        return 20000
     if {_k} is "level::max":
         return 200
     if {_k} is "skill::max":
@@ -1061,7 +1070,7 @@ function uf_ap_protarea(p: player, n: text):
 function uf_ap_items(p: player, pg: number = 1):
     if {_pg} is not set:
         set {_pg} to 1
-    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "cg_sword", "cg_bow", "cg_helmet", "cg_chest", "cg_legs", "cg_boots", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9", "sp_potion" and "admin_tool"
+    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "travel", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "cg_sword", "cg_bow", "cg_helmet", "cg_chest", "cg_legs", "cg_boots", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9", "sp_potion" and "admin_tool"
     set {_last} to ceil(size of {_ids::*} / 45)
     set {_pg} to max(1, min({_pg}, {_last}))
     set {_g} to uf_apage({_p}, "&4特殊アイテム %{_pg}% / %{_last}%（クリックで1個受け取る）")
@@ -1467,6 +1476,8 @@ function uf_aact(p: player, a: text):
             uf_msg({_p}, "&c先に「ワールドとロビー」で15号館（ダンジョン）のワールドを登録してください")
     else if {_c} is "lights":
         uf_layout_lights({_p})
+    else if {_c} is "farspawn":
+        uf_farspawn({_p})
     else if {_c} is "view":
         if uf_usebook({_p}) is true:
             set {uf::atoolview::%{_u}%} to "chest"

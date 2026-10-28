@@ -34,6 +34,17 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             uf_bkclick(player, "%arg-2%", "%arg-3%")
             stop
 
+        # 初期スポーン地点をロビーから遠くに決める（uf_26_travel.sk）。距離を付けると、その距離にしてから決める
+        if {_a} is "farspawn":
+            if arg-2 is set:
+                set {_d} to arg-2 parsed as number
+                if {_d} is not set:
+                    uf_msg(player, "&c距離は数字で指定してください（200〜20000）")
+                    stop
+                set {uf::cfg::farspawn_dist} to max(200, min(20000, {_d}))
+            uf_farspawn(player)
+            stop
+
         if {_a} is "tool":
             uf_give(player, uf_item("admin_tool"))
             uf_msg(player, "&a管理者ツールを渡しました")

@@ -1,0 +1,133 @@
+# ============================================================
+# uf_26_travel.sk : 初期スポーン地点・15号館への道しるべ・ダンジョンの中のアドベンチャーモード
+#   初期スポーン地点（初めて入った人・ベッドのない人が復活する場所）は、15号館からずっと遠くにする
+#     管理者ツールの「ワールドとロビー」→「初期スポーン地点を遠くに決める」か /ufadmin farspawn [距離]
+#     ロビーから距離 farspawn_dist の円の上で、水・溶岩・氷・葉の上でない地面を探して、ワールドのスポーン地点にする
+#   15号館への道しるべ（travel）: 初めて入ったときに 1 つ配る（前からいる人にも、次に入ったときに 1 回）
+#     15号館の外で右クリック → 使った場所を覚えて、1 階のロビーへ
+#     15号館の中（ダンジョンに挑戦していないとき）で右クリック → 覚えた場所へ戻る（なければ初期スポーン地点）
+#     死んでも落とさない（なくしていたら、復活したときに渡し直す）
+#   ダンジョンの区域（建物・闘技場。地下カジノは除く）の中ではアドベンチャーモード（ブロックを壊せない・置けない）
+#     サバイバルの人だけを変え、区域を出たらサバイバルに戻す。クリエイティブの人はそのまま
+#     ダンジョンの区域が登録されていないとき（テストの平らなワールドなど）は変えない
+# ============================================================
+
+# ------------------------------------------------------------
+# 初期スポーン地点
+# ------------------------------------------------------------
+# 決められたら true。場所は {uf::cfg::farspawn}
+function uf_farspawn(p: player) :: boolean:
+    set {_c} to {uf::cfg::lobby}
+    if {_c} is not set:
+        uf_msg({_p}, "&c先に「ワールドとロビー」でロビーを登録してください")
+        return false
+    set {_w} to world of {_c}
+    set {_d} to {uf::cfg::farspawn_dist}
+    loop 16 times:
+        # 円の上の向きを毎回変えて、立てる地面を探す（sin・cos は度）
+        set {_a} to random number between 0 and 360
+        set {_x} to floor(x-coordinate of {_c} + {_d} * cos({_a}))
+        set {_z} to floor(z-coordinate of {_c} + {_d} * sin({_a}))
+        set {_b} to highest block at location({_x}, 100, {_z}, {_w})
+        set {_t} to "%type of {_b}%"
+        set {_ok} to true
+        loop "water", "lava", "ice", "leaves", "bamboo" and "cactus":
+            if {_t} contains loop-value-2:
+                set {_ok} to false
+        if {_ok} is true:
+            set {_l} to location({_x} + 0.5, floor(y-coordinate of {_b}) + 1, {_z} + 0.5, {_w})
+            set spawn of {_w} to {_l}
+            set {uf::cfg::farspawn} to {_l}
+            uf_msg({_p}, "&a初期スポーン地点を %uf_fmtloc({_l})% にしました（ロビーから約 %{_d}% ブロック、地面は %{_t}%）")
+            uf_adminlog({_p}, "farspawn %uf_fmtloc({_l})% dist=%{_d}%")
+            return true
+    uf_msg({_p}, "&c立てる地面が見つかりませんでした（海の上など）。もう一度押すか、距離を変えてください")
+    return false
+
+# ------------------------------------------------------------
+# 15号館への道しるべ
+# ------------------------------------------------------------
+on join:
+    {uf::travelgiven::%uuid of player%} is not set
+    wait 2 seconds
+    player is online
+    set {uf::travelgiven::%uuid of player%} to true
+    uf_give(player, uf_item("travel"))
+    uf_msg(player, "&b15号館への道しるべ&7を渡しました。右クリックで 15号館へ行き、15号館でもう一度使うと元の場所に戻れる")
+
+on right click:
+    uf_id(player's tool) is "travel"
+    cancel event
+    uf_travel(player)
+
+function uf_travel(p: player):
+    set {_u} to uuid of {_p}
+    if {-uf::insess::%{_u}%} is set:
+        uf_msg({_p}, "&cダンジョンに挑戦中です。出るときは帰還の書を使ってください")
+        stop
+    if {-uf::tvcd::%{_u}%} is set:
+        if {-uf::tick} - {-uf::tvcd::%{_u}%} < 60:
+            uf_msg({_p}, "&c少し待ってから使ってください")
+            stop
+    if {uf::cfg::lobby} is not set:
+        uf_msg({_p}, "&c15号館の準備がまだです（ロビーが未設定）")
+        stop
+    set {-uf::tvcd::%{_u}%} to {-uf::tick}
+    if uf_inworld(location of {_p}, "dungeon") is true:
+        # 15号館 → 覚えた場所（なければ初期スポーン地点）
+        set {_to} to {uf::travelback::%{_u}%}
+        if {_to} is not set:
+            set {_to} to {uf::cfg::farspawn}
+        if {_to} is not set:
+            set {_to} to spawn of world of {_p}
+        play 20 portal at location of {_p}
+        teleport {_p} to {_to}
+        uf_msg({_p}, "&b元の場所に戻った")
+    else:
+        # 外 → 15号館の 1 階のロビー（今いる場所を覚える）
+        set {uf::travelback::%{_u}%} to location of {_p}
+        play 20 portal at location of {_p}
+        teleport {_p} to {uf::cfg::lobby}
+        uf_msg({_p}, "&b15号館の 1 階に来た。&7ここで道しるべをもう一度使うと、さっきの場所に戻れる")
+    play sound "entity.enderman.teleport" with volume 1 at {_p}
+
+function uf_hastravel(p: player) :: boolean:
+    loop all items in inventory of {_p}:
+        if uf_id(loop-value) is "travel":
+            return true
+    return false
+
+# 死んでも落とさない（ダンジョンの外では持ち物を落とすので、道しるべだけ落とす物から外して、復活したときに渡す）
+on death of player:
+    loop drops:
+        if uf_id(loop-value) is "travel":
+            remove loop-value from drops
+
+on respawn:
+    {uf::travelgiven::%uuid of player%} is set
+    wait 1 tick
+    player is online
+    uf_hastravel(player) is false
+    uf_give(player, uf_item("travel"))
+
+# ------------------------------------------------------------
+# ダンジョンの中はアドベンチャーモード
+# ------------------------------------------------------------
+every 1 second:
+    set {_has} to uf_hasdarea()
+    loop all players:
+        set {_p} to loop-player
+        set {_u} to uuid of {_p}
+        set {_in} to false
+        if {_has} is true:
+            if uf_on("dungeon") is true:
+                set {_in} to uf_inworld(location of {_p}, "dungeon")
+        if {_in} is true:
+            if gamemode of {_p} is survival:
+                set gamemode of {_p} to adventure
+                set {uf::advmode::%{_u}%} to true
+        else if {uf::advmode::%{_u}%} is set:
+            # ダンジョンが変えたアドベンチャーだけを戻す
+            delete {uf::advmode::%{_u}%}
+            if gamemode of {_p} is adventure:
+                set gamemode of {_p} to survival

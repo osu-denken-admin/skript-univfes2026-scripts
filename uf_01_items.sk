@@ -139,6 +139,13 @@ function uf_item(id: text, lv: number = 0) :: item:
         set {_n} to "&d帰還の書"
         add "&7右クリックで、復帰地点に戻る・ダンジョンから出る・開始する階を選ぶ" to {_d::*}
         add "&7受付から入るともらえる（出ると消える）" to {_d::*}
+    else if {_id} is "travel":
+        # 15号館（1 階のロビー）と、使った場所を行き来する（uf_26_travel.sk）。コンパスは WorldEdit の道具なので使わない
+        set {_b} to recovery compass
+        set {_n} to "&b15号館への道しるべ"
+        add "&7右クリックで、15号館の 1 階へ行く" to {_d::*}
+        add "&715号館でもう一度使うと、使った場所に戻る" to {_d::*}
+        add "&7死んでもなくならない" to {_d::*}
     else if {_id} is "tool_pick3":
         set {_b} to diamond pickaxe
         set {_n} to "&b3×3ピッケル"
