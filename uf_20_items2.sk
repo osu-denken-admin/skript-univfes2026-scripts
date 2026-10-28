@@ -114,5 +114,7 @@ on projectile hit:
 on right click:
     uf_id(player's tool) is "it_warp"
     cancel event
-    uf_dwarpto(player) is true
+    set {_cp} to uf_dwarppos(player)
+    {_cp} is set
     remove 1 of uf_item("it_warp") from player's inventory
+    uf_dwarpgo(player, {_cp})

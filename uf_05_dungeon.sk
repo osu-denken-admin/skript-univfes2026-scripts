@@ -127,25 +127,26 @@ function uf_floorgui(p: player):
         set slot 22 of {_g} to barrier named "&cダンジョンから退出する" with lore "&7挑戦をやめて 1 階のロビーへ戻る" and "&7突破した階と報酬はそのまま"
     uf_gui({_p}, "floor", {_g})
 
-# 挑戦中の階の復帰地点へ戻る（帰還の書・前に売っていた帰還の巻物）。戻れたら true
-function uf_dwarpto(p: player) :: boolean:
+# 挑戦中の階の復帰地点（帰還の書・前に売っていた帰還の巻物）。戻れないときは理由を伝えて、何も返さない
+#   テレポートは待ちのある処理なので、この関数ではしない（待ちのあとの return はエラーになる）。戻すのは uf_dwarpgo
+function uf_dwarppos(p: player) :: location:
     set {_f} to {-uf::insess::%uuid of {_p}%}
     if {_f} is not set:
         uf_msg({_p}, "&c復帰地点に戻るのは、ダンジョンの挑戦中にだけ使えます")
-        return false
+        return {_none}
     if {-uf::sess::%{_f}%::phase} is not "explore" or "cleared":
         uf_msg({_p}, "&c中ボス・ボスとの戦いの間は使えません")
-        return false
+        return {_none}
     set {_cp} to {uf::floor::%{_f}%::cp}
     if {_cp} is not set:
         set {_cp} to {uf::floor::%{_f}%::start}
-    if {_cp} is not set:
-        return false
+    return {_cp}
+
+function uf_dwarpgo(p: player, cp: location):
     play 20 portal at location of {_p}
     teleport {_p} to {_cp}
     play sound "entity.enderman.teleport" with volume 1 at {_p}
-    uf_msg({_p}, "&d%{_f}%階の復帰地点に戻った")
-    return true
+    uf_msg({_p}, "&d%{-uf::insess::%uuid of {_p}%}%階の復帰地点に戻った")
 
 # 帰還の書で戻れるまでの残りの秒数（0 ならすぐ使える。間隔は設定の warp_seconds）
 function uf_dwarpleft(p: player) :: number:
@@ -162,8 +163,10 @@ function uf_dbookwarp(p: player):
     if {_left} > 0:
         uf_msg({_p}, "&c復帰地点に戻れるのは、あと %{_left}% 秒後です")
         stop
-    if uf_dwarpto({_p}) is true:
+    set {_cp} to uf_dwarppos({_p})
+    if {_cp} is set:
         set {-uf::wcd::%uuid of {_p}%} to {-uf::tick}
+        uf_dwarpgo({_p}, {_cp})
 
 on inventory click:
     {-uf::gui::%uuid of player%} is "floor"

@@ -105,6 +105,7 @@ systemctl --user restart mc-server
 - ブロックの座標（`x-coordinate of` ブロック）は真ん中（5.5 など）で返る
 - スライムは倒すと分かれ、分かれた子には metadata が付かない（`on slime split` で止めている）
 - 敵の無敵時間（叩かれてから 0.5 秒）の間は、前より小さいダメージは「ダメージを受けた」イベントすら起きない。銃の雪玉はもとのダメージが 0 なので、ライフルの連射・ショットガンの散弾がほとんど無視されていた（2026-10-28）。`on projectile hit` で当たる直前に `set invulnerability time of victim to 0 ticks` している（2.11 から。`invulnerability ticks` は非推奨）
+- `teleport` は待ちのある処理あつかいで、そのあとに `return` があると読み込みエラー（「A return statement after a delay is useless」）。値を返す関数ではテレポートしない（2026-10-28 に帰還の書で本番に出た。`uf_dwarppos` と `uf_dwarpgo` に分けた）
 - Minecraft 1.21.11 ではゲームルール名が変わる（本番の 1.21.4 は古い名前）
 
 ## テスト
