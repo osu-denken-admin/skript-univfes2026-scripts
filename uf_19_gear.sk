@@ -152,6 +152,10 @@ function uf_gearitem(id: text, lv: number) :: item:
 #   弓は、引き切ったときの矢（およそ 3）との比
 # ------------------------------------------------------------
 function uf_wpow(id: text) :: number:
+    return uf_wpow0({_id}) * {uf::cfg::power::weapon}
+
+# 倍率をかける前の値
+function uf_wpow0(id: text) :: number:
     if {_id} starts with "dgw_":
         set {_f} to (last (length of {_id} - 4) characters of {_id}) parsed as number
         if {_f} is 2:
@@ -171,7 +175,7 @@ function uf_wpow(id: text) :: number:
         return 30
     if {_id} starts with "dgb_":
         set {_w} to "dgw_%last (length of {_id} - 4) characters of {_id}%"
-        return uf_wpow({_w}) * 0.8
+        return uf_wpow0({_w}) * 0.8
     if {_id} is "cg_sword":
         return 32
     if {_id} is "cg_bow":
@@ -601,18 +605,20 @@ on damage:
                     damage {_atk} by 2 * {_th}
 
 # 防具 1 つぶんの守り（受けるダメージを減らす割合）。合計は最大 60％
+# 1 つごとの守り（防具の倍率 power::armor をかける。合計の上限は uf_armordef の 60％）
 function uf_armordefof(id: text) :: number:
+    set {_d} to 0
     if {_id} starts with "dga_uniform":
-        return 0.04
-    if {_id} starts with "dga_labcoat":
-        return 0.07
-    if {_id} starts with "dga_lord":
-        return 0.1
-    if {_id} starts with "cg_":
-        return 0.12
-    if {_id} is "armor_special":
-        return 0.08
-    return 0
+        set {_d} to 0.04
+    else if {_id} starts with "dga_labcoat":
+        set {_d} to 0.07
+    else if {_id} starts with "dga_lord":
+        set {_d} to 0.1
+    else if {_id} starts with "cg_":
+        set {_d} to 0.12
+    else if {_id} is "armor_special":
+        set {_d} to 0.08
+    return {_d} * {uf::cfg::power::armor}
 
 function uf_armordef(p: player) :: number:
     set {_n} to 0

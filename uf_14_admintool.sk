@@ -675,7 +675,7 @@ function uf_cfgkeys(cat: text) :: texts:
     if {_cat} is "tools":
         return "tree::max", "tree::height", "tree::radius", "ore::radius", "ore::seconds", "hook::range" and "hook::cooldown"
     if {_cat} is "weapons":
-        return "gun_scope", "gun::gun_handgun::dmg", "gun::gun_handgun::cd", "gun::gun_handgun::ammo", "gun::gun_rifle::dmg", "gun::gun_rifle::cd", "gun::gun_rifle::ammo", "gun::gun_shotgun::dmg", "gun::gun_shotgun::cd", "gun::gun_shotgun::ammo", "gun::gun_shotgun::pellets", "gun::gun_energy::dmg", "gun::gun_energy::cd", "melee::melee_basic" and "melee::melee_adv"
+        return "power::weapon", "power::armor", "power::mob_hp", "gun_scope", "gun::gun_handgun::dmg", "gun::gun_handgun::cd", "gun::gun_handgun::ammo", "gun::gun_rifle::dmg", "gun::gun_rifle::cd", "gun::gun_rifle::ammo", "gun::gun_shotgun::dmg", "gun::gun_shotgun::cd", "gun::gun_shotgun::ammo", "gun::gun_shotgun::pellets", "gun::gun_energy::dmg", "gun::gun_energy::cd", "melee::melee_basic" and "melee::melee_adv"
     if {_cat} is "rpg":
         return "level::max", "level::base", "level::step", "skill::max" and "skill_reset_cost"
     return "chip_rate" and "sell_daily_cap"
@@ -696,6 +696,12 @@ function uf_cfgcatname(cat: text) :: text:
     return "経済"
 
 function uf_cfglabel(k: text) :: text:
+    if {_k} is "power::weapon":
+        return "武器のダメージの倍率（全部の武器・銃・ボム）"
+    if {_k} is "power::armor":
+        return "防具の守りの倍率（1 つごと。合計は最大 60％）"
+    if {_k} is "power::mob_hp":
+        return "ダンジョンの敵の体力の倍率"
     if {_k} starts with "clear_pt::":
         return "%last 1 characters of {_k}%階の初回クリア報酬（pt）"
     if {_k} starts with "gun::":
@@ -824,6 +830,8 @@ function uf_scopename(v: text) :: text:
 function uf_cfgdec(k: text) :: boolean:
     if {_k} is "death_loss_rate", "repeat_rate", "chest::shift" or "chip_rate":
         return true
+    if {_k} starts with "power::":
+        return true
     if {_k} starts with "melee::":
         return true
     if {_k} starts with "rarity::":
@@ -833,6 +841,8 @@ function uf_cfgdec(k: text) :: boolean:
     return false
 
 function uf_cfgmin(k: text) :: number:
+    if {_k} starts with "power::":
+        return 0.1
     if {_k} is "party_max", "revive_seconds", "revive_range", "tree::max", "tree::height", "tree::radius", "ore::radius", "level::max", "level::base", "skill::max" or "session_minutes":
         return 1
     if {_k} ends with "::cd":
@@ -846,6 +856,8 @@ function uf_cfgmin(k: text) :: number:
     return 0
 
 function uf_cfgmax(k: text) :: number:
+    if {_k} starts with "power::":
+        return 10
     if {_k} is "death_loss_rate" or "repeat_rate":
         return 1
     if {_k} starts with "rarity::":

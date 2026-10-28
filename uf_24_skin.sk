@@ -163,26 +163,37 @@ on resource pack response:
 # ------------------------------------------------------------
 # 前に手に入れた武具を作り直す（スキン・壊れない・今の説明にする）
 # ------------------------------------------------------------
+# 武具の作り直しの版。強さを変えたら 1 つ上げると、入ってきた人の武具を 1 回だけ作り直す（説明の攻撃力・守りが新しくなる）
+function uf_gearrev() :: number:
+    return 2
+
 function uf_refreshgear(p: player):
     set {_n} to 0
+    set {_force} to false
+    if {uf::gearrev::%uuid of {_p}%} is not uf_gearrev():
+        set {_force} to true
     loop integers between 0 and 40:
         set {_s} to loop-value
         set {_it} to slot {_s} of inventory of {_p}
         set {_id} to uf_id({_it})
         if {_id} is not "":
             set {_k} to uf_skinid({_id})
-            if {_k} > 0:
+            if {_k} >= 1700:
                 if custom model data of {_it} is not {_k}:
-                    if {_k} >= 1700:
-                        set custom model data of {_it} to {_k}
-                        set slot {_s} of inventory of {_p} to {_it}
-                    else:
-                        set {_new} to uf_rebuild({_it}, -1, uf_abof({_it}))
-                        loop enchantments of {_it}:
-                            if {_new} is not enchanted with loop-value-2:
-                                enchant {_new} with loop-value-2
-                        set slot {_s} of inventory of {_p} to {_new}
-                        add 1 to {_n}
+                    set custom model data of {_it} to {_k}
+                    set slot {_s} of inventory of {_p} to {_it}
+            else if {_k} > 0:
+                set {_re} to {_force}
+                if custom model data of {_it} is not {_k}:
+                    set {_re} to true
+                if {_re} is true:
+                    set {_new} to uf_rebuild({_it}, -1, uf_abof({_it}))
+                    loop enchantments of {_it}:
+                        if {_new} is not enchanted with loop-value-2:
+                            enchant {_new} with loop-value-2
+                    set slot {_s} of inventory of {_p} to {_new}
+                    add 1 to {_n}
+    set {uf::gearrev::%uuid of {_p}%} to uf_gearrev()
     if {_n} > 0:
         uf_msg({_p}, "&7持っている武具 %{_n}% 個を新しくした（強くなった・スキンが付いた）")
 

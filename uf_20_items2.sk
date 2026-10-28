@@ -108,7 +108,7 @@ on projectile hit:
             if {-uf::sess::%{_f}%::mem::%uuid of {_by}%} is set:
                 set {-uf::dmg::%{_mid}%::%uuid of {_by}%} to {_by}
                 set {-uf::sess::%{_f}%::active::%uuid of {_by}%} to true
-                damage loop-value by 4
+                damage loop-value by 4 * {uf::cfg::power::weapon}
 
 # 帰還の巻物（2026-10-28 から売らない。受付でもらう帰還の書で戻れる。持っている人は今までどおり使える）
 on right click:

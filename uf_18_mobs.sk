@@ -104,6 +104,10 @@ function uf_rageskills(f: number) :: text:
     return "summon,zap"
 
 function uf_mobhp(f: number, tier: text) :: number:
+    return uf_mobhp0({_f}, {_tier}) * {uf::cfg::power::mob_hp}
+
+# 倍率（power::mob_hp）をかける前の体力
+function uf_mobhp0(f: number, tier: text) :: number:
     if {_tier} is "normal":
         return 10 + {_f}
     if {_tier} is "minion":

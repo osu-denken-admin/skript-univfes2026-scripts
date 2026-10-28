@@ -49,9 +49,9 @@ async function join() {
     check(`${id}: skin number ${n}`, it && cmdOf(it) === n, it ? String(cmdOf(it)) : 'missing');
   }
   check('dgw_9: unbreakable', !!comp(find('dgw_9'), 'unbreakable'));
-  check('dgw_9: attack shown (30)', /攻撃力: 30/.test(loreOf(find('dgw_9'))), loreOf(find('dgw_9')).slice(0, 200));
-  check('dga_lord_chest: defense shown (10%)', /受けるダメージ -10/.test(loreOf(find('dga_lord_chest'))));
-  check('cg_sword: attack shown (32)', /攻撃力: 32/.test(loreOf(find('cg_sword'))));
+  check('dgw_9: attack shown (60 = 30 x2)', /攻撃力: 60/.test(loreOf(find('dgw_9'))), loreOf(find('dgw_9')).slice(0, 200));
+  check('dga_lord_chest: defense shown (50% = 10% x5)', /受けるダメージ -50/.test(loreOf(find('dga_lord_chest'))));
+  check('cg_sword: attack shown (64 = 32 x2)', /攻撃力: 64/.test(loreOf(find('cg_sword'))));
 
   // --- 武具以外のアイテムのスキン（1700 から） ---
   const expectCmd2 = { heal_kit: 1701, ammo: 1702, mat_final: 1714, bike_kit: 1744, it_speed: 1802, it_bomb: 1807, rare_5: 1905, rare_9: 1909, map: 1705 };
@@ -62,10 +62,10 @@ async function join() {
     check(`${id}: skin number ${n}`, it && cmdOf(it) === n, it ? String(cmdOf(it)) : 'missing');
   }
 
-  // --- ダメージ: dgw_2（鉄の剣 3 → 8）で 1 回叩くと、溜めた一撃なら体力のバーで 8（= 16 HP）減る ---
+  // --- ダメージ: dgw_2（鉄の剣 3 → 8、武器の倍率 2 で 16）で 1 回叩くと、溜めた一撃なら体力のバーで 16（= 32 HP）減る ---
   con(`tp ${NAME} 0 -60 0 -90 0`); await sleep(800);
   con('kill @e[type=!player]');
-  con('summon husk 3 -60 0 {NoAI:1b,Silent:1b,Health:200f,attributes:[{id:"minecraft:max_health",base:200d}],Tags:["uftest"]}');
+  con('summon husk 3 -60 0 {NoAI:1b,Silent:1b,Health:800f,attributes:[{id:"minecraft:max_health",base:800d}],Tags:["uftest"]}');
   // uf_gearon は dungeon のモジュール。区域がないのでワールド全体がダンジョン
   await sleep(1200);
   const husk = () => Object.values(b.entities).find((e) => e.name === 'husk');
@@ -75,14 +75,14 @@ async function join() {
   const h0 = hp(h);
   await b.lookAt(h.position.offset(0, 1, 0), true); b.attack(h); await sleep(800);
   const h1 = hp(husk());
-  // 鉄の剣の溜めた一撃は 6 HP。8/3 倍で 16 HP（会心は 2 倍で 32、ジャンプ中の会心は付けない）
-  check('dgw_2 hits about 16 HP (was 6.6)', h0 - h1 >= 15 && h0 - h1 <= 33, `${h0} -> ${h1} (${h0 - h1})`);
+  // 鉄の剣の溜めた一撃は 6 HP。8/3 倍・武器の倍率 2 で 32 HP（会心は 2 倍で 64、ジャンプ中の会心は付けない）
+  check('dgw_2 hits about 32 HP', h0 - h1 >= 30 && h0 - h1 <= 66, `${h0} -> ${h1} (${h0 - h1})`);
   await b.equip(find('dgw_9'), 'hand'); await sleep(1500);
   const h2 = hp(husk());
   b.attack(husk()); await sleep(800);
   const h3 = hp(husk());
-  // ネザライトの剣 8 HP → 30/4 倍で 60 HP
-  check('dgw_9 hits about 60 HP (was 10.4)', h2 - h3 >= 55 && h2 - h3 <= 125, `${h2} -> ${h3} (${h2 - h3})`);
+  // ネザライトの剣 8 HP → 30/4 倍・武器の倍率 2 で 120 HP
+  check('dgw_9 hits about 120 HP', h2 - h3 >= 110 && h2 - h3 <= 250, `${h2} -> ${h3} (${h2 - h3})`);
 
   // --- 前に手に入れた武具の作り直し（スキン番号なし・鋭さ 3 → 入り直すと番号つき・鋭さ 3 のまま）---
   con(`give ${NAME} iron_sword[enchantments={levels:{"minecraft:sharpness":3}},lore=['{"text":"uf:dgw_3","color":"dark_gray"}','{"text":"uflv:2","color":"dark_gray"}']]`);

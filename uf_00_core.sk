@@ -127,6 +127,13 @@ function uf_defaults():
     uf_setdef("gun::gun_energy::speed", 4)
     uf_setdef("melee::melee_basic", 2)
     uf_setdef("melee::melee_adv", 3.2)
+    # 強さの倍率（2026-10-28。武器 2 倍・防具 5 倍・敵の体力 1.25 倍。管理者ツールの設定 → 特殊武器で変えられる）
+    #   武器: ダンジョン産・カジノ限定・ショップの剣・銃・電研ボムのダメージにかける
+    #   防具: 1 つごとの守りにかける（合計の上限 60％ はそのまま）
+    #   敵の体力: ダンジョンの敵すべて
+    uf_setdef("power::weapon", 2)
+    uf_setdef("power::armor", 5)
+    uf_setdef("power::mob_hp", 1.25)
 
     # RPG
     uf_setdef("level::max", 50)
