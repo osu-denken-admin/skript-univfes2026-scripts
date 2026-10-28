@@ -54,6 +54,39 @@ def entries():
     E.append(('carrot_on_a_stick', 1503, 'gun_shotgun', 'generated'))
     E.append(('warped_fungus_on_a_stick', 1504, 'gun_energy', 'generated'))
     E.append(('iron_chestplate', 1601, 'armor_special', 'generated'))
+    # 武具以外のアイテム（1700 から。uf_24_skin.sk の uf_refreshgear は、1700 からの番号のアイテムを作り直さずに番号だけ付ける）
+    # フロアマップ（回収コンパス）は、元の見た目（針の向きで 32 枚を切り替える）を正しく写せないので付けない
+    E.append(('honey_bottle', 1701, 'heal_kit', 'generated'))
+    E.append(('iron_nugget', 1702, 'ammo', 'generated'))
+    E.append(('fishing_rod', 1703, 'hook', 'rod'))
+    E.append(('potion', 1704, 'ore_potion', 'generated'))
+    E.append(('book', 1706, 'admin_tool', 'generated'))
+    E.append(('heart_of_the_sea', 1707, 'trophy_15', 'generated'))
+    E.append(('amethyst_shard', 1711, 'mat_upgrade', 'generated'))
+    E.append(('prismarine_crystals', 1712, 'mat_special', 'generated'))
+    E.append(('netherite_scrap', 1713, 'mat_part', 'generated'))
+    E.append(('nether_star', 1714, 'mat_final', 'generated'))
+    E.append(('feather', 1721, 'acc_basic', 'generated'))
+    E.append(('nautilus_shell', 1722, 'acc_rare', 'generated'))
+    E.append(('diamond_pickaxe', 1731, 'tool_pick3', 'handheld'))
+    E.append(('diamond_shovel', 1732, 'tool_shovel3', 'handheld'))
+    E.append(('diamond_axe', 1733, 'tool_axe', 'handheld'))
+    E.append(('saddle', 1741, 'bike_key', 'generated'))
+    E.append(('saddle', 1742, 'bike_key_scooter', 'generated'))
+    E.append(('saddle', 1743, 'bike_key_offroad', 'generated'))
+    E.append(('piston', 1744, 'bike_kit', 'generated'))
+    E.append(('baked_potato', 1801, 'it_onigiri', 'generated'))
+    E.append(('potion', 1802, 'it_speed', 'generated'))
+    E.append(('potion', 1803, 'it_power', 'generated'))
+    E.append(('potion', 1804, 'it_guard', 'generated'))
+    E.append(('rabbit_foot', 1805, 'it_jump', 'generated'))
+    E.append(('spyglass', 1806, 'it_night', 'generated'))
+    E.append(('fire_charge', 1807, 'it_bomb', 'generated'))
+    E.append(('paper', 1808, 'it_warp', 'generated'))
+    rare = {2: 'red_dye', 3: 'paper', 4: 'glow_ink_sac', 5: 'redstone', 6: 'tripwire_hook', 7: 'writable_book',
+            8: 'iron_nugget', 9: 'echo_shard'}
+    for f, base in rare.items():
+        E.append((base, 1900 + f, 'rare_%d' % f, 'handheld' if f == 2 else 'generated'))
     return E
 
 
@@ -80,6 +113,21 @@ def vanilla_model(base):
     if base.startswith('leather_'):
         return {'type': 'minecraft:model', 'model': 'minecraft:item/' + base,
                 'tints': [{'type': 'minecraft:dye', 'default': -6265536}]}
+    # 下の 4 つは、ふつうの絵 1 枚ではない（ここを間違えると、ふつうのアイテムの見た目まで変わる）
+    if base == 'potion':
+        return {'type': 'minecraft:model', 'model': 'minecraft:item/potion',
+                'tints': [{'type': 'minecraft:potion', 'default': -13083194}]}
+    if base == 'fishing_rod':
+        return {'type': 'minecraft:condition', 'property': 'minecraft:fishing_rod/cast',
+                'on_false': {'type': 'minecraft:model', 'model': 'minecraft:item/fishing_rod'},
+                'on_true': {'type': 'minecraft:model', 'model': 'minecraft:item/fishing_rod_cast'}}
+    if base == 'spyglass':
+        return {'type': 'minecraft:select', 'property': 'minecraft:display_context',
+                'cases': [{'when': ['gui', 'ground', 'fixed'],
+                           'model': {'type': 'minecraft:model', 'model': 'minecraft:item/spyglass'}}],
+                'fallback': {'type': 'minecraft:model', 'model': 'minecraft:item/spyglass_in_hand'}}
+    if base == 'piston':
+        return {'type': 'minecraft:model', 'model': 'minecraft:block/piston_inventory'}
     return {'type': 'minecraft:model', 'model': 'minecraft:item/' + base}
 
 
@@ -97,6 +145,11 @@ def custom_model(uid, kind):
                 'fallback': {'type': 'minecraft:model', 'model': 'uf:item/%s_pulling_0' % uid},
             },
         }
+    if kind == 'rod':
+        # 投げている間は <id>_cast の絵
+        return {'type': 'minecraft:condition', 'property': 'minecraft:fishing_rod/cast',
+                'on_false': {'type': 'minecraft:model', 'model': 'uf:item/' + uid},
+                'on_true': {'type': 'minecraft:model', 'model': 'uf:item/%s_cast' % uid}}
     return {'type': 'minecraft:model', 'model': 'uf:item/' + uid}
 
 
@@ -112,9 +165,13 @@ def build():
         if tn not in T:
             raise SystemExit('絵がない: ' + tn)
         parent = {'handheld': 'minecraft:item/handheld', 'generated': 'minecraft:item/generated',
-                  'bow': 'minecraft:item/bow'}[kind]
+                  'bow': 'minecraft:item/bow', 'rod': 'minecraft:item/handheld_rod'}[kind]
         files['assets/uf/models/item/%s.json' % uid] = json.dumps({'parent': parent, 'textures': {'layer0': 'uf:item/' + tn}})
         files['assets/uf/textures/item/%s.png' % tn] = T[tn].png()
+        if kind == 'rod':
+            files['assets/uf/models/item/%s_cast.json' % uid] = json.dumps(
+                {'parent': parent, 'textures': {'layer0': 'uf:item/%s_cast' % tn}})
+            files['assets/uf/textures/item/%s_cast.png' % tn] = T['%s_cast' % tn].png()
         if kind == 'bow':
             for i in range(3):
                 files['assets/uf/models/item/%s_pulling_%d.json' % (uid, i)] = json.dumps(

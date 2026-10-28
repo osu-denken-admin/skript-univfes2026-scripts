@@ -45,7 +45,7 @@ function uf_item2(id: text) :: item:
     else:
         return {_none}
     add "&8uf:%{_id}%" to {_d::*}
-    return ({_b} named {_n}) with lore {_d::*}
+    return uf_skin(({_b} named {_n}) with lore {_d::*}, {_id})
 
 # 食べる・飲む
 on consume:

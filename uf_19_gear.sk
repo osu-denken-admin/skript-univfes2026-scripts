@@ -331,7 +331,7 @@ function uf_rareitem(id: text) :: item:
     add "&7%{_f}%階の敵がまれに落とすレアドロップ品" to {_d::*}
     add "&7鍛冶屋で、武器に「%uf_abname(uf_rareab({_f}))%」、防具に「%uf_abname(uf_rareabarmor({_f}))%」の能力を付ける材料" to {_d::*}
     add "&8uf:%{_id}%" to {_d::*}
-    return ({_b} named uf_rarename({_f})) with lore {_d::*}
+    return uf_skin(({_b} named uf_rarename({_f})) with lore {_d::*}, {_id})
 
 # 倒した人 1 人ぶんのドロップ
 function uf_mobdrop(p: player, f: number, tier: text):

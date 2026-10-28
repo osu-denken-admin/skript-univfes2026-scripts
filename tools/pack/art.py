@@ -908,4 +908,7 @@ def all_textures():
         'gun_energy': gun_energy(),
     }
     T.update(bows())
+    # 武具以外のアイテム（art_items.py）
+    from art_items import item_textures
+    T.update(item_textures())
     return T

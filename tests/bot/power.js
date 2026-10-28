@@ -53,6 +53,15 @@ async function join() {
   check('dga_lord_chest: defense shown (10%)', /受けるダメージ -10/.test(loreOf(find('dga_lord_chest'))));
   check('cg_sword: attack shown (32)', /攻撃力: 32/.test(loreOf(find('cg_sword'))));
 
+  // --- 武具以外のアイテムのスキン（1700 から）。フロアマップには付けない ---
+  const expectCmd2 = { heal_kit: 1701, ammo: 1702, mat_final: 1714, bike_kit: 1744, it_speed: 1802, it_bomb: 1807, rare_5: 1905, rare_9: 1909, map: 0 };
+  for (const id of Object.keys(expectCmd2)) b.chat('/ufadmin give ' + id);
+  await sleep(1500);
+  for (const [id, n] of Object.entries(expectCmd2)) {
+    const it = find(id);
+    check(`${id}: skin number ${n}`, it && cmdOf(it) === n, it ? String(cmdOf(it)) : 'missing');
+  }
+
   // --- ダメージ: dgw_2（鉄の剣 3 → 8）で 1 回叩くと、溜めた一撃なら体力のバーで 8（= 16 HP）減る ---
   con(`tp ${NAME} 0 -60 0 -90 0`); await sleep(800);
   con('kill @e[type=!player]');
@@ -77,6 +86,10 @@ async function join() {
 
   // --- 前に手に入れた武具の作り直し（スキン番号なし・鋭さ 3 → 入り直すと番号つき・鋭さ 3 のまま）---
   con(`give ${NAME} iron_sword[enchantments={levels:{"minecraft:sharpness":3}},lore=['{"text":"uf:dgw_3","color":"dark_gray"}','{"text":"uflv:2","color":"dark_gray"}']]`);
+  // 番号のない前の弾薬 20 発と、名前と日付の入った前の制覇の証
+  con('clear ' + NAME + ' iron_nugget'); con('clear ' + NAME + ' heart_of_the_sea');
+  con(`give ${NAME} iron_nugget[lore=['{"text":"uf:ammo","color":"dark_gray"}']] 20`);
+  con(`give ${NAME} heart_of_the_sea[lore=['{"text":"uf:trophy_15","color":"dark_gray"}','{"text":"TesterA 2026/10/01","color":"yellow"}']]`);
   await sleep(1000);
   b.quit(); await sleep(1500);
   b = await join(); await sleep(2500);
@@ -86,6 +99,10 @@ async function join() {
   check('old dgw_3 keeps level 2', /uflv:2/.test(loreOf(old)), loreOf(old).slice(0, 300));
   check('old dgw_3 keeps sharpness', /sharpness/.test(ench) || /"id":\d+,"level":3/.test(ench), ench.slice(0, 200));
   check('rebuild message', b.msgs.some((m) => /武具 \d+ 個を新しくした/.test(m)));
+  const oldAmmo = find('ammo');
+  check('old ammo gets skin number, keeps 20', oldAmmo && cmdOf(oldAmmo) === 1702 && oldAmmo.count === 20, oldAmmo ? `${cmdOf(oldAmmo)} x${oldAmmo.count}` : 'missing');
+  const oldTrophy = find('trophy_15');
+  check('old trophy gets skin number, keeps name and date', oldTrophy && cmdOf(oldTrophy) === 1707 && /TesterA 2026\/10\/01/.test(loreOf(oldTrophy)), oldTrophy ? `${cmdOf(oldTrophy)} ${loreOf(oldTrophy).slice(0, 200)}` : 'missing');
   check('resource pack is sent on join', b.packs.some((u) => /uf_pack\.zip$/.test(u)), b.packs.join(','));
 
   // --- 地下カジノ ---
