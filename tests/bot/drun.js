@@ -106,14 +106,34 @@ const STAIR = { W: { cell: (L) => ({ x: -273, y: L + 1, z: 92 }), stand: (L) => 
     // 中ボスの壁（入口側の面から）
     const g = lay.midGate[0];
     const standX = lay.side === 'W' ? g.x - 1.5 : g.x + 2.5;
+    // 2 階では、もう 1 つのパーティー（UfAdmin 1 人）が同じ階に入り、先に中ボスの闘技場を使う
+    if (f === 2) {
+      con('tp UfAdmin -235 63 105'); await sleep(1200);
+      p = waitWindow(A); A.chat('/dungeon'); w = await p;
+      let am = A.msgs.length; await clickWin(A, 10); await sleep(2500);
+      check('second party enters the same floor', near(A, lay.start, 3) && !seen(A, am, /満員|挑戦中です/), A.entity.position.toString());
+      am = A.msgs.length;
+      await clickBlock(A, { x: standX, y: Lv + 1, z: g.z + 0.5 }, g);
+      check('second party takes the mid arena', !!(await waitMsg(A, am, /壁の向こうから/, 4000)));
+      const pm = P.msgs.length;
+      await clickBlock(P, { x: standX, y: Lv + 1, z: g.z + 0.5 }, g);
+      check('arena busy -> wait', !!(await waitMsg(P, pm, /ほかのパーティーが戦っている/, 4000)) && !near(P, ar.mid.player, 6), P.entity.position.toString());
+      A.chat('/dungeon leave');
+      check('told when the arena is free', !!(await waitMsg(P, pm, /闘技場が空いた/, 5000)));
+      await sleep(1000);
+    }
     await clickBlock(P, { x: standX, y: Lv + 1, z: g.z + 0.5 }, g);
     check(`${f}F mid gate click -> mid arena`, !!(await waitMsg(P, fm, /壁の向こうから/, 4000)));
     await sleep(800);
     check(`${f}F in mid arena`, near(P, ar.mid.player, 4), P.entity.position.toString());
     await killUntil(P, () => seen(P, fm, /中ボス撃破/), 30000);
+    // ボットが倒しきれないとき（強い中ボス）は、管理者の「次の段階へ」で倒した扱いにする（壁の向こうへ出るところを確かめるため）
+    if (!seen(P, fm, /中ボス撃破/)) { log(`${f}F mid boss not beaten by the bot -> /ufd skip`); A.chat(`/ufd skip ${f}`); await waitMsg(P, fm, /中ボス撃破/, 5000); }
     await sleep(4000);
-    check(`${f}F back at mid gate`, Math.abs(P.entity.position.y - (Lv + 1)) < 1.5 && Math.abs(P.entity.position.x - standX) < 3, P.entity.position.toString());
-    check(`${f}F mid gate opened`, !/obsidian/.test(blk(P, g.x, g.y, g.z)), blk(P, g.x, g.y, g.z));
+    // 勝つと壁の向こう側に出る（壁は閉じたまま）
+    const past = lay.side === 'W' ? P.entity.position.x > g.x + 1 : P.entity.position.x < g.x;
+    check(`${f}F past the mid gate`, past && Math.abs(P.entity.position.y - (Lv + 1)) < 1.5 && Math.abs(P.entity.position.x - g.x) < 3, P.entity.position.toString());
+    check(`${f}F mid gate stays closed`, /obsidian/.test(blk(P, g.x, g.y, g.z)), blk(P, g.x, g.y, g.z));
     // ボスの壁（出口側の上り階段）
     const ex = STAIR[lay.exit];
     await clickBlock(P, ex.stand(Lv), ex.cell(Lv));
@@ -122,20 +142,17 @@ const STAIR = { W: { cell: (L) => ({ x: -273, y: L + 1, z: 92 }), stand: (L) => 
     check(`${f}F in boss arena`, near(P, ar.boss.player, 4), P.entity.position.toString());
     const done = f < 9 ? /突破！/ : /制覇/;
     await killUntil(P, () => seen(P, fm, done), 40000);
+    if (!seen(P, fm, done)) { log(`${f}F boss not beaten by the bot -> /ufd skip`); A.chat(`/ufd skip ${f}`); await waitMsg(P, fm, done, 5000); }
     check(`${f}F boss defeated`, seen(P, fm, done));
     if (f === 9) { await sleep(5000); break; }
     await sleep(4500);
-    check(`${f}F back at stair gate`, near(P, ex.stand(Lv), 3), P.entity.position.toString());
-    const c = ex.cell(Lv);
-    check(`${f}F stairs restored`, /stairs|air/.test(blk(P, c.x, c.y, c.z)), blk(P, c.x, c.y, c.z));
-    // 階段を上って次の階のフロアへ（歩く代わりに、次の階の入口のすぐ内側へ移動）
+    // 勝つと次の階の開始地点へ移る（階段の壁は閉じたまま）
     const nl = JSON.parse(fs.readFileSync(`${LAYOUT}/floor_${f + 1}.json`));
-    const nm = P.msgs.length;
-    con(`tp UfPlayer ${nl.start.x} ${nl.start.y} ${nl.start.z}`);
-    await sleep(2500);
-    check(`${f + 1}F began by walking in`, mobs(P).length > 0, `mobs=${mobs(P).length}`);
-    await sleep(6000);
-    // 壁が閉じ直るのは、近くに人がいなくなってから（自動。テストの最後には全階閉じていることを確認済み）
+    check(`${f}F boss win -> ${f + 1}F start`, near(P, nl.start, 3), P.entity.position.toString());
+    check(`${f + 1}F began`, mobs(P).length > 0, `mobs=${mobs(P).length}`);
+    const c = ex.cell(Lv);
+    check(`${f}F stair gate stays closed`, blk(P, c.x, c.y, c.z) === 'reinforced_deepslate', blk(P, c.x, c.y, c.z));
+    await sleep(1000);
   }
   check('run complete -> lobby', near(P, { x: -234.5, y: 63, z: 105.5 }, 3), P.entity.position.toString());
   const pass = results.filter((r) => r[0] === 'PASS').length;

@@ -206,9 +206,10 @@ function uf_mobnear(f: number, l: location, r: number) :: players:
                         add loop-value to {_out::*}
     return {_out::*}
 
+# 挑戦中のセッションごと（uf_05_dungeon.sk。f はセッションの番号、階は uf_sf）
 every 1 second:
     uf_on("dungeon") is true
-    loop integers between 2 and 9:
+    loop {-uf::slist::*}:
         if {-uf::sess::%loop-value%::on} is true:
             uf_mobtick(loop-value)
 
@@ -252,9 +253,9 @@ function uf_mobrage(f: number, e: entity, mid: number, tier: text):
             uf_dsay({_f}, "&c%{_n}% が怒った！ 動きが速くなった！")
             if {_tier} is "boss":
                 set {_cur} to metadata value "uf_skills" of {_e}
-                set metadata value "uf_skills" of {_e} to "%{_cur}%,%uf_rageskills({_f})%"
+                set metadata value "uf_skills" of {_e} to "%{_cur}%,%uf_rageskills(uf_sf({_f}))%"
     else if {_ph} is 2:
-        if {_f} is 9:
+        if uf_sf({_f}) is 9:
             if {_tier} is "boss":
                 if {_r} < 0.25:
                     set {-uf::mob::%{_mid}%::ph} to 3
@@ -323,7 +324,7 @@ function uf_skshock(f: number, e: entity):
     play 3 explosion at {_l}
     play sound "entity.generic.explode" with volume 1 at {_l}
     loop uf_mobnear({_f}, {_l}, 4.5):
-        damage loop-value by 1.5 + {_f} * 0.25
+        damage loop-value by 1.5 + uf_sf({_f}) * 0.25
         set {_v} to normalized vector from {_l} to loop-value
         push loop-value {_v} at speed 0.9
         push loop-value upwards at speed 0.4
@@ -352,7 +353,7 @@ function uf_skzap(f: number, t: player):
     wait 1 second
     strike lightning effect at {_l}
     loop uf_mobnear({_f}, {_l}, 2.5):
-        damage loop-value by 1.5 + {_f} * 0.25
+        damage loop-value by 1.5 + uf_sf({_f}) * 0.25
         apply slowness 1 to loop-value for 2 seconds
 
 # ------------------------------------------------------------

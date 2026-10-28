@@ -427,7 +427,8 @@ T.dungeonexit = async ({ A, P }) => {
   check('leave from the return book', !!(await waitMsg(P, from, /ダンジョンから退出しました/)) && P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
   await sleep(500);
   check('return book removed after leaving', !invFind(P, '帰還の書'));
-  // 出たあと、受付からもう一度入れる
+  // 出たあと、受付からもう一度入れる（入ってすぐ敵に倒されて全滅にならないよう、少しの間ダメージを受けなくする）
+  con(`effect give ${P.username} resistance 20 4 true`); con(`effect give ${P.username} instant_health 1 5 true`); await sleep(300);
   from = P.msgs.length;
   w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
   check('can enter again after leaving', P.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3 && !P.msgs.slice(from).some((m) => /挑戦中です/.test(m)), P.entity.position.toString());
@@ -520,6 +521,32 @@ T.partygui = async ({ A, P }) => {
   w = await cmdWin(A, '/party'); from = A.msgs.length; await clickWin(A, 8);
   check('leader disbands from the party screen', !!(await waitMsg(A, from, /パーティーが解散しました/)));
   closeWin(A); await sleep(300);
+};
+
+// ---------------------------------------------------------------
+// 同じ階に複数のパーティー（セッションは 階 × 10 + 枠。2 階なら 20, 21, ...）
+T.multiparty = async ({ A, P }) => {
+  con(`gamemode creative ${A.username}`); con(`gamemode creative ${P.username}`);
+  con(`tp ${A.username} 0 -60 0`); con(`tp ${P.username} 1 -60 0`); await sleep(800);
+  let w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
+  check('first party starts floor 2', P.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3, P.entity.position.toString());
+  w = await cmdWin(A, '/dungeon');
+  check('reception shows how many parties are in', !!w && itemText(w.slots[10]).includes('挑戦中: 1 / 4'), w ? itemText(w.slots[10]).slice(0, 200) : '');
+  let from = A.msgs.length; await clickWin(A, 10); await sleep(2000);
+  check('second party starts the same floor', !A.msgs.slice(from).some((m) => /満員|挑戦中です/.test(m)) && A.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3, A.entity.position.toString());
+  from = A.msgs.length; A.chat('/ufd info 2'); await sleep(1000);
+  check('two sessions on floor 2', A.msgs.slice(from).some((m) => /挑戦中（20）/.test(m)) && A.msgs.slice(from).some((m) => /挑戦中（21）/.test(m)));
+  // 1 つの階に入れる数を 1 にすると、満員で入れない
+  A.chat('/dungeon leave'); await sleep(1500);
+  A.chat('/ufadmin cfg floor_parties 1'); await sleep(500);
+  w = await cmdWin(A, '/dungeon');
+  check('reception shows the floor is full', !!w && itemText(w.slots[10]).includes('満員'));
+  from = A.msgs.length; await clickWin(A, 10);
+  check('cannot start when the floor is full', !!(await waitMsg(A, from, /この階は満員/)));
+  closeWin(A);
+  A.chat('/ufadmin cfg floor_parties 4'); await sleep(300);
+  from = P.msgs.length; A.chat('/ufd end 2'); await sleep(1500);
+  check('admin end finishes every party on the floor', P.entity.position.distanceTo(new Vec3(0.5, -60, 0.5)) < 3, P.entity.position.toString());
 };
 
 // ---------------------------------------------------------------
@@ -1000,7 +1027,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'travel', 'partygui', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'travel', 'partygui', 'multiparty', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

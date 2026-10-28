@@ -180,7 +180,7 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             set {_u} to uuid of {_t}
             uf_msg(player, "&e%{_t}% (%{_u}%)")
             send "&7pt %uf_pt({_t})% / chip %uf_chip({_t})% / Lv %uf_lvof({_t})% / 最上階 %uf_unlock({_t})%" to player
-            send "&7挑戦中の階: %{-uf::insess::%{_u}%}% / パーティー: %{-uf::party::%{_u}%}%" to player
+            send "&7挑戦中の階: %uf_sf({-uf::insess::%{_u}%})% / パーティー: %{-uf::party::%{_u}%}%" to player
             send "&7回収待ち: %size of {uf::recidx::%{_u}%::*}% 件" to player
             set {_sk} to uf_stat({_u}, "dkills")
             set {_se} to uf_stat({_u}, "earned")

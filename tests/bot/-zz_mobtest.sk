@@ -49,21 +49,24 @@ command /zzfight <number> <text> [<number>]:
     trigger:
         set {uf::mod::dungeon} to true
         set {uf::cfg::world::dungeon} to "%world of player%"
+        # セッションの番号は 階 × 10 + 枠（uf_05_dungeon.sk）。ここではその階の枠 0 を使う
         set {_f} to arg-1
-        set {-uf::sess::%{_f}%::on} to true
-        set {-uf::sess::%{_f}%::phase} to "explore"
-        set {-uf::sess::%{_f}%::mem::%uuid of player%} to player
-        set {-uf::insess::%uuid of player%} to {_f}
+        set {_s} to {_f} * 10
+        set {-uf::sess::%{_s}%::on} to true
+        set {-uf::slist::%{_s}%} to {_s}
+        set {-uf::sess::%{_s}%::phase} to "explore"
+        set {-uf::sess::%{_s}%::mem::%uuid of player%} to player
+        set {-uf::insess::%uuid of player%} to {_s}
         set {uf::floor::%{_f}%::cp} to location of player
         set {_d} to arg-3
         if {_d} is not set:
             set {_d} to 3
-        uf_spawnmob({_f}, arg-2, location of player ~ vector({_d}, 0, 0))
+        uf_spawnmob({_s}, arg-2, location of player ~ vector({_d}, 0, 0))
         broadcast "fight %{_f}% %arg-2%"
 
 command /zzhp <number> <number>:
     trigger:
-        loop {-uf::sess::%arg-1%::mobs::*}:
+        loop {-uf::sess::%arg-1 * 10%::mobs::*}:
             if loop-value is alive:
                 set health of loop-value to (max health of loop-value) * arg-2
         broadcast "hp %arg-1% %arg-2%"
@@ -102,7 +105,7 @@ command /zzreward <number>:
 
 command /zzend <number>:
     trigger:
-        uf_dend(arg-1, "test", false)
+        uf_dend(arg-1 * 10, "test", false)
         broadcast "end %arg-1%"
 
 # 地下カジノ（uf_25_casinohall.sk）: /zzchall build|fill

@@ -103,7 +103,7 @@ on projectile hit:
     loop all living entities in radius 3 of {_l}:
         set {_mid} to metadata value "uf_mid" of loop-value
         if {_mid} is set:
-            set {_f} to metadata value "uf_floor" of loop-value
+            set {_f} to metadata value "uf_sid" of loop-value
             # 挑戦中のパーティーの人が投げたときだけ。討伐の報酬に数える
             if {-uf::sess::%{_f}%::mem::%uuid of {_by}%} is set:
                 set {-uf::dmg::%{_mid}%::%uuid of {_by}%} to {_by}

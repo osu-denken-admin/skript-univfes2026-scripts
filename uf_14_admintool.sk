@@ -450,8 +450,9 @@ function uf_ap_floors(p: player):
             set {_st} to "&a開始地点あり"
         else:
             set {_st} to "&c開始地点なし"
-        if {-uf::sess::%{_f}%::on} is true:
-            set {_st} to "%{_st}%|&6挑戦中"
+        set {_sn} to size of uf_fsess({_f})
+        if {_sn} > 0:
+            set {_st} to "%{_st}%|&6挑戦中 %{_sn}% / %{uf::cfg::floor_parties}% パーティー"
         uf_abtn({_p}, {_g}, {_f} + 17, oak door, "&f%{_f}%階", "%{_st}%|&7敵の出現地点: %{_ns}% / 宝箱候補: %{_nc}%|&eクリックで設定", "open/floor/%{_f}%")
     uf_abtn({_p}, {_g}, 40, writable book, "&a15号館の内装に合わせて全階を設定", "&72〜9階の開始地点・復帰地点・ボス・敵の出現地点・宝箱・範囲を一括登録|&7先に「15号館（ダンジョン）」のワールドを登録しておくこと|&c今の各階の設定は上書きされます|&7確認画面が出ます", "ask/2〜9階の設定を15号館の内装に合わせて上書きする|layout")
     uf_abtn({_p}, {_g}, 42, glowstone, "&a15号館のライトを置き直す", "&7内装と闘技場のライトブロックを消して、決まった場所に置き直す|&7Litematica で貼るとライトが置かれないので、貼ったあとに 1 回押す|&7確認画面が出ます", "ask/内装と闘技場のライトブロックを置き直す|lights")
@@ -485,9 +486,12 @@ function uf_ap_floor(p: player, f: number):
     uf_abtn({_p}, {_g}, 30, blaze rod, "&eエリート敵の数", "&7現在: %{_ce}%|&eクリックで変更", "edit/count/%{_f}%/elite")
     if {uf::floor::%{_f}%::start} is set:
         uf_abtn({_p}, {_g}, 32, ender pearl, "&b開始地点へ移動", "&7確認用", "ftp/%{_f}%")
-    if {-uf::sess::%{_f}%::on} is true:
-        uf_abtn({_p}, {_g}, 33, clock, "&6次の段階へ進める", "&7段階: %{-uf::sess::%{_f}%::phase}% / 残り %{-uf::sess::%{_f}%::alive}%体|&7確認画面が出ます", "ask/%{_f}%階を次の段階へ進める（敵を倒した扱い・報酬なし）|fskip/%{_f}%")
-        uf_abtn({_p}, {_g}, 34, barrier, "&c挑戦を強制終了", "&7確認画面が出ます", "ask/%{_f}%階の挑戦を強制終了する|fend/%{_f}%")
+    if size of uf_fsess({_f}) > 0:
+        set {_sl} to ""
+        loop uf_fsess({_f}):
+            set {_sl} to "%{_sl}%|&7%loop-value%: %{-uf::sess::%loop-value%::phase}% / 残り %{-uf::sess::%loop-value%::alive}%体"
+        uf_abtn({_p}, {_g}, 33, clock, "&6次の段階へ進める（この階の全パーティー）", "&7挑戦中のパーティー:%{_sl}%|&7確認画面が出ます", "ask/%{_f}%階の全パーティーを次の段階へ進める（敵を倒した扱い・報酬なし）|fskip/%{_f}%")
+        uf_abtn({_p}, {_g}, 34, barrier, "&c挑戦を強制終了（この階の全パーティー）", "&7確認画面が出ます", "ask/%{_f}%階の全パーティーの挑戦を強制終了する|fend/%{_f}%")
     uf_ashow({_p}, {_g}, "floors")
 
 function uf_ap_shop(p: player):
@@ -670,7 +674,7 @@ function uf_ap_sellitem(p: player, k: text):
 # ------------------------------------------------------------
 function uf_cfgkeys(cat: text) :: texts:
     if {_cat} is "reward":
-        return "reward::normal", "reward::strong", "reward::elite", "reward::mid", "reward::boss", "clear_pt::2", "clear_pt::3", "clear_pt::4", "clear_pt::5", "clear_pt::6", "clear_pt::7", "clear_pt::8", "clear_pt::9", "repeat_rate", "session_minutes", "warp_seconds" and "party_max"
+        return "reward::normal", "reward::strong", "reward::elite", "reward::mid", "reward::boss", "clear_pt::2", "clear_pt::3", "clear_pt::4", "clear_pt::5", "clear_pt::6", "clear_pt::7", "clear_pt::8", "clear_pt::9", "repeat_rate", "session_minutes", "warp_seconds", "party_max" and "floor_parties"
     if {_cat} is "death":
         return "death_loss_scope", "death_loss_rate", "revive_seconds", "revive_range" and "soul_seconds"
     if {_cat} is "chest":
@@ -737,6 +741,8 @@ function uf_cfglabel(k: text) :: text:
         return "帰還の書で復帰地点に戻れる間隔（秒）"
     if {_k} is "farspawn_dist":
         return "初期スポーン地点の、ロビーからの距離（ブロック）"
+    if {_k} is "floor_parties":
+        return "1 つの階に同時に入れるパーティーの数"
     if {_k} is "party_max":
         return "パーティーの最大人数"
     if {_k} is "death_loss_scope":
@@ -850,6 +856,8 @@ function uf_cfgmin(k: text) :: number:
         return 0.1
     if {_k} is "farspawn_dist":
         return 200
+    if {_k} is "floor_parties":
+        return 1
     if {_k} is "party_max", "revive_seconds", "revive_range", "tree::max", "tree::height", "tree::radius", "ore::radius", "level::max", "level::base", "skill::max" or "session_minutes":
         return 1
     if {_k} ends with "::cd":
@@ -909,6 +917,8 @@ function uf_cfgmax(k: text) :: number:
         return 600
     if {_k} is "farspawn_dist":
         return 20000
+    if {_k} is "floor_parties":
+        return 9
     if {_k} is "level::max":
         return 200
     if {_k} is "skill::max":
@@ -943,7 +953,7 @@ function uf_ap_player(p: player, u: text):
     loop integers between 2 and 9:
         if {uf::clear::%{_u}%::%loop-value%} is true:
             set {_cl} to "%{_cl}%%loop-value% "
-    set {_info} to "&7Lv %uf_lvof({_t})% / 挑戦できる最上階 %uf_unlock({_t})%階|&7初回クリア済み: %{_cl}%|&7回収待ち: %size of {uf::recidx::%{_u}%::*}%件|&7挑戦中の階: %{-uf::insess::%{_u}%}%"
+    set {_info} to "&7Lv %uf_lvof({_t})% / 挑戦できる最上階 %uf_unlock({_t})%階|&7初回クリア済み: %{_cl}%|&7回収待ち: %size of {uf::recidx::%{_u}%::*}%件|&7挑戦中の階: %uf_sf({-uf::insess::%{_u}%})%"
     uf_abtn({_p}, {_g}, 4, skull of {_t}, "&f%{_t}%", {_info}, "")
     uf_abtn({_p}, {_g}, 20, gold nugget, "&eポイント", "&7現在: %uf_pt({_t})%|&eクリックで変更（記録が残ります）", "edit/pt/%{_u}%")
     uf_abtn({_p}, {_g}, 22, gold ingot, "&eカジノチップ", "&7現在: %uf_chip({_t})%|&eクリックで変更（記録が残ります）", "edit/chip/%{_u}%")
@@ -1376,10 +1386,10 @@ function uf_aact(p: player, a: text):
     else if {_c} is "ftp":
         teleport {_p} to {uf::floor::%{_x::2}%::start}
     else if {_c} is "fend":
-        uf_dend({_x::2} parsed as number, "admin")
+        uf_dendfloor({_x::2} parsed as number, "admin")
         uf_msg({_p}, "&e挑戦を終了しました")
     else if {_c} is "fskip":
-        uf_dskip({_x::2} parsed as number)
+        uf_dskipfloor({_x::2} parsed as number)
         uf_msg({_p}, "&e次の段階へ進めました")
     else if {_c} is "cshoptoggle":
         if {uf::cshop::%{_x::2}%::enabled} is true:

@@ -50,13 +50,11 @@ on death of player:
         # 全員が倒れていたら、その回の挑戦は終了
         uf_dwipecheck({-uf::insess::%{_u}%})
 
-# ダンジョン挑戦中はフロアの復帰地点で復活する
+# ダンジョン挑戦中はその回の復帰地点で復活する（中ボスを倒した後は壁の向こう側。uf_05_dungeon.sk の uf_scp）
 on respawn:
-    set {_f} to {-uf::insess::%uuid of player%}
-    {_f} is set
-    set {_cp} to {uf::floor::%{_f}%::cp}
-    if {_cp} is not set:
-        set {_cp} to {uf::floor::%{_f}%::start}
+    set {_s} to {-uf::insess::%uuid of player%}
+    {_s} is set
+    set {_cp} to uf_scp({_s})
     {_cp} is set
     wait 1 tick
     if player is online:

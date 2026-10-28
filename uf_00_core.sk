@@ -83,6 +83,8 @@ function uf_defaults():
     uf_setdef("warp_seconds", 60)
     # 初期スポーン地点の、ロビー（15号館）からの距離（uf_26_travel.sk）
     uf_setdef("farspawn_dist", 5000)
+    # 1 つの階に同時に入れるパーティーの数（uf_05_dungeon.sk。セッションの番号の都合で 9 まで）
+    uf_setdef("floor_parties", 4)
     uf_setdef("party_max", 4)
 
     # ダンジョン：宝箱
