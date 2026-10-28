@@ -1,13 +1,22 @@
 # ============================================================
-# uf_07_rpg.sk : レベル・経験値・スキル（すべて仮仕様。数値は /ufadmin cfg で変更可）
+# uf_07_rpg.sk : レベル・経験値・スキルツリー（数値の多くは管理者ツールの設定 → レベル・スキルで変えられる）
 #   必要経験値 = level::base + level::step × (現在レベル - 1)
-#   レベルアップごとにスキルポイント 1
-#   スキル（各 skill::max 段階まで）
-#     hp     : 最大体力 +1 ハート / 段階
-#     atk    : 与ダメージ +4％ / 段階
-#     def    : 被ダメージ -4％ / 段階
-#     gather : 売却価格 +3％ / 段階
-#   振り直し: skill_reset_cost ポイントでスキルポイントを全額返す
+#   経験値はダンジョン（討伐・突破）とクエストから。レベルアップごとにスキルポイント 1
+#   スキルポイントはカジノ限定ショップの「スキルの霊薬」（sp_potion）でも増える
+#   スキルはダンジョンの外でも効く（rpg モジュールで動く）
+#
+#   スキルツリー（2026-10-28 に作り直し。画面は実績の画面のように、上の段がタブ、まん中の段が線でつないだ木）
+#     系統（タブ）ごとに 3〜4 個のスキルが左から右に並び、左のスキルを 1 段階でも取ると右のスキルが開く
+#     最後の ★ は奥義。保存は {uf::skill::<uuid>::<スキル>}（前からの hp・atk・def・gather はそのまま）
+#     戦士 war   : atk 攻撃強化(5) → crit 会心(3) → drain 吸収(3) → berserk ★狂戦士(1)
+#     守護 guard : hp 体力強化(5) → def 守り(5) → regen 再生(3) → endure ★不屈(1)
+#     探索 explore: run 俊足(2) → gather 商売上手(5) → luck 幸運(3) → treasure ★宝探しの名人(1)
+#     釣り fish  : angler 釣り上手(2) → bigcatch 大漁(1) → fishtreasure 海の宝(1) → frenzy ★入れ食い(1)
+#     採掘 mine  : miner 採掘の心得(2) → vein 鉱脈の勘(1) → stonegem 石の中の宝(1) → oresense ★鉱脈探知(1)
+#     農林 farm  : lumber 木こりの心得(2) → harvest 豊作(1) → replant 植え直し(1) → greenhand ★緑の手(1)
+#     生活 life  : featherfall 身軽(1) → hearty 腹持ち(1) → nightsight 夜目(1)
+#   開き方: スキルの受付（NPC。uf_17_npc.sk）か /skill
+#   振り直し: skill_reset_cost ポイントで、使ったスキルポイントを全部返す
 # ============================================================
 
 function uf_lvof(p: player) :: number:
@@ -48,10 +57,11 @@ function uf_addxp(p: player, n: number):
             exit loop
     uf_achcheck({_p})
 
+# 体力強化 1 段階につきハート 2 つ（2026-10-28 に 1 → 2）
 function uf_applyhp(p: player):
     if uf_on("rpg") is false:
         stop
-    set max health of {_p} to 10 + uf_skill({_p}, "hp")
+    set max health of {_p} to 10 + 2 * uf_skill({_p}, "hp")
 
 on join:
     wait 1 tick
@@ -63,40 +73,281 @@ on respawn:
     if player is online:
         uf_applyhp(player)
 
-on damage:
-    uf_on("rpg") is true
-    set {_a} to attacker
-    if {_a} is a player:
-        set {_r} to uf_skill({_a}, "atk")
-        if {_r} > 0:
-            set damage to damage * (1 + 0.04 * {_r})
-    set {_v} to victim
-    if {_v} is a player:
-        set {_r} to uf_skill({_v}, "def")
-        if {_r} > 0:
-            set damage to damage * max(0.2, 1 - 0.04 * {_r})
+# ------------------------------------------------------------
+# スキルの表
+# ------------------------------------------------------------
+function uf_sktabs() :: texts:
+    return "war", "guard", "explore", "fish", "mine", "farm" and "life"
 
-# ------------------------------------------------------------
-# スキル GUI
-# ------------------------------------------------------------
-function uf_skillname(s: text) :: text:
-    if {_s} is "hp":
-        return "&c体力強化"
+function uf_sktabname(t: text) :: text:
+    if {_t} is "war":
+        return "&c戦士"
+    if {_t} is "guard":
+        return "&9守護"
+    if {_t} is "explore":
+        return "&a探索"
+    if {_t} is "fish":
+        return "&b釣り"
+    if {_t} is "mine":
+        return "&7採掘"
+    if {_t} is "farm":
+        return "&2農林"
+    return "&e生活"
+
+function uf_sktabdesc(t: text) :: text:
+    if {_t} is "war":
+        return "&7攻撃を強くする"
+    if {_t} is "guard":
+        return "&7体力と守りを強くする"
+    if {_t} is "explore":
+        return "&7足の速さ・お金・ドロップ"
+    if {_t} is "fish":
+        return "&7釣り（ダンジョンの外でも）"
+    if {_t} is "mine":
+        return "&7鉱石掘り（ダンジョンの外でも）"
+    if {_t} is "farm":
+        return "&7木こりと畑（ダンジョンの外でも）"
+    return "&7暮らしを楽にする"
+
+function uf_sktabicon(t: text) :: item:
+    if {_t} is "war":
+        return iron sword
+    if {_t} is "guard":
+        return shield
+    if {_t} is "explore":
+        return compass
+    if {_t} is "fish":
+        return fishing rod
+    if {_t} is "mine":
+        return iron pickaxe
+    if {_t} is "farm":
+        return wheat
+    return bread
+
+# その系統のスキル（左から右の順。左を取ると右が開く）
+function uf_sklist(t: text) :: texts:
+    if {_t} is "war":
+        return "atk", "crit", "drain" and "berserk"
+    if {_t} is "guard":
+        return "hp", "def", "regen" and "endure"
+    if {_t} is "explore":
+        return "run", "gather", "luck" and "treasure"
+    if {_t} is "fish":
+        return "angler", "bigcatch", "fishtreasure" and "frenzy"
+    if {_t} is "mine":
+        return "miner", "vein", "stonegem" and "oresense"
+    if {_t} is "farm":
+        return "lumber", "harvest", "replant" and "greenhand"
+    return "featherfall", "hearty" and "nightsight"
+
+function uf_skmax(s: text) :: number:
+    if {_s} is "atk", "hp", "def" or "gather":
+        return 5
+    if {_s} is "crit", "drain", "regen" or "luck":
+        return 3
+    if {_s} is "run", "angler", "miner" or "lumber":
+        return 2
+    return 1
+
+function uf_skname(s: text) :: text:
     if {_s} is "atk":
         return "&6攻撃強化"
+    if {_s} is "crit":
+        return "&6会心"
+    if {_s} is "drain":
+        return "&6吸収"
+    if {_s} is "berserk":
+        return "&c&l★ 狂戦士"
+    if {_s} is "hp":
+        return "&c体力強化"
     if {_s} is "def":
         return "&9守り"
-    return "&a採集の達人"
+    if {_s} is "regen":
+        return "&d再生"
+    if {_s} is "endure":
+        return "&9&l★ 不屈"
+    if {_s} is "run":
+        return "&b俊足"
+    if {_s} is "gather":
+        return "&a商売上手"
+    if {_s} is "luck":
+        return "&e幸運"
+    if {_s} is "treasure":
+        return "&a&l★ 宝探しの名人"
+    if {_s} is "angler":
+        return "&b釣り上手"
+    if {_s} is "bigcatch":
+        return "&b大漁"
+    if {_s} is "fishtreasure":
+        return "&b海の宝"
+    if {_s} is "frenzy":
+        return "&b&l★ 入れ食い"
+    if {_s} is "miner":
+        return "&7採掘の心得"
+    if {_s} is "vein":
+        return "&7鉱脈の勘"
+    if {_s} is "stonegem":
+        return "&7石の中の宝"
+    if {_s} is "oresense":
+        return "&f&l★ 鉱脈探知"
+    if {_s} is "lumber":
+        return "&2木こりの心得"
+    if {_s} is "harvest":
+        return "&2豊作"
+    if {_s} is "replant":
+        return "&2植え直し"
+    if {_s} is "greenhand":
+        return "&2&l★ 緑の手"
+    if {_s} is "featherfall":
+        return "&e身軽"
+    if {_s} is "hearty":
+        return "&e腹持ち"
+    return "&e夜目"
 
-function uf_skilldesc(s: text) :: text:
-    if {_s} is "hp":
-        return "&7最大体力 +1ハート / 段階"
+function uf_skdesc(s: text) :: text:
     if {_s} is "atk":
         return "&7与えるダメージ +4％ / 段階"
+    if {_s} is "crit":
+        return "&75％ / 段階 の確率でダメージ 1.5 倍"
+    if {_s} is "drain":
+        return "&7与えたダメージの 3％ / 段階 だけ体力が戻る"
+    if {_s} is "berserk":
+        return "&7体力が半分以下のとき、与えるダメージ +30％"
+    if {_s} is "hp":
+        return "&7最大体力 +ハート 2 / 段階"
     if {_s} is "def":
         return "&7受けるダメージ -4％ / 段階"
-    return "&7売却価格 +3％ / 段階"
+    if {_s} is "regen":
+        return "&7体力が少しずつ戻る（段階が上がるほど速い）"
+    if {_s} is "endure":
+        return "&7倒れるダメージを 1 回だけ耐える（5 分に 1 回）"
+    if {_s} is "run":
+        return "&7いつも足が速い（1 段階で速さ I、2 段階で II）"
+    if {_s} is "gather":
+        return "&7売るときの値段 +3％ / 段階"
+    if {_s} is "luck":
+        return "&7ダンジョンの敵の素材・レアドロップが +20％ / 段階 出やすい"
+    if {_s} is "treasure":
+        return "&7ダンジョンの宝箱のポイント 1.5 倍"
+    if {_s} is "angler":
+        return "&7魚がかかるまでが短くなる（2 段階でもっと短い）"
+    if {_s} is "bigcatch":
+        return "&7釣れたとき、25％ でもう 1 匹"
+    if {_s} is "fishtreasure":
+        return "&7釣れたとき、8％ で宝物（名札・鞍・ダイヤなど）"
+    if {_s} is "frenzy":
+        return "&7投げるとすぐ魚がかかる"
+    if {_s} is "miner":
+        return "&7ツルハシを持つと掘るのが速い（採掘速度上昇 I / II）"
+    if {_s} is "vein":
+        return "&7鉱石を掘ると、20％ でもう 1 回ぶん出る"
+    if {_s} is "stonegem":
+        return "&7石・深層岩を掘ると、2％ で鉄・金の塊やラピス・エメラルド・ダイヤ"
+    if {_s} is "oresense":
+        return "&7ツルハシを持ってしゃがんで右クリックで、近くの鉱石の方向が分かる（1 分に 1 回）"
+    if {_s} is "lumber":
+        return "&7斧を持つと切るのが速い（採掘速度上昇 I / II）"
+    if {_s} is "harvest":
+        return "&7育った作物を取ると、25％ でもう 1 回ぶん取れる"
+    if {_s} is "replant":
+        return "&7育った作物を取ると、同じ作物を自動で植え直す（種はいらない）"
+    if {_s} is "greenhand":
+        return "&7まわり（4 ブロック）の作物がときどき育つ"
+    if {_s} is "featherfall":
+        return "&7落ちたときのダメージが半分"
+    if {_s} is "hearty":
+        return "&7おなかが減りにくい（30 秒ごとに少し回復）"
+    return "&7暗い所では暗視がつく"
 
+function uf_skicon(s: text) :: item:
+    if {_s} is "atk":
+        return iron sword
+    if {_s} is "crit":
+        return flint
+    if {_s} is "drain":
+        return red dye
+    if {_s} is "berserk":
+        return netherite sword
+    if {_s} is "hp":
+        return golden apple
+    if {_s} is "def":
+        return iron chestplate
+    if {_s} is "regen":
+        return golden carrot
+    if {_s} is "endure":
+        return totem of undying
+    if {_s} is "run":
+        return feather
+    if {_s} is "gather":
+        return emerald
+    if {_s} is "luck":
+        return rabbit foot
+    if {_s} is "treasure":
+        return chest
+    if {_s} is "angler":
+        return fishing rod
+    if {_s} is "bigcatch":
+        return barrel
+    if {_s} is "fishtreasure":
+        return nautilus shell
+    if {_s} is "frenzy":
+        return heart of the sea
+    if {_s} is "miner":
+        return iron pickaxe
+    if {_s} is "vein":
+        return iron ingot
+    if {_s} is "stonegem":
+        return diamond
+    if {_s} is "oresense":
+        return spyglass
+    if {_s} is "lumber":
+        return iron axe
+    if {_s} is "harvest":
+        return wheat
+    if {_s} is "replant":
+        return wheat seeds
+    if {_s} is "greenhand":
+        return bone meal
+    if {_s} is "featherfall":
+        return feather
+    if {_s} is "hearty":
+        return bread
+    return torch
+
+# すぐ左のスキル（一番左は ""）
+function uf_skprev(s: text) :: text:
+    loop uf_sktabs():
+        set {_l::*} to uf_sklist(loop-value)
+        set {_prev} to ""
+        loop {_l::*}:
+            if loop-value-2 is {_s}:
+                return {_prev}
+            set {_prev} to loop-value-2
+        delete {_l::*}
+    return ""
+
+# 取れるか（左のスキルを 1 段階以上取っていれば開く）
+function uf_skopen(p: player, s: text) :: boolean:
+    set {_prev} to uf_skprev({_s})
+    if {_prev} is "":
+        return true
+    if uf_skill({_p}, {_prev}) >= 1:
+        return true
+    return false
+
+# 使ったスキルポイントの合計（振り直しで返す）
+function uf_skspent(p: player) :: number:
+    set {_n} to 0
+    loop uf_sktabs():
+        loop uf_sklist(loop-value-1):
+            add uf_skill({_p}, loop-value-2) to {_n}
+    return {_n}
+
+# ------------------------------------------------------------
+# スキルツリーの画面（実績の画面のような形）
+#   0〜6 系統のタブ / 8 レベル・経験値・スキルポイント
+#   18 系統の印、20・22・24・26 スキル（19・21・23・25 は線）/ 49 振り直し
+# ------------------------------------------------------------
 command /skill [<text>]:
     description: レベルとスキルツリー
     aliases: /level, /lv
@@ -107,10 +358,28 @@ command /skill [<text>]:
             stop
         uf_skillgui(player)
 
-function uf_skillgui(p: player):
+function uf_skillgui(p: player, tab: text = ""):
     set {_u} to uuid of {_p}
-    set {_g} to chest inventory with 3 rows named "&8スキルツリー"
+    if {_tab} is "":
+        set {_tab} to {-uf::sktab::%{_u}%}
+    if {_tab} is not set:
+        set {_tab} to "war"
+    set {-uf::sktab::%{_u}%} to {_tab}
+    set {_g} to chest inventory with 6 rows named "&8スキルツリー：%uncolored uf_sktabname({_tab})%"
     uf_guiclear({_p})
+    loop integers between 0 and 53:
+        set slot loop-value of {_g} to black stained glass pane named "&8 "
+    # タブ
+    set {_i} to 0
+    loop uf_sktabs():
+        set {_t} to loop-value
+        if {_t} is {_tab}:
+            set slot {_i} of {_g} to ((uf_sktabicon({_t}) with enchantment glint) named "&l%uf_sktabname({_t})%") with lore uf_sktabdesc({_t}) and "&a表示中"
+        else:
+            set slot {_i} of {_g} to (uf_sktabicon({_t}) named uf_sktabname({_t})) with lore uf_sktabdesc({_t}) and "&eクリックで切り替え"
+        set {-uf::guictx::%{_u}%::%{_i}%} to "tab:%{_t}%"
+        add 1 to {_i}
+    # レベル・経験値・スキルポイント
     set {_lv} to uf_lvof({_p})
     set {_xp} to {uf::xp::%{_u}%}
     if {_xp} is not set:
@@ -118,29 +387,37 @@ function uf_skillgui(p: player):
     set {_sp} to {uf::sp::%{_u}%}
     if {_sp} is not set:
         set {_sp} to 0
-    set slot 4 of {_g} to book named "&eLv.%{_lv}%" with lore "&7経験値: %{_xp}% / %uf_need({_lv})%" and "&7スキルポイント: &a%{_sp}%"
-    set {_slots::hp} to 10
-    set {_slots::atk} to 12
-    set {_slots::def} to 14
-    set {_slots::gather} to 16
-    loop "hp", "atk", "def" and "gather":
-        set {_s} to loop-value
-        set {_r} to uf_skill({_p}, {_s})
-        if {_s} is "hp":
-            set {_icon} to golden apple
-        else if {_s} is "atk":
-            set {_icon} to iron sword
-        else if {_s} is "def":
-            set {_icon} to shield
-        else:
-            set {_icon} to golden hoe
+    set slot 8 of {_g} to bottle o' enchanting named "&eLv.%{_lv}%" with lore "&7経験値: %{_xp}% / %uf_need({_lv})%", "&7スキルポイント: &a%{_sp}%", "&7ダンジョンの討伐・突破とクエストで経験値が入る" and "&7カジノ限定ショップの「スキルの霊薬」でも増える"
+    # 系統の印と、スキルの木
+    set slot 18 of {_g} to (uf_sktabicon({_tab}) named "&l%uf_sktabname({_tab})%") with lore uf_sktabdesc({_tab}) and "&7左のスキルを取ると、右のスキルが開く"
+    set {_s} to 20
+    loop uf_sklist({_tab}):
+        set {_k} to loop-value
+        set {_r} to uf_skill({_p}, {_k})
+        set {_mx} to uf_skmax({_k})
         delete {_lore::*}
-        add uf_skilldesc({_s}) to {_lore::*}
-        add "&7段階: &e%{_r}% / %{uf::cfg::skill::max}%" to {_lore::*}
-        add "&eクリックで習得（スキルポイント 1）" to {_lore::*}
-        set slot {_slots::%{_s}%} of {_g} to ({_icon} named uf_skillname({_s})) with lore {_lore::*}
-        set {-uf::guictx::%{_u}%::%{_slots::%{_s}%}%} to {_s}
-    set slot 22 of {_g} to barrier named "&cスキルの振り直し" with lore "&7%{uf::cfg::skill_reset_cost}%pt でスキルポイントを全額返す"
+        add uf_skdesc({_k}) to {_lore::*}
+        add "&7段階: &e%{_r}% / %{_mx}%" to {_lore::*}
+        if {_r} >= {_mx}:
+            add "&a習得済み（最大）" to {_lore::*}
+            set {_icon} to (uf_skicon({_k}) with enchantment glint)
+            set {_line} to lime stained glass pane
+        else if uf_skopen({_p}, {_k}) is true:
+            add "&eクリックで習得（スキルポイント 1）" to {_lore::*}
+            set {_icon} to uf_skicon({_k})
+            if {_r} >= 1:
+                set {_line} to lime stained glass pane
+            else:
+                set {_line} to yellow stained glass pane
+        else:
+            add "&c%uncolored uf_skname(uf_skprev({_k}))% を取ると開く" to {_lore::*}
+            set {_icon} to gray dye
+            set {_line} to gray stained glass pane
+        set slot {_s} of {_g} to ({_icon} named uf_skname({_k})) with lore {_lore::*}
+        set slot ({_s} - 1) of {_g} to {_line} named "&8 "
+        set {-uf::guictx::%{_u}%::%{_s}%} to "sk:%{_k}%"
+        add 2 to {_s}
+    set slot 49 of {_g} to barrier named "&cスキルの振り直し" with lore "&7%{uf::cfg::skill_reset_cost}%pt で、使ったスキルポイントを全部返す"
     uf_gui({_p}, "skill", {_g})
 
 on inventory click:
@@ -149,25 +426,36 @@ on inventory click:
     event-inventory is {-uf::guiinv::%uuid of player%}
     set {_u} to uuid of player
     set {_slot} to index of event-slot
-    if {_slot} is 22:
+    if {_slot} is 49:
         wait 1 tick
         if player is online:
             uf_skillresetgui(player)
         stop
-    set {_s} to {-uf::guictx::%{_u}%::%{_slot}%}
-    {_s} is set
+    set {_c} to {-uf::guictx::%{_u}%::%{_slot}%}
+    {_c} is set
+    if {_c} starts with "tab:":
+        wait 1 tick
+        if player is online:
+            uf_skillgui(player, last (length of {_c} - 4) characters of {_c})
+        stop
+    {_c} starts with "sk:"
+    set {_s} to last (length of {_c} - 3) characters of {_c}
+    if uf_skill(player, {_s}) >= uf_skmax({_s}):
+        uf_msg(player, "&eこのスキルは最大段階です")
+        stop
+    if uf_skopen(player, {_s}) is false:
+        uf_msg(player, "&c先に %uf_skname(uf_skprev({_s}))% &cを取ってください")
+        stop
     if {uf::sp::%{_u}%} is not set:
         set {uf::sp::%{_u}%} to 0
     if {uf::sp::%{_u}%} < 1:
-        uf_msg(player, "&cスキルポイントが足りません")
-        stop
-    if uf_skill(player, {_s}) >= {uf::cfg::skill::max}:
-        uf_msg(player, "&eこのスキルは最大段階です")
+        uf_msg(player, "&cスキルポイントが足りません（ダンジョンでレベルを上げるか、スキルの霊薬）")
         stop
     remove 1 from {uf::sp::%{_u}%}
     add 1 to {uf::skill::%{_u}%::%{_s}%}
     uf_applyhp(player)
-    uf_msg(player, "&a%uf_skillname({_s})% &aを習得した（段階 %uf_skill(player, {_s})%）")
+    play sound "entity.player.levelup" with volume 0.6 at player
+    uf_msg(player, "&a%uf_skname({_s})% &aを習得した（段階 %uf_skill(player, {_s})%）")
     uf_log("rpg", "skill %player% (%{_u}%) %{_s}%=%uf_skill(player, {_s})%")
     wait 1 tick
     if player is online:
@@ -193,9 +481,7 @@ on inventory click:
         stop
     {_slot} is 11
     set {_u} to uuid of player
-    set {_sum} to 0
-    loop "hp", "atk", "def" and "gather":
-        add uf_skill(player, loop-value) to {_sum}
+    set {_sum} to uf_skspent(player)
     if {_sum} <= 0:
         uf_msg(player, "&7習得済みのスキルがありません")
         stop
@@ -210,3 +496,207 @@ on inventory click:
     wait 1 tick
     if player is online:
         uf_skillgui(player)
+
+# スキルの霊薬（カジノ限定ショップ。uf_01_items.sk の sp_potion）
+on consume:
+    set {_id} to uf_id(player's tool)
+    if {_id} is "":
+        set {_id} to uf_id(offhand tool of player)
+    {_id} is "sp_potion"
+    add 1 to {uf::sp::%uuid of player%}
+    play sound "entity.player.levelup" with volume 0.8 at player
+    uf_msg(player, "&dスキルポイントが 1 増えた！（スキルの受付か /skill で使う）")
+    uf_log("rpg", "sp_potion %player% (%uuid of player%) sp=%{uf::sp::%uuid of player%}%")
+
+# ------------------------------------------------------------
+# 戦い（戦士・守護）
+# ------------------------------------------------------------
+on damage:
+    uf_on("rpg") is true
+    set {_a} to attacker
+    if {_a} is a player:
+        set {_r} to uf_skill({_a}, "atk")
+        if {_r} > 0:
+            set damage to damage * (1 + 0.04 * {_r})
+        if uf_skill({_a}, "berserk") > 0:
+            if (health of {_a}) <= (max health of {_a}) / 2:
+                set damage to damage * 1.3
+        set {_r} to uf_skill({_a}, "crit")
+        if {_r} > 0:
+            if random number between 0 and 100 < 5 * {_r}:
+                set damage to damage * 1.5
+                play 8 crit at location of victim
+        set {_r} to uf_skill({_a}, "drain")
+        if {_r} > 0:
+            heal {_a} by damage * 0.03 * {_r}
+    set {_v} to victim
+    if {_v} is a player:
+        set {_r} to uf_skill({_v}, "def")
+        if {_r} > 0:
+            set damage to damage * max(0.2, 1 - 0.04 * {_r})
+        if damage cause is fall:
+            if uf_skill({_v}, "featherfall") > 0:
+                set damage to damage * 0.5
+        # 不屈: 倒れるダメージを 1 回だけ耐える（5 分に 1 回）
+        if uf_skill({_v}, "endure") > 0:
+            if damage >= health of {_v}:
+                set {_ok} to true
+                set {_t} to {-uf::endure::%uuid of {_v}%}
+                if {_t} is set:
+                    if difference between {_t} and now < 5 minutes:
+                        set {_ok} to false
+                if {_ok} is true:
+                    set damage to max(0, (health of {_v}) - 0.5)
+                    set {-uf::endure::%uuid of {_v}%} to now
+                    play sound "item.totem.use" with volume 0.6 at {_v}
+                    uf_msg({_v}, "&6不屈！ 倒れずに踏みとどまった（5 分後にまた使える）")
+
+# ------------------------------------------------------------
+# いつも効くもの（再生・俊足・採掘の心得・木こりの心得・夜目）
+# ------------------------------------------------------------
+every 2 seconds:
+    uf_on("rpg") is true
+    loop all players:
+        set {_p} to loop-player
+        set {_r} to uf_skill({_p}, "regen")
+        if {_r} > 0:
+            if health of {_p} < max health of {_p}:
+                heal {_p} by 0.15 * {_r}
+        set {_r} to uf_skill({_p}, "run")
+        if {_r} >= 2:
+            apply speed 2 to {_p} for 3 seconds
+        else if {_r} >= 1:
+            apply speed 1 to {_p} for 3 seconds
+        set {_tt} to "%type of tool of {_p}%"
+        set {_r} to 0
+        if {_tt} ends with "pickaxe":
+            set {_r} to uf_skill({_p}, "miner")
+        else if {_tt} ends with " axe":
+            set {_r} to uf_skill({_p}, "lumber")
+        if {_r} >= 2:
+            apply haste 2 to {_p} for 3 seconds
+        else if {_r} >= 1:
+            apply haste 1 to {_p} for 3 seconds
+        if uf_skill({_p}, "nightsight") > 0:
+            if light level at {_p} < 7:
+                apply night vision 1 to {_p} for 15 seconds
+
+# 腹持ち
+every 30 seconds:
+    uf_on("rpg") is true
+    loop all players:
+        if uf_skill(loop-player, "hearty") > 0:
+            feed loop-player by 1
+
+# 緑の手: まわりの育っていない作物に、ときどき骨粉
+every 10 seconds:
+    uf_on("rpg") is true
+    loop all players:
+        if uf_skill(loop-player, "greenhand") > 0:
+            loop blocks in radius 4 around loop-player:
+                if uf_cropof("%block data of loop-block%") is not "":
+                    if random number between 0 and 1 < 0.25:
+                        apply bone meal to loop-block
+
+# ------------------------------------------------------------
+# 釣り
+# ------------------------------------------------------------
+on fishing line cast:
+    uf_on("rpg") is true
+    # 待ち時間は、最小を先に下げてから最大を下げる（最小 > 最大 にならないように）
+    if uf_skill(player, "frenzy") > 0:
+        set min fishing wait time to 10 ticks
+        set max fishing wait time to 40 ticks
+    else if uf_skill(player, "angler") >= 2:
+        set min fishing wait time to 2 seconds
+        set max fishing wait time to 12 seconds
+    else if uf_skill(player, "angler") >= 1:
+        set min fishing wait time to 3 seconds
+        set max fishing wait time to 20 seconds
+
+on fish caught:
+    uf_on("rpg") is true
+    if uf_skill(player, "bigcatch") > 0:
+        if random number between 0 and 100 < 25:
+            set {_f::*} to "cod", "cod", "cod", "salmon", "salmon", "pufferfish" and "tropical fish"
+            give ((random element out of {_f::*}) parsed as item type) to player
+            uf_msg(player, "&b大漁！ もう 1 匹釣れた")
+    if uf_skill(player, "fishtreasure") > 0:
+        if random number between 0 and 100 < 8:
+            set {_t::*} to "name tag|名札", "saddle|鞍", "nautilus shell|オウムガイの殻", "diamond|ダイヤモンド", "emerald|エメラルド" and "bottle o' enchanting|経験値のビン"
+            set {_q::*} to split (random element out of {_t::*}) at "|"
+            give ({_q::1} parsed as item type) to player
+            play sound "entity.player.levelup" with volume 0.6 at player
+            uf_msg(player, "&b海の宝！ &f%{_q::2}% &bを釣り上げた")
+
+# ------------------------------------------------------------
+# 採掘・農林（置いたブロックは数えない。uf_11_progress.sk の uf_placed）
+# ------------------------------------------------------------
+# 作物の名前（育つ作物でなければ ""）
+function uf_cropof(bd: text) :: text:
+    loop "wheat", "carrots", "potatoes", "beetroots" and "nether_wart":
+        if {_bd} starts with "minecraft:%loop-value%[":
+            return loop-value
+    return ""
+
+function uf_cropripe(bd: text) :: boolean:
+    if {_bd} contains "age=7":
+        return true
+    if {_bd} starts with "minecraft:beetroots[" or "minecraft:nether_wart[":
+        if {_bd} contains "age=3":
+            return true
+    return false
+
+on break:
+    uf_on("rpg") is true
+    set {_b} to event-block
+    metadata value "uf_placed" of {_b} is not set
+    set {_t} to "%type of {_b}%"
+    set {_l} to location of {_b}
+    # 鉱脈の勘
+    if {_t} ends with "ore":
+        if uf_skill(player, "vein") > 0:
+            if random number between 0 and 100 < 20:
+                drop (drops of {_b} using player's tool) at {_l}
+        stop
+    # 石の中の宝
+    if {_t} is "stone" or "deepslate":
+        if uf_skill(player, "stonegem") > 0:
+            if random number between 0 and 100 < 2:
+                set {_r} to random number between 0 and 100
+                if {_r} < 40:
+                    drop 3 iron nuggets at {_l}
+                else if {_r} < 70:
+                    drop 3 gold nuggets at {_l}
+                else if {_r} < 85:
+                    drop 2 lapis lazuli at {_l}
+                else if {_r} < 95:
+                    drop 1 emerald at {_l}
+                else:
+                    drop 1 diamond at {_l}
+        stop
+    # 豊作・植え直し（育った作物だけ）
+    set {_bd} to "%block data of {_b}%"
+    set {_crop} to uf_cropof({_bd})
+    {_crop} is not ""
+    uf_cropripe({_bd}) is true
+    if uf_skill(player, "harvest") > 0:
+        if random number between 0 and 100 < 25:
+            drop (drops of {_b} using player's tool) at {_l}
+    if uf_skill(player, "replant") > 0:
+        wait 1 tick
+        if block at {_l} is air:
+            set block at {_l} to ("minecraft:%{_crop}%[age=0]" parsed as block data)
+
+# 鉱脈探知（ツルハシを持ってしゃがんで右クリック。1 分に 1 回）
+on right click:
+    uf_on("rpg") is true
+    player is sneaking
+    "%type of player's tool%" ends with "pickaxe"
+    uf_skill(player, "oresense") > 0
+    set {_t} to {-uf::oresense::%uuid of player%}
+    if {_t} is set:
+        if difference between {_t} and now < 1 minute:
+            stop
+    set {-uf::oresense::%uuid of player%} to now
+    uf_oredetect(player)

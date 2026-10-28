@@ -151,6 +151,34 @@ def ore_potion():
     return c.outline()
 
 
+def sp_potion():
+    # スキルの霊薬: 丸いフラスコに光る紫の薬、まん中に金の星、まわりにきらめき
+    c = Canvas()
+    c.rect(13, 2, 18, 5, '#7a3ab8')
+    c.rect(13, 2, 14, 5, '#a468e0')
+    c.rect(12, 6, 19, 6, '#e8d8ff')
+    c.rect(13, 7, 18, 10, '#e8d8ff')
+    c.ellipse(16, 20, 10, 9.5, '#e8d8ff')
+    c.ellipse(16, 21, 9, 8.3, '#9a3ae0')
+    c.rect(8, 13, 23, 14, '#e8d8ff')
+    c.ellipse(16, 21, 9, 8.3, '#9a3ae0')
+    c.ellipse(12, 17, 2.6, 2.4, '#c87aff')
+    pts = []
+    for i in range(10):
+        a = -math.pi / 2 + i * math.pi / 5
+        r = 5.2 if i % 2 == 0 else 2.2
+        pts.append((16 + r * math.cos(a), 21.5 + r * math.sin(a)))
+    c.poly(pts, '#ffd84a')
+    c.set(16, 21, '#ffffff')
+    c.rect(9, 15, 9, 22, '#ffffff')
+    c.outline()
+    for (x, y) in [(5, 6), (27, 9)]:
+        c.rect(x - 1, y, x + 1, y, '#e0b0ff')
+        c.rect(x, y - 1, x, y + 1, '#e0b0ff')
+        c.set(x, y, '#ffffff')
+    return c
+
+
 # ------------------------------------------------------------
 # 回復・弾薬・道具
 # ------------------------------------------------------------
@@ -694,6 +722,7 @@ def item_textures():
         'trophy_15': trophy_15(),
         'map': warp_book(),
         'ammo_pack': ammo_box(),
+        'sp_potion': sp_potion(),
         'mat_upgrade': mat_upgrade(),
         'mat_special': mat_special(),
         'mat_part': mat_part(),

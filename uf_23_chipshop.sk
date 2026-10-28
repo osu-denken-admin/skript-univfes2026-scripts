@@ -6,6 +6,7 @@
 #   変数: {uf::cshop::<id>::price|enabled}、並び順 {uf::cshopids::*}
 #   商品の id:
 #     特殊アイテム（uf_item）: tool_pick3 など。cg_ で始まるものはカジノ限定の武具（uf_cgitem）
+#     sp_potion スキルの霊薬（飲むとスキルポイント +1。uf_07_rpg.sk）
 #     v_ で始まるものは、ふつうのアイテム（uf_cshopvanilla）。修繕の本は Skript では金床で使える形にできないので置かない
 #   カジノ限定の武具
 #     どれも最上級（2026-10-28 に強くして、値段も上げた。少し遊んだだけでは届かない）。壊れない

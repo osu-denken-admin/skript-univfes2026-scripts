@@ -349,6 +349,9 @@ function uf_mobdrop(p: player, f: number, tier: text):
             set {_n} to {_sure}
         set {_rate} to {uf::cfg::drop::%{_tier}%::%{_k}%}
         if {_rate} is set:
+            # スキル「幸運」（uf_07_rpg.sk）: 1 段階につき +20％
+            if uf_on("rpg") is true:
+                set {_rate} to {_rate} * (1 + 0.2 * uf_skill({_p}, "luck"))
             if random number between 0 and 100 < {_rate}:
                 add 1 to {_n}
         if {_n} > 0:

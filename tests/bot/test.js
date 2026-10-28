@@ -591,8 +591,13 @@ T.casino = async ({ A, P }) => {
 T.rpg = async ({ P }) => {
   let w = await cmdWin(P, '/skill');
   check('skill tree opens', titleOf(w).includes('スキルツリー'), titleOf(w));
+  // 上の段が 7 つの系統のタブ（戦士〜生活）、20・22・24・26 がスキル
+  check('skill tree has 7 tabs', !!w && itemText(w.slots[0]).includes('戦士') && itemText(w.slots[6]).includes('生活'), w ? itemText(w.slots[0]) : 'no window');
+  w = await clickWin(P, 1);
+  check('guard tab opens', titleOf(w).includes('守護'), titleOf(w));
+  check('second skill is locked first', !!w && itemText(w.slots[22]).includes('を取ると開く'), w ? itemText(w.slots[22]) : 'no window');
   const from = P.msgs.length;
-  w = await clickWin(P, 10);
+  w = await clickWin(P, 20);
   check('learn hp skill', !!(await waitMsg(P, from, /体力強化.*習得/)) , P.msgs.slice(from).join(' | '));
   closeWin(P); await sleep(500);
   const q = P.msgs.length; P.chat('/quest');
@@ -774,6 +779,12 @@ T.items = async ({ A }) => {
   A.activateItem(); await sleep(2400); A.deactivateItem();
   check('speed drink message', !!(await waitMsg(A, from, /足が速くなった/, 3000)));
   check('speed drink gives speed', Object.keys(A.entity.effects || {}).map(Number).includes(A.registry.effectsByName.Speed.id));
+  // スキルの霊薬（カジノ限定ショップ）: 飲むとスキルポイント +1
+  A.chat('/ufadmin give sp_potion'); await sleep(1000);
+  await hold(A, 'スキルの霊薬');
+  from = A.msgs.length;
+  A.activateItem(); await sleep(2400); A.deactivateItem();
+  check('skill potion gives a skill point', !!(await waitMsg(A, from, /スキルポイントが 1 増えた/, 3000)));
   A.chat('/ufadmin give it_warp'); await sleep(1000);
   await hold(A, '帰還の巻物');
   from = A.msgs.length;

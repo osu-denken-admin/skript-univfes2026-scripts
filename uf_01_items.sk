@@ -116,6 +116,12 @@ function uf_item(id: text, lv: number = 0) :: item:
         set {_b} to water bottle
         set {_n} to "&3鉱石探知ポーション"
         add "&7飲むと一定時間、近くの鉱石の方向を表示する" to {_d::*}
+    else if {_id} is "sp_potion":
+        # 飲むとスキルポイント +1（uf_07_rpg.sk）。カジノ限定ショップで売る
+        set {_b} to water bottle
+        set {_n} to "&d&lスキルの霊薬"
+        add "&7飲むとスキルポイントが 1 増える" to {_d::*}
+        add "&7スキルの受付か /skill でスキルを取る" to {_d::*}
     else if {_id} is "trophy_15":
         set {_b} to heart of the sea
         set {_n} to "&b&l15号館 制覇の証"

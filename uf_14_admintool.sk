@@ -376,7 +376,7 @@ function uf_ap_hub(p: player):
     uf_abtn({_p}, {_g}, 33, chest, "&e特殊アイテムを受け取る", "&7テスト用", "open/items")
     uf_abtn({_p}, {_g}, 34, book, "&e操作履歴", "&7管理者の操作の記録", "open/logs")
     uf_abtn({_p}, {_g}, 37, oak sign, "&eランキングの掲示板", "&7壁に貼りつける浮かぶ文字の掲示板", "open/boards")
-    uf_abtn({_p}, {_g}, 38, villager spawn egg, "&eNPC（受付・ショップ・カジノ）", "&7話しかけると画面が開く村人", "open/npcs")
+    uf_abtn({_p}, {_g}, 38, villager spawn egg, "&eNPC（受付・ショップ・カジノ・スキル）", "&7話しかけると画面が開く村人", "open/npcs")
     uf_abtn({_p}, {_g}, 39, gilded blackstone, "&e地下カジノ", "&715号館の地下のカジノ（建物）を作る・埋め戻す", "open/chall")
     if {uf::cfg::skin::enabled} is true:
         uf_abtn({_p}, {_g}, 40, painting, "&a武具のスキン: 送る", "&7入ってきた人にリソースパック（武具の絵）を送る|&7統合版には送られない|&eクリックで送らないようにする", "skin")
@@ -677,7 +677,7 @@ function uf_cfgkeys(cat: text) :: texts:
     if {_cat} is "weapons":
         return "power::weapon", "power::armor", "power::mob_hp", "gun_scope", "gun::gun_handgun::dmg", "gun::gun_handgun::cd", "gun::gun_handgun::ammo", "gun::gun_rifle::dmg", "gun::gun_rifle::cd", "gun::gun_rifle::ammo", "gun::gun_shotgun::dmg", "gun::gun_shotgun::cd", "gun::gun_shotgun::ammo", "gun::gun_shotgun::pellets", "gun::gun_energy::dmg", "gun::gun_energy::cd", "melee::melee_basic" and "melee::melee_adv"
     if {_cat} is "rpg":
-        return "level::max", "level::base", "level::step", "skill::max" and "skill_reset_cost"
+        return "level::max", "level::base", "level::step" and "skill_reset_cost"
     return "chip_rate" and "sell_daily_cap"
 
 function uf_cfgcatname(cat: text) :: text:
@@ -969,9 +969,9 @@ function uf_ap_boards(p: player):
 
 # NPC（uf_17_npc.sk）
 function uf_ap_npcs(p: player):
-    set {_g} to uf_apage({_p}, "&4NPC（受付・ショップ・カジノ・鍛冶屋）")
+    set {_g} to uf_apage({_p}, "&4NPC（受付・ショップ・カジノ・鍛冶屋・スキル）")
     set {_s} to 11
-    loop "reception", "shop", "casino" and "smith":
+    loop "reception", "shop", "casino", "smith" and "skill":
         set {_k} to loop-value
         uf_abtn({_p}, {_g}, {_s}, villager spawn egg, "%uf_npcname({_k})% &eを置く", "&7今いる場所に、今向いている方向を向けて置く|&7読み込まれている範囲にいる数: %uf_npccount({_k})%", "npcset/%{_k}%")
         add 2 to {_s}
@@ -1061,7 +1061,7 @@ function uf_ap_protarea(p: player, n: text):
 function uf_ap_items(p: player, pg: number = 1):
     if {_pg} is not set:
         set {_pg} to 1
-    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "cg_sword", "cg_bow", "cg_helmet", "cg_chest", "cg_legs", "cg_boots", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9" and "admin_tool"
+    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "cg_sword", "cg_bow", "cg_helmet", "cg_chest", "cg_legs", "cg_boots", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9", "sp_potion" and "admin_tool"
     set {_last} to ceil(size of {_ids::*} / 45)
     set {_pg} to max(1, min({_pg}, {_last}))
     set {_g} to uf_apage({_p}, "&4特殊アイテム %{_pg}% / %{_last}%（クリックで1個受け取る）")

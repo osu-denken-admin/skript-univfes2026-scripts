@@ -1,7 +1,7 @@
 # ============================================================
-# uf_17_npc.sk : 受付・ショップ・カジノ・鍛冶屋の NPC（村人）
+# uf_17_npc.sk : 受付・ショップ・カジノ・鍛冶屋・スキルの受付の NPC（村人）
 #   管理者ツールの「NPC」で、今いる場所に、今向いている方向を向けて置く
-#   話しかける（右クリック）と、受付は開始階の選択、ショップは /buy、カジノは /casino の画面が開く
+#   話しかける（右クリック）と、受付は開始階の選択、ショップは /buy、カジノは /casino、スキルの受付はスキルツリーの画面が開く
 #   動かない・攻撃されない・黙っている。scoreboard tag「uf_npc:<種類>」で見分ける
 #   NPC から開いた人は、3 分間は区域（受付・ショップ・カジノの区域）の外でも使える（uf_canuse）
 # ============================================================
@@ -13,6 +13,8 @@ function uf_npcname(k: text) :: text:
         return "&a&lショップ"
     if {_k} is "smith":
         return "&7&l鍛冶屋"
+    if {_k} is "skill":
+        return "&b&lスキルの受付"
     return "&6&lカジノ"
 
 function uf_npckind(e: entity) :: text:
@@ -37,6 +39,8 @@ function uf_npcspawnat(l: location, yaw: number, k: text):
         set villager profession of {_e} to weaponsmith profession
     else if {_k} is "smith":
         set villager profession of {_e} to armorer profession
+    else if {_k} is "skill":
+        set villager profession of {_e} to cartographer profession
     else:
         set villager profession of {_e} to cleric profession
     set yaw of {_e} to {_yaw}
@@ -74,6 +78,11 @@ function uf_npcopen(p: player, k: text):
         uf_shopgui({_p})
     else if {_k} is "smith":
         uf_smithgui({_p})
+    else if {_k} is "skill":
+        if uf_on("rpg") is false:
+            uf_msg({_p}, "&cスキルは現在停止中です")
+            stop
+        uf_skillgui({_p})
     else:
         if uf_on("casino") is false:
             uf_msg({_p}, "&cカジノは現在停止中です")

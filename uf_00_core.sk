@@ -223,6 +223,7 @@ function uf_defaults():
     uf_cshopdef("v_xp", 600, true)
     uf_cshopdef("v_nametag", 300, true)
     uf_cshopdef("v_shulker", 2500, true)
+    uf_cshopdef("sp_potion", 3000, true)
     # 気軽なアイテム（uf_20_items2.sk）
     uf_shopdef("it_onigiri", 20, 0, true)
     uf_shopdef("it_speed", 60, 0, true)

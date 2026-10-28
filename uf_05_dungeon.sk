@@ -868,6 +868,11 @@ on right click on chest:
     uf_chestloot(player, {_f})
 
 function uf_chestloot(p: player, f: number):
+    # スキル「宝探しの名人」（uf_07_rpg.sk）: ポイント 1.5 倍
+    set {_tm} to 1
+    if uf_on("rpg") is true:
+        if uf_skill({_p}, "treasure") > 0:
+            set {_tm} to 1.5
     set {_sh} to ({_f} - 2) * {uf::cfg::chest::shift}
     set {_wn} to max(0, {uf::cfg::rarity::normal} - 3 * {_sh})
     set {_wr} to {uf::cfg::rarity::rare} + {_sh}
@@ -875,18 +880,18 @@ function uf_chestloot(p: player, f: number):
     set {_wl} to {uf::cfg::rarity::legendary} + 0.5 * {_sh}
     set {_r} to random number between 0 and ({_wn} + {_wr} + {_we} + {_wl})
     if {_r} < {_wn}:
-        set {_pt} to random integer between 50 and 120
+        set {_pt} to round((random integer between 50 and 120) * {_tm})
         uf_addpt({_p}, {_pt}, "chest:normal")
         if random integer between 1 and 2 is 1:
             uf_give({_p}, uf_item("heal_kit"))
         uf_msg({_p}, "&f[ノーマル] &e+%{_pt}%pt")
     else if {_r} < {_wn} + {_wr}:
-        set {_pt} to random integer between 120 and 250
+        set {_pt} to round((random integer between 120 and 250) * {_tm})
         uf_addpt({_p}, {_pt}, "chest:rare")
         uf_give({_p}, uf_item("mat_upgrade"))
         uf_msg({_p}, "&9[レア] &e+%{_pt}%pt &7と 武器強化素材")
     else if {_r} < {_wn} + {_wr} + {_we}:
-        set {_pt} to random integer between 250 and 400
+        set {_pt} to round((random integer between 250 and 400) * {_tm})
         uf_addpt({_p}, {_pt}, "chest:epic")
         uf_give({_p}, uf_item("mat_special"))
         uf_msg({_p}, "&5[エピック] &e+%{_pt}%pt &7と 特殊素材")

@@ -65,6 +65,7 @@ def entries():
     E.append(('heart_of_the_sea', 1707, 'trophy_15', 'generated'))
     # ショップの弾薬パックの絵（アイテムとしてはない。uf_03_shop.sk の uf_shopicon）
     E.append(('iron_nugget', 1708, 'ammo_pack', 'generated'))
+    E.append(('potion', 1709, 'sp_potion', 'generated'))
     E.append(('amethyst_shard', 1711, 'mat_upgrade', 'generated'))
     E.append(('prismarine_crystals', 1712, 'mat_special', 'generated'))
     E.append(('netherite_scrap', 1713, 'mat_part', 'generated'))

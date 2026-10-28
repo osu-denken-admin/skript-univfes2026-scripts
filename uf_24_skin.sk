@@ -85,6 +85,8 @@ function uf_skinid(id: text) :: number:
         return 1706
     if {_id} is "trophy_15":
         return 1707
+    if {_id} is "sp_potion":
+        return 1709
     # ショップの弾薬パックの絵（買うと弾薬 32 発になる。アイテムとしてはない。uf_03_shop.sk の uf_shopicon）
     if {_id} is "ammo_pack":
         return 1708
@@ -210,4 +212,4 @@ on load:
 
 # リソースパックの SHA-1（tools/pack/build.py が書き換える。変わると、入ってきた人がもう一度読み込む）
 function uf_packhash() :: text:
-    return "63d7744217c1654c9170b5db2c380fd970ffc1ed"
+    return "47f8257d0bbec755b0782301ba512e074d6e80b6"
