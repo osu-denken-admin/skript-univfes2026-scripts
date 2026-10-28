@@ -43,6 +43,20 @@ function uf_shoot(p: player, id: text, lv: number):
             push {_s} upwards at speed (random number between -0.08 and 0.08)
     play sound "entity.firework_rocket.blast" with volume 0.5 at {_p}
 
+# 敵の無敵時間（叩かれてから 0.5 秒）の間は、もとのダメージが 0 の雪玉は無視され、下のダメージの置き換えまで届かない。
+# 連射（ライフル）や同時に当たる散弾（ショットガン）がほとんど効かなかったので、当たる直前に無敵時間を消す
+on projectile hit:
+    event-projectile is a snowball
+    set {_a} to shooter of event-projectile
+    {_a} is a player
+    set {_id} to uf_id(tool of {_a})
+    {_id} starts with "gun_"
+    uf_on("weapons") is true
+    set {_v} to victim
+    {_v} is set
+    {_v} is not a player
+    set invulnerability time of {_v} to 0 ticks
+
 on damage:
     damage cause is projectile
     set {_a} to attacker
