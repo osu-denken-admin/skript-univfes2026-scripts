@@ -1,6 +1,6 @@
 # ============================================================
 # uf_24_skin.sk : 武具とアイテムのスキン（リソースパック）
-#   武具と、武具以外のアイテム（フロアマップ以外。2026-10-28 から）には見た目の番号（custom model data）を付け、リソースパック（pack/uf_pack.zip、tools/pack/build.py で作る）で絵を差し替える
+#   武具と、武具以外のアイテム（2026-10-28 から）には見た目の番号（custom model data）を付け、リソースパック（pack/uf_pack.zip、tools/pack/build.py で作る）で絵を差し替える
 #   リソースパックは入ってきた人に送る（GitHub の公開リポジトリから。断っても遊べる）。管理者ツールの「スキン」で送る・送らないを切り替える
 #   統合版（Geyser）には送られない（統合版は今の見た目のまま）。身に着けた防具の見た目は変わらない（持ち物の絵だけ）
 #   前に手に入れた武具は、入ってきたときに作り直す（強化レベル・能力・あとから付けたエンチャントはそのまま）
@@ -65,7 +65,7 @@ function uf_skinid(id: text) :: number:
         return 1504
     if {_id} is "armor_special":
         return 1601
-    # 武具以外のアイテム（1700 から）。フロアマップ（map）は付けない（tools/pack/build.py）
+    # 武具以外のアイテム（1700 から）
     if {_id} starts with "rare_":
         set {_f} to (last (length of {_id} - 5) characters of {_id}) parsed as number
         if {_f} is set:
@@ -79,10 +79,15 @@ function uf_skinid(id: text) :: number:
         return 1703
     if {_id} is "ore_potion":
         return 1704
+    if {_id} is "map":
+        return 1705
     if {_id} is "admin_tool":
         return 1706
     if {_id} is "trophy_15":
         return 1707
+    # ショップの弾薬パックの絵（買うと弾薬 32 発になる。アイテムとしてはない。uf_03_shop.sk の uf_shopicon）
+    if {_id} is "ammo_pack":
+        return 1708
     if {_id} is "mat_upgrade":
         return 1711
     if {_id} is "mat_special":
@@ -194,4 +199,4 @@ on load:
 
 # リソースパックの SHA-1（tools/pack/build.py が書き換える。変わると、入ってきた人がもう一度読み込む）
 function uf_packhash() :: text:
-    return "ef7c9a0a501e2f5bc4992c72521be552ac0956e2"
+    return "63d7744217c1654c9170b5db2c380fd970ffc1ed"

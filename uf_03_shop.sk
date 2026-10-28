@@ -27,7 +27,10 @@ function uf_shopicon(id: text) :: item:
     if {_id} is "supply":
         return bread
     if {_id} is "ammo_pack":
-        return uf_item("ammo")
+        # 弾薬箱の絵（スキン）にする
+        set {_i} to uf_item("ammo")
+        set custom model data of {_i} to uf_skinid("ammo_pack")
+        return {_i}
     return uf_item({_id})
 
 function uf_shopunlocked(p: player, id: text) :: boolean:

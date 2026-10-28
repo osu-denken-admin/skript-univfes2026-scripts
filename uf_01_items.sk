@@ -127,11 +127,12 @@ function uf_item(id: text, lv: number = 0) :: item:
         add "&7右クリック（統合版はタップ）で管理メニューを開く" to {_d::*}
         add "&7管理者以外は使えない" to {_d::*}
     else if {_id} is "map":
-        # ふつうのコンパスは WorldEdit のナビゲーションの道具（OP が右クリックすると見ている方向へ壁を抜けて移動する）なので使わない
-        set {_b} to recovery compass
-        set {_n} to "&eフロアマップ"
-        add "&7右クリックで15号館のフロア選択を開く" to {_d::*}
-        add "&7ここからダンジョンを出られる（出ると消える）" to {_d::*}
+        # 帰還の書（2026-10-28 までのフロアマップと帰還の巻物をまとめたもの。id は map のまま）
+        #   ふつうのコンパスは WorldEdit のナビゲーションの道具（OP が右クリックすると見ている方向へ壁を抜けて移動する）なので使わない
+        set {_b} to book
+        set {_n} to "&d帰還の書"
+        add "&7右クリックで、復帰地点に戻る・ダンジョンから出る・開始する階を選ぶ" to {_d::*}
+        add "&7受付から入るともらえる（出ると消える）" to {_d::*}
     else if {_id} is "tool_pick3":
         set {_b} to diamond pickaxe
         set {_n} to "&b3×3ピッケル"

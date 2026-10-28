@@ -80,6 +80,7 @@ function uf_defaults():
     uf_setdef("clear_pt::9", 1500)
     uf_setdef("repeat_rate", 0.2)
     uf_setdef("session_minutes", 20)
+    uf_setdef("warp_seconds", 60)
     uf_setdef("party_max", 4)
 
     # ダンジョン：宝箱
@@ -219,7 +220,7 @@ function uf_defaults():
     uf_shopdef("it_onigiri", 20, 0, true)
     uf_shopdef("it_speed", 60, 0, true)
     uf_shopdef("it_bomb", 80, 2, true)
-    uf_shopdef("it_warp", 100, 2, true)
+    uf_shopdef("it_warp", 100, 2, false)
     uf_shopdef("it_jump", 300, 3, true)
     uf_shopdef("it_power", 120, 3, true)
     uf_shopdef("it_guard", 120, 4, true)
@@ -275,6 +276,10 @@ function uf_defaults():
         set {uf::cshop::cg_legs::price} to 15000
         set {uf::cshop::cg_boots::price} to 12000
         set {uf::cfg::balance_v} to 2
+    # 帰還の巻物は帰還の書（受付でもらう）にまとめたので、本番でも 1 回だけ販売を止める（2026-10-28）
+    if {uf::cfg::warpbook_v} is not set:
+        set {uf::shop::it_warp::enabled} to false
+        set {uf::cfg::warpbook_v} to 1
 
 function uf_shopdef(id: text, price: number, req: number, enabled: boolean):
     if {uf::shop::%{_id}%::price} is not set:

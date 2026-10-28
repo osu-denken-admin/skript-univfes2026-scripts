@@ -246,6 +246,44 @@ def admin_tool():
     return c.outline()
 
 
+def warp_book():
+    # 帰還の書: 青い表紙の本、金の角、まん中に紫のうず（復帰地点へ戻る）。右に紙の小口
+    c = Canvas()
+    c.rect(6, 3, 26, 29, '#24408a')
+    c.rect(6, 3, 8, 29, '#162a60')
+    c.rect(24, 5, 27, 28, '#f2ead0')
+    for y in range(6, 28, 2):
+        c.rect(25, y, 27, y, '#c8bea0')
+    c.rect(9, 3, 23, 3, '#3a5cb8')
+    for (x, y) in [(9, 4), (21, 4), (9, 26), (21, 26)]:
+        c.rect(x, y, x + 2, y + 2, '#e8c04a')
+    ring(c, 15.5, 16, 6.2, 4.4, '#9a3ae0')
+    ring(c, 15.5, 16, 3.6, 2.0, '#c87aff')
+    c.rect(15, 15, 16, 16, '#ffffff')
+    c.set(11, 11, '#e0b0ff')
+    c.set(20, 21, '#e0b0ff')
+    return c.outline()
+
+
+def ammo_box():
+    # 弾薬パック: 緑の弾薬箱（取っ手・黄色の帯）から、弾が 3 発のぞいている
+    c = Canvas()
+    for x0 in (9, 14, 19):
+        c.rect(x0, 6, x0 + 3, 12, '#d8a838')
+        c.rect(x0, 6, x0, 12, '#f6d878')
+        c.ellipse(x0 + 2, 6, 2, 2.6, '#c8683a')
+    c.rect(4, 11, 27, 28, '#56653a')
+    c.rect(4, 11, 27, 13, '#73844e')
+    c.rect(26, 11, 27, 28, '#3e4a28')
+    c.rect(4, 27, 27, 28, '#3e4a28')
+    c.rect(4, 18, 27, 20, '#e8c04a')
+    for x in range(5, 27, 4):
+        c.rect(x, 18, x + 1, 20, '#3e4a28')
+    c.rect(12, 14, 19, 15, '#2a3018')
+    c.rect(13, 23, 18, 25, '#c8ced6')
+    return c.outline()
+
+
 def trophy_15():
     # 15号館 制覇の証: 赤と青のリボンに金のメダル、まん中に「15」
     c = Canvas()
@@ -654,6 +692,8 @@ def item_textures():
         'ore_potion': ore_potion(),
         'admin_tool': admin_tool(),
         'trophy_15': trophy_15(),
+        'map': warp_book(),
+        'ammo_pack': ammo_box(),
         'mat_upgrade': mat_upgrade(),
         'mat_special': mat_special(),
         'mat_part': mat_part(),

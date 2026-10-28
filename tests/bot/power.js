@@ -53,8 +53,8 @@ async function join() {
   check('dga_lord_chest: defense shown (10%)', /受けるダメージ -10/.test(loreOf(find('dga_lord_chest'))));
   check('cg_sword: attack shown (32)', /攻撃力: 32/.test(loreOf(find('cg_sword'))));
 
-  // --- 武具以外のアイテムのスキン（1700 から）。フロアマップには付けない ---
-  const expectCmd2 = { heal_kit: 1701, ammo: 1702, mat_final: 1714, bike_kit: 1744, it_speed: 1802, it_bomb: 1807, rare_5: 1905, rare_9: 1909, map: 0 };
+  // --- 武具以外のアイテムのスキン（1700 から） ---
+  const expectCmd2 = { heal_kit: 1701, ammo: 1702, mat_final: 1714, bike_kit: 1744, it_speed: 1802, it_bomb: 1807, rare_5: 1905, rare_9: 1909, map: 1705 };
   for (const id of Object.keys(expectCmd2)) b.chat('/ufadmin give ' + id);
   await sleep(1500);
   for (const [id, n] of Object.entries(expectCmd2)) {

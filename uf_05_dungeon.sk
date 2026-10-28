@@ -81,6 +81,7 @@ command /dungeon [<text>]:
         uf_floorgui(player)
 
 on right click:
+    # 帰還の書
     uf_id(player's tool) is "map"
     cancel event
     if uf_on("dungeon") is false:
@@ -89,9 +90,12 @@ on right click:
     uf_floorgui(player)
 
 function uf_floorgui(p: player):
-    set {_g} to chest inventory with 3 rows named "&8受付：開始する階を選ぶ"
-    uf_guiclear({_p})
     set {_u} to uuid of {_p}
+    if {-uf::insess::%{_u}%} is set:
+        set {_g} to chest inventory with 3 rows named "&8帰還の書（%{-uf::insess::%{_u}%}%階に挑戦中）"
+    else:
+        set {_g} to chest inventory with 3 rows named "&8受付：開始する階を選ぶ"
+    uf_guiclear({_p})
     loop integers between 2 and 9:
         set {_f} to loop-value
         set {_s} to {_f} + 8
@@ -114,8 +118,52 @@ function uf_floorgui(p: player):
         set slot {_s} of {_g} to ({_icon} named "&f%{_f}%階から") with lore {_lore::*}
         set {-uf::guictx::%{_u}%::%{_s}%} to {_f}
     if {-uf::insess::%{_u}%} is set:
+        set {_left} to uf_dwarpleft({_p})
+        if {_left} > 0:
+            set {_wl} to "&cあと %{_left}% 秒で使える"
+        else:
+            set {_wl} to "&eクリックで戻る"
+        set slot 20 of {_g} to ender pearl named "&d復帰地点に戻る" with lore "&7挑戦中の階の復帰地点へ戻る", "&7中ボス・ボスとの戦いの間は使えない", "&7一度使うと %{uf::cfg::warp_seconds}% 秒は使えない" and {_wl}
         set slot 22 of {_g} to barrier named "&cダンジョンから退出する" with lore "&7挑戦をやめて 1 階のロビーへ戻る" and "&7突破した階と報酬はそのまま"
     uf_gui({_p}, "floor", {_g})
+
+# 挑戦中の階の復帰地点へ戻る（帰還の書・前に売っていた帰還の巻物）。戻れたら true
+function uf_dwarpto(p: player) :: boolean:
+    set {_f} to {-uf::insess::%uuid of {_p}%}
+    if {_f} is not set:
+        uf_msg({_p}, "&c復帰地点に戻るのは、ダンジョンの挑戦中にだけ使えます")
+        return false
+    if {-uf::sess::%{_f}%::phase} is not "explore" or "cleared":
+        uf_msg({_p}, "&c中ボス・ボスとの戦いの間は使えません")
+        return false
+    set {_cp} to {uf::floor::%{_f}%::cp}
+    if {_cp} is not set:
+        set {_cp} to {uf::floor::%{_f}%::start}
+    if {_cp} is not set:
+        return false
+    play 20 portal at location of {_p}
+    teleport {_p} to {_cp}
+    play sound "entity.enderman.teleport" with volume 1 at {_p}
+    uf_msg({_p}, "&d%{_f}%階の復帰地点に戻った")
+    return true
+
+# 帰還の書で戻れるまでの残りの秒数（0 ならすぐ使える。間隔は設定の warp_seconds）
+function uf_dwarpleft(p: player) :: number:
+    set {_t} to {-uf::wcd::%uuid of {_p}%}
+    if {_t} is not set:
+        return 0
+    set {_left} to {uf::cfg::warp_seconds} * 20 - ({-uf::tick} - {_t})
+    if {_left} <= 0:
+        return 0
+    return ceil({_left} / 20)
+
+function uf_dbookwarp(p: player):
+    set {_left} to uf_dwarpleft({_p})
+    if {_left} > 0:
+        uf_msg({_p}, "&c復帰地点に戻れるのは、あと %{_left}% 秒後です")
+        stop
+    if uf_dwarpto({_p}) is true:
+        set {-uf::wcd::%uuid of {_p}%} to {-uf::tick}
 
 on inventory click:
     {-uf::gui::%uuid of player%} is "floor"
@@ -126,6 +174,12 @@ on inventory click:
         wait 1 tick
         close inventory of player
         uf_dleave(player)
+        stop
+    if {_s} is 20:
+        {-uf::insess::%uuid of player%} is set
+        wait 1 tick
+        close inventory of player
+        uf_dbookwarp(player)
         stop
     set {_f} to {-uf::guictx::%uuid of player%::%{_s}%}
     {_f} is set
@@ -201,20 +255,20 @@ function uf_dbegin(f: number, mem: players, teleport: boolean = true):
     uf_placechests({_f})
     uf_spawnwave({_f})
 
-# 受付から入った人に、フロアマップ（退出のボタンがある）を 1 つ渡して、出かたを伝える
-#   フロアマップは挑戦中だけ持つもの。出たとき・挑戦が終わったときに uf_dtakemap で消す
+# 受付から入った人に、帰還の書（復帰地点に戻る・退出のボタンがある）を 1 つ渡して、出かたを伝える
+#   帰還の書は挑戦中だけ持つもの。出たとき・挑戦が終わったときに uf_dtakemap で消す
 function uf_dexithint(p: player):
     uf_dtakemap({_p})
     uf_give({_p}, uf_item("map"))
-    uf_msg({_p}, "&7ダンジョンを出るときは &eフロアマップ&7を右クリック →「ダンジョンから退出する」")
+    uf_msg({_p}, "&7ダンジョンを出るときは &d帰還の書&7を右クリック →「ダンジョンから退出する」（復帰地点にも戻れる）")
 
-# フロアマップを持ち物から消す（前に配っていたコンパスのものも消える）
+# 帰還の書を持ち物から消す（前に配っていたフロアマップ・コンパスのものも消える。id はどれも map）
 function uf_dtakemap(p: player):
     loop all items in inventory of {_p}:
         if uf_id(loop-value) is "map":
             remove loop-value from inventory of {_p}
 
-# 前に配っていて、挑戦していないのに持ったままのフロアマップを片付ける
+# 前に配っていて、挑戦していないのに持ったままの帰還の書（フロアマップ）を片付ける
 on join:
     wait 1 second
     player is online

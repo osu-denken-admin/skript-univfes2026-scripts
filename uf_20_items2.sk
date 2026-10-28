@@ -4,7 +4,7 @@
 #   食べ物・飲み物: it_onigiri おにぎり / it_speed スピードドリンク / it_power パワードリンク / it_guard ガードドリンク
 #   お守り（オフハンドに持つ。shop モジュールで動く）: it_jump ジャンプのお守り / it_night 暗視ゴーグル
 #   道具: it_bomb 電研ボム（ダンジョンの中だけ。投げて、当たったまわりのダンジョンの敵にダメージ。ブロックは壊さない）
-#         it_warp 帰還の巻物（ダンジョンの挑戦中に、その階の復帰地点へ戻る。闘技場の中では使えない）
+#         it_warp 帰還の巻物（ダンジョンの挑戦中に、その階の復帰地点へ戻る。闘技場の中では使えない。2026-10-28 から売らない。帰還の書で戻れる）
 # ============================================================
 
 function uf_item2(id: text) :: item:
@@ -110,24 +110,9 @@ on projectile hit:
                 set {-uf::sess::%{_f}%::active::%uuid of {_by}%} to true
                 damage loop-value by 4
 
-# 帰還の巻物
+# 帰還の巻物（2026-10-28 から売らない。受付でもらう帰還の書で戻れる。持っている人は今までどおり使える）
 on right click:
     uf_id(player's tool) is "it_warp"
     cancel event
-    set {_f} to {-uf::insess::%uuid of player%}
-    if {_f} is not set:
-        uf_msg(player, "&c帰還の巻物は、ダンジョンの挑戦中にだけ使えます")
-        stop
-    if {-uf::sess::%{_f}%::phase} is not "explore" or "cleared":
-        uf_msg(player, "&c中ボス・ボスとの戦いの間は使えません")
-        stop
-    set {_cp} to {uf::floor::%{_f}%::cp}
-    if {_cp} is not set:
-        set {_cp} to {uf::floor::%{_f}%::start}
-    if {_cp} is not set:
-        stop
+    uf_dwarpto(player) is true
     remove 1 of uf_item("it_warp") from player's inventory
-    play 20 portal at location of player
-    teleport player to {_cp}
-    play sound "entity.enderman.teleport" with volume 1 at player
-    uf_msg(player, "&d%{_f}%階の復帰地点に戻った")

@@ -55,13 +55,16 @@ def entries():
     E.append(('warped_fungus_on_a_stick', 1504, 'gun_energy', 'generated'))
     E.append(('iron_chestplate', 1601, 'armor_special', 'generated'))
     # 武具以外のアイテム（1700 から。uf_24_skin.sk の uf_refreshgear は、1700 からの番号のアイテムを作り直さずに番号だけ付ける）
-    # フロアマップ（回収コンパス）は、元の見た目（針の向きで 32 枚を切り替える）を正しく写せないので付けない
+    # 帰還の書（id は map。前のフロアマップは回収コンパスだったが、本にしたのでスキンを付けられる）
     E.append(('honey_bottle', 1701, 'heal_kit', 'generated'))
     E.append(('iron_nugget', 1702, 'ammo', 'generated'))
     E.append(('fishing_rod', 1703, 'hook', 'rod'))
     E.append(('potion', 1704, 'ore_potion', 'generated'))
+    E.append(('book', 1705, 'map', 'generated'))
     E.append(('book', 1706, 'admin_tool', 'generated'))
     E.append(('heart_of_the_sea', 1707, 'trophy_15', 'generated'))
+    # ショップの弾薬パックの絵（アイテムとしてはない。uf_03_shop.sk の uf_shopicon）
+    E.append(('iron_nugget', 1708, 'ammo_pack', 'generated'))
     E.append(('amethyst_shard', 1711, 'mat_upgrade', 'generated'))
     E.append(('prismarine_crystals', 1712, 'mat_special', 'generated'))
     E.append(('netherite_scrap', 1713, 'mat_part', 'generated'))

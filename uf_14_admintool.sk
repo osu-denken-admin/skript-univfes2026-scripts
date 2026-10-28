@@ -667,7 +667,7 @@ function uf_ap_sellitem(p: player, k: text):
 # ------------------------------------------------------------
 function uf_cfgkeys(cat: text) :: texts:
     if {_cat} is "reward":
-        return "reward::normal", "reward::strong", "reward::elite", "reward::mid", "reward::boss", "clear_pt::2", "clear_pt::3", "clear_pt::4", "clear_pt::5", "clear_pt::6", "clear_pt::7", "clear_pt::8", "clear_pt::9", "repeat_rate", "session_minutes" and "party_max"
+        return "reward::normal", "reward::strong", "reward::elite", "reward::mid", "reward::boss", "clear_pt::2", "clear_pt::3", "clear_pt::4", "clear_pt::5", "clear_pt::6", "clear_pt::7", "clear_pt::8", "clear_pt::9", "repeat_rate", "session_minutes", "warp_seconds" and "party_max"
     if {_cat} is "death":
         return "death_loss_scope", "death_loss_rate", "revive_seconds", "revive_range" and "soul_seconds"
     if {_cat} is "chest":
@@ -724,6 +724,8 @@ function uf_cfglabel(k: text) :: text:
         return "再挑戦報酬の割合（初回報酬に対して）"
     if {_k} is "session_minutes":
         return "挑戦の制限時間（分）"
+    if {_k} is "warp_seconds":
+        return "帰還の書で復帰地点に戻れる間隔（秒）"
     if {_k} is "party_max":
         return "パーティーの最大人数"
     if {_k} is "death_loss_scope":
@@ -884,6 +886,8 @@ function uf_cfgmax(k: text) :: number:
         return 200
     if {_k} is "session_minutes":
         return 120
+    if {_k} is "warp_seconds":
+        return 600
     if {_k} is "level::max":
         return 200
     if {_k} is "skill::max":

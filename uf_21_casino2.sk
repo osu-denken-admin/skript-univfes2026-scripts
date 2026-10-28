@@ -149,7 +149,7 @@ function uf_gachaprize(rank: number) :: texts:
     if {_rank} is 1:
         return "it_onigiri:3", "it_speed:1", "heal_kit:1" and "it_onigiri:5"
     if {_rank} is 2:
-        return "it_bomb:2", "it_warp:1", "it_power:1", "it_guard:1" and "heal_kit:3"
+        return "it_bomb:2", "it_speed:2", "it_power:1", "it_guard:1" and "heal_kit:3"
     if {_rank} is 3:
         return "it_jump:1", "mat_upgrade:2", "acc_basic:1" and "it_bomb:5"
     return "it_night:1", "dga_uniform_helmet:1", "dga_uniform_chest:1", "dga_labcoat_boots:1" and "mat_final:1"

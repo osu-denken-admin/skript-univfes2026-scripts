@@ -373,7 +373,7 @@ T.death = async ({ A, P }) => {
 };
 
 // ---------------------------------------------------------------
-// ダンジョンの出かた（フロアマップ → 退出）と、ダンジョンの中で死んでも持ち物を落とさないこと
+// ダンジョンの出かた（帰還の書 → 退出）と、ダンジョンの中で死んでも持ち物を落とさないこと
 //   15号館はサバイバルと同じワールドなので、ゲームルールは keepInventory false にして確かめる
 T.dungeonexit = async ({ A, P }) => {
   const dirt = (b) => b.inventory.items().filter((it) => it.name === 'dirt').reduce((a, it) => a + it.count, 0);
@@ -388,39 +388,48 @@ T.dungeonexit = async ({ A, P }) => {
   con(`give ${P.username} dirt 5`); await sleep(500);
   let from = P.msgs.length;
   let w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
-  check('entering shows how to leave', !!(await waitMsg(P, from, /フロアマップ.*退出する/)));
-  check('floor map given on entry', !!invFind(P, 'フロアマップ'));
+  check('entering shows how to leave', !!(await waitMsg(P, from, /帰還の書.*退出する/)));
+  check('return book given on entry', !!invFind(P, '帰還の書'));
   // コンパスは WorldEdit のナビゲーションの道具（OP が右クリックすると壁を抜けて移動する）なので使わない
-  check('floor map is not a compass', (invFind(P, 'フロアマップ') || {}).name === 'recovery_compass', (invFind(P, 'フロアマップ') || {}).name);
+  check('return book is not a compass', (invFind(P, '帰還の書') || {}).name === 'book', (invFind(P, '帰還の書') || {}).name);
   // ダンジョンの中で死ぬ → 持ち物はそのまま
   con(`tp ${P.username} 6 -60 6`); await sleep(800);
   con('kill @e[type=item]'); con('kill @e[type=experience_orb]'); con(`xp set ${P.username} 5 levels`); await sleep(500);
   con(`kill ${P.username}`); await respawn();
   check('items kept on death in the dungeon', dirt(P) === 5, `dirt=${dirt(P)}`);
-  // 1 人で倒れると全滅でその回は終わり、フロアマップも消える
-  check('floor map removed when the run ends', !invFind(P, 'フロアマップ'));
+  // 1 人で倒れると全滅でその回は終わり、帰還の書も消える
+  check('return book removed when the run ends', !invFind(P, '帰還の書'));
   check('experience kept on death in the dungeon', P.experience.level === 5, `level=${P.experience.level}`);
   // 持ち物を残したうえで、地面にも同じ物が落ちて増えていないこと（A から見る）
   con(`tp ${A.username} 6 -60 9`); await sleep(1500);
   const dropped = Object.values(A.entities).filter((e) => (e.name === 'item' || e.name === 'experience_orb') && e.position.distanceTo(new Vec3(6.5, -60, 6.5)) < 4).length;
   check('nothing dropped on the ground when items are kept', dropped === 0, `dropped=${dropped}`);
   con(`tp ${A.username} 0 -60 0`); await sleep(400);
-  // もう一度入って、フロアマップから退出する
+  // もう一度入って、帰還の書から退出する
   con(`tp ${P.username} 0 -60 0`); await sleep(800);
   w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
   check('in the dungeon again', P.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3, P.entity.position.toString());
-  await hold(P, 'フロアマップ'); await P.look(0, Math.PI / 2, true);
+  await hold(P, '帰還の書'); await P.look(0, Math.PI / 2, true);
   const p = waitWindow(P); P.activateItem(); w = await p; P.deactivateItem();
-  check('floor map has a leave button while in the dungeon', !!w && itemText(w.slots[22]).includes('退出する'));
+  check('return book has a leave button while in the dungeon', !!w && itemText(w.slots[22]).includes('退出する'));
+  check('return book has a return-to-checkpoint button', !!w && itemText(w.slots[20]).includes('復帰地点に戻る'));
+  // 復帰地点に戻る → すぐもう一度は待ち時間で断られる
+  from = P.msgs.length; await P.clickWindow(20, 0, 0).catch(() => {}); await sleep(1500);
+  check('return book warps to the checkpoint', !!(await waitMsg(P, from, /復帰地点に戻った/)));
+  await P.look(0, Math.PI / 2, true);
+  let p2 = waitWindow(P); P.activateItem(); w = await p2; P.deactivateItem();
+  from = P.msgs.length; await P.clickWindow(20, 0, 0).catch(() => {}); await sleep(1500);
+  check('return book has a wait before the next warp', !!(await waitMsg(P, from, /あと \d+ 秒後/)));
+  p2 = waitWindow(P); P.activateItem(); w = await p2; P.deactivateItem();
   from = P.msgs.length; await P.clickWindow(22, 0, 0).catch(() => {}); await sleep(1500);
-  check('leave from the floor map', !!(await waitMsg(P, from, /ダンジョンから退出しました/)) && P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
+  check('leave from the return book', !!(await waitMsg(P, from, /ダンジョンから退出しました/)) && P.entity.position.distanceTo(new Vec3(0, -60, 0)) < 3, P.entity.position.toString());
   await sleep(500);
-  check('floor map removed after leaving', !invFind(P, 'フロアマップ'));
+  check('return book removed after leaving', !invFind(P, '帰還の書'));
   // 出たあと、受付からもう一度入れる
   from = P.msgs.length;
   w = await cmdWin(P, '/dungeon'); await clickWin(P, 10); await sleep(2000);
   check('can enter again after leaving', P.entity.position.distanceTo(new Vec3(5, -60, 5)) < 3 && !P.msgs.slice(from).some((m) => /挑戦中です/.test(m)), P.entity.position.toString());
-  check('floor map given again (only one)', P.inventory.items().filter((it) => itemText(it).includes('フロアマップ')).length === 1);
+  check('return book given again (only one)', P.inventory.items().filter((it) => itemText(it).includes('帰還の書')).length === 1);
   w = await cmdWin(P, '/dungeon'); from = P.msgs.length; await P.clickWindow(22, 0, 0).catch(() => {}); await sleep(1500);
   check('leave again from the reception screen', !!(await waitMsg(P, from, /ダンジョンから退出しました/)));
   // ダンジョンの外で死ぬ → いつもどおり落とす（ゲームルールのとおり）
