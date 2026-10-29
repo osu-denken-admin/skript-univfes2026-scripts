@@ -379,7 +379,7 @@ function uf_ap_hub(p: player):
     uf_abtn({_p}, {_g}, 34, book, "&e操作履歴", "&7管理者の操作の記録", "open/logs")
     uf_abtn({_p}, {_g}, 37, oak sign, "&eランキングの掲示板", "&7壁に貼りつける浮かぶ文字の掲示板", "open/boards")
     uf_abtn({_p}, {_g}, 38, villager spawn egg, "&eNPC（受付・ショップ・カジノ・スキル）", "&7話しかけると画面が開く村人", "open/npcs")
-    uf_abtn({_p}, {_g}, 41, crying obsidian, "&eボスへの入り方の案内", "&7壁の「右クリックで…」の文字と、ブロックで作る説明の絵", "open/guide")
+    uf_abtn({_p}, {_g}, 41, crying obsidian, "&eボスへの入り方の案内", "&7壁の「右クリックで…」の文字と、額縁に飾る説明の絵", "open/guide")
     uf_abtn({_p}, {_g}, 39, gilded blackstone, "&e地下カジノ", "&715号館の地下のカジノ（建物）を作る・埋め戻す", "open/chall")
     if {uf::cfg::skin::enabled} is true:
         uf_abtn({_p}, {_g}, 40, painting, "&a武具のスキン: 送る", "&7入ってきた人にリソースパック（武具の絵）を送る|&7統合版には送られない|&eクリックで送らないようにする", "skin")
@@ -1523,11 +1523,10 @@ function uf_aact(p: player, a: text):
         else if {_x::2} is "gatesdel":
             set {_n} to uf_guidegatesdel()
             uf_msg({_p}, "&e壁の案内の文字 %{_n}% 個を消しました")
-        else if {_x::2} is "board":
-            if uf_guideboardplace({_p}) is false:
-                uf_msg({_p}, "&c絵を埋め込む壁のブロックを見ながら押してください")
-                stop
-            uf_msg({_p}, "&a説明の絵を作りました。見ている向きから読めます")
+        else if {_x::2} is "image":
+            set {_url} to uf_guideurl()
+            make {_p} execute command "imageframe create boss_guide %{_url}% 4 3"
+            uf_msg({_p}, "&a画像を登録しました（横 4 × 縦 3 枚）。できたマップを額縁に飾ってください。うまくいかないときは /imageframe の案内を見てください")
         else if {_x::2} is "boarddel":
             set {_n} to uf_guideboarddel()
             uf_msg({_p}, "&e説明の絵を消して、ブロック %{_n}% 個をもとに戻しました")

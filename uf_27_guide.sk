@@ -2,10 +2,10 @@
 # uf_27_guide.sk : ボスマップへの入り方の案内（2026-10-29）
 #   壁（中ボスの壁 = 泣く黒曜石 / ボスの壁 = 強化深層岩）を右クリックするとボスの闘技場へ行ける、が分かりにくかったので、
 #   1) 各壁の両側に、浮かぶ文字（text display）で「右クリックで…」と出す（管理者ツールの「ボスへの入り方の案内」）
-#   2) 1 階の受付の近くなどに、ブロックで作った説明の絵（壁 → 右クリック → 闘技場）を貼る
-#   絵は、見ているブロックの面に埋め込む（もとのブロックは保存して、消すと戻す）。1 枚だけ
-#   浮かぶ文字には scoreboard tag「uf_gguide」（壁の文字）「uf_gboard」（絵の文字）を付けて見分ける
-#   変数: {uf::guide::cells::*}（絵に使ったブロックの場所）、{uf::guide::orig::<場所>}（もとのブロック）
+#   2) 1 階の受付の近くなどに、説明の絵（壁 → 右クリック → 闘技場）を額縁（マップ 4×3 枚）で飾る。
+#      絵は画像（guide/boss_guide.png）で、プラグイン ImageFrame が読み込む（横 29 × 高さ 20 ブロックのブロックの絵は大きすぎて見切れたので、やめた）
+#   浮かぶ文字には scoreboard tag「uf_gguide」（壁の文字）を付けて見分ける
+#   変数: {uf::guide::cells::*}・{uf::guide::orig::<場所>}（やめたブロックの絵。すでに置いてあるものを消して戻すためだけに残してある）
 #   壁の仕組み（uf_05_dungeon.sk）は変えない
 # ============================================================
 
@@ -74,56 +74,6 @@ function uf_guidegates() :: number:
                 add 1 to {_n}
     return {_n}
 
-# ------------------------------------------------------------
-# ブロックで作る説明の絵（29 × 20 ブロック）
-#   上の段: 中ボスの壁（泣く黒曜石）→ 右クリック → 中ボスの闘技場（ドクロ）
-#   下の段: ボスの壁（強化深層岩）→ 右クリック → ボスの闘技場（王冠）
-# ------------------------------------------------------------
-function uf_gpalette(c: text) :: item:
-    if {_c} is "Y":
-        return yellow concrete
-    if {_c} is "o":
-        return crying obsidian
-    if {_c} is "d":
-        return reinforced deepslate
-    if {_c} is "g":
-        return lime concrete
-    if {_c} is "w":
-        return quartz block
-    if {_c} is "m":
-        return gray concrete
-    if {_c} is "r":
-        return red concrete
-    if {_c} is "l":
-        return light gray concrete
-    if {_c} is "p":
-        return purple concrete
-    return black concrete
-
-# 絵の 1 行ごとの並び（上の行から。左から右へ）
-function uf_grows() :: texts:
-    set {_rows::1} to "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY"
-    set {_rows::2} to "Y...........................Y"
-    set {_rows::3} to "Y...........................Y"
-    set {_rows::4} to "Y.ooooo.wmr......g....rwwwr.Y"
-    set {_rows::5} to "Y.ooooo.wmr......gg...wwwww.Y"
-    set {_rows::6} to "Y.ooooo.lll.gggggggg..w.w.w.Y"
-    set {_rows::7} to "Y.ooooo.lll......gg...rwwwr.Y"
-    set {_rows::8} to "Y.ooooo.lll......g....rwrwr.Y"
-    set {_rows::9} to "Y...........................Y"
-    set {_rows::10} to "Y...........................Y"
-    set {_rows::11} to "Y...........................Y"
-    set {_rows::12} to "Y.ddddd.wmr......g....YpYpY.Y"
-    set {_rows::13} to "Y.ddddd.wmr......gg...YYYYY.Y"
-    set {_rows::14} to "Y.ddddd.lll.gggggggg..YYYYY.Y"
-    set {_rows::15} to "Y.ddddd.lll......gg...ppppp.Y"
-    set {_rows::16} to "Y.ddddd.lll......g....ppppp.Y"
-    set {_rows::17} to "Y...........................Y"
-    set {_rows::18} to "Y...........................Y"
-    set {_rows::19} to "Y...........................Y"
-    set {_rows::20} to "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY"
-    return {_rows::*}
-
 # 絵を消して、もとのブロックに戻す（文字も消す）。戻したブロックの数を返す
 function uf_guideboarddel() :: number:
     set {_n} to 0
@@ -141,78 +91,17 @@ function uf_guideboarddel() :: number:
             kill loop-value
     return {_n}
 
-# 見ているブロックを下の真ん中にして、そのブロックの面に絵を埋め込む（向きは見ている方角。見ている人のほうへ向く）。置けたら true
-function uf_guideboardplace(p: player) :: boolean:
-    set {_b} to targeted block of {_p}
-    if {_b} is not set:
-        return false
-    if {_b} is air:
-        return false
-    uf_guideboarddel()
-    set {_x} to floor(x-coordinate of {_b})
-    set {_y} to floor(y-coordinate of {_b})
-    set {_z} to floor(z-coordinate of {_b})
-    set {_w} to world of {_b}
-    set {_f} to "%horizontal facing of {_p}%"
-    # fx fz: 見ている向き / rx rz: 見ている人から見て右 / yaw: 浮かぶ文字の向き（uf_16_board.sk と同じ）
-    if {_f} is "north":
-        set {_fx} to 0
-        set {_fz} to -1
-        set {_rx} to 1
-        set {_rz} to 0
-        set {_yaw} to 0
-    else if {_f} is "south":
-        set {_fx} to 0
-        set {_fz} to 1
-        set {_rx} to -1
-        set {_rz} to 0
-        set {_yaw} to 180
-    else if {_f} is "east":
-        set {_fx} to 1
-        set {_fz} to 0
-        set {_rx} to 0
-        set {_rz} to 1
-        set {_yaw} to 90
-    else:
-        set {_fx} to -1
-        set {_fz} to 0
-        set {_rx} to 0
-        set {_rz} to -1
-        set {_yaw} to 270
-    set {_rows::*} to uf_grows()
-    loop integers between 1 and 20:
-        set {_r} to loop-value
-        loop integers between 1 and 29:
-            set {_i} to loop-value-2
-            set {_c} to last 1 characters of (first {_i} characters of {_rows::%{_r}%})
-            set {_u} to {_i} - 15
-            set {_l} to location({_x} + {_rx} * {_u}, {_y} + 20 - {_r}, {_z} + {_rz} * {_u}, {_w})
-            set {_k} to uf_lockey({_l})
-            set {uf::guide::orig::%{_k}%} to "%block data of block at {_l}%"
-            add {_l} to {uf::guide::cells::*}
-            set block at {_l} to uf_gpalette({_c})
-    # 文字（絵の面から見ている人のほうへ 0.01 だけ出す）（横の位置は中心が 0、高さは文字の下の端）
-    set {_ox} to 0.5 - {_fx} * 0.51
-    set {_oz} to 0.5 - {_fz} * 0.51
-    uf_gboardtext({_x}, {_y}, {_z}, {_w}, {_rx}, {_rz}, {_ox}, {_oz}, {_yaw}, 0, 17.5, "&6&lボスマップへの入り方")
-    uf_gboardtext({_x}, {_y}, {_z}, {_w}, {_rx}, {_rz}, {_ox}, {_oz}, {_yaw}, -10, 9.2, "&e①中ボスの壁%nl%&7（泣く黒曜石）%nl%&a右クリック！")
-    uf_gboardtext({_x}, {_y}, {_z}, {_w}, {_rx}, {_rz}, {_ox}, {_oz}, {_yaw}, 10, 9.6, "&c中ボスと戦う%nl%&7（上空の闘技場）")
-    uf_gboardtext({_x}, {_y}, {_z}, {_w}, {_rx}, {_rz}, {_ox}, {_oz}, {_yaw}, -10, 0.9, "&e②階段の壁%nl%&7（強化深層岩）%nl%&a右クリック！%nl%&7中ボスを倒した後に")
-    uf_gboardtext({_x}, {_y}, {_z}, {_w}, {_rx}, {_rz}, {_ox}, {_oz}, {_yaw}, 10, 1.5, "&5ボスと戦う%nl%&7（勝つと次の階へ）")
-    return true
-
-function uf_gboardtext(x: number, y: number, z: number, w: world, rx: number, rz: number, ox: number, oz: number, yaw: number, u: number, v: number, t: text):
-    uf_gtext(location({_x} + {_ox} + {_rx} * {_u}, {_y} + {_v}, {_z} + {_oz} + {_rz} * {_u}, {_w}), {_t}, {_yaw}, "uf_gboard", "fixed")
+# 額縁に飾る画像（guide/boss_guide.png。tools/guide/make_guide.py で作る）の取得先。ImageFrame が読み込む
+function uf_guideurl() :: text:
+    return "https://raw.githubusercontent.com/osu-denken-admin/skript-univfes2026-scripts/main/guide/boss_guide.png"
 
 # 管理者ツールの画面（uf_14_admintool.sk の open/guide）
 function uf_ap_guide(p: player):
     set {_g} to uf_apage({_p}, "&4ボスへの入り方の案内")
     uf_abtn({_p}, {_g}, 10, crying obsidian, "&e壁の案内の文字を置く", "&72〜9 階の壁（中ボス・ボス）の両側に「右クリックで…」を出す|&7置き直すと前のものは消える|&7壁の仕組みは変わらない", "guideset/gates")
     uf_abtn({_p}, {_g}, 19, tnt, "&c壁の案内の文字を消す", "&7確認画面が出ます", "ask/壁の案内の文字を消す|guideset/gatesdel")
+    uf_abtn({_p}, {_g}, 13, painting, "&e説明の絵（画像）を作る", "&7ImageFrame に画像を登録して、マップを受け取る（横 4 × 縦 3 枚）|&7できたマップを額縁に飾る（1 階の受付の近くなど）|&7押すと /imageframe create boss_guide を実行します|&7同じ名前がすでにあるときは、先に /imageframe delete boss_guide で消す", "guideset/image")
+    # 前のブロックの絵が置いてあるときだけ、消して元に戻すボタンを出す
     if {uf::guide::cells::*} is set:
-        set {_st} to "&a置いてある"
-    else:
-        set {_st} to "&7まだ置いていない"
-    uf_abtn({_p}, {_g}, 13, painting, "&e説明の絵を作る（ブロック）", "%{_st}%|&e1 階の受付の近くの壁を見ながら押す|&7見ているブロックを下の真ん中にして、横 29・高さ 20 ブロックの絵がその壁に埋まる|&7もとのブロックは保存して、消すと戻る（置き直すと前のものは戻る）|&7見ている向きから読める向きになる", "guideset/board")
-    uf_abtn({_p}, {_g}, 22, tnt, "&c説明の絵を消して元に戻す", "&7確認画面が出ます", "ask/説明の絵を消して元に戻す|guideset/boarddel")
+        uf_abtn({_p}, {_g}, 22, tnt, "&cブロックの古い絵を消して元に戻す", "&7前に置いた、ブロックで作った絵（大きすぎて見切れた）を消して、もとのブロックに戻す|&7確認画面が出ます", "ask/ブロックの古い絵を消して元に戻す|guideset/boarddel")
     uf_ashow({_p}, {_g}, "hub")
