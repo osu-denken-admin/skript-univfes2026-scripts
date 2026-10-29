@@ -27,6 +27,15 @@ SKIN_SK = os.path.join(ROOT, 'uf_24_skin.sk')
 
 
 from art import all_textures
+from armor import all_armor
+
+
+def flipx(png):
+    """弓の絵を左右反転する。バニラの弓は先（矢の向き）が左上、art.py は右上に描いてあり、手に持つと上を向いてしまうため"""
+    im = Image.open(io.BytesIO(png)).transpose(Image.FLIP_LEFT_RIGHT)
+    b = io.BytesIO()
+    im.save(b, 'PNG')
+    return b.getvalue()
 
 
 # 見た目の番号（uf_24_skin.sk の uf_skinid と合わせる）と、元のアイテム
@@ -171,7 +180,7 @@ def build():
         parent = {'handheld': 'minecraft:item/handheld', 'generated': 'minecraft:item/generated',
                   'bow': 'minecraft:item/bow', 'rod': 'minecraft:item/handheld_rod'}[kind]
         files['assets/uf/models/item/%s.json' % uid] = json.dumps({'parent': parent, 'textures': {'layer0': 'uf:item/' + tn}})
-        files['assets/uf/textures/item/%s.png' % tn] = T[tn].png()
+        files['assets/uf/textures/item/%s.png' % tn] = flipx(T[tn].png()) if kind == 'bow' else T[tn].png()
         if kind == 'rod':
             files['assets/uf/models/item/%s_cast.json' % uid] = json.dumps(
                 {'parent': parent, 'textures': {'layer0': 'uf:item/%s_cast' % tn}})
@@ -180,7 +189,13 @@ def build():
             for i in range(3):
                 files['assets/uf/models/item/%s_pulling_%d.json' % (uid, i)] = json.dumps(
                     {'parent': 'minecraft:item/bow', 'textures': {'layer0': 'uf:item/%s_pulling_%d' % (tn, i)}})
-                files['assets/uf/textures/item/%s_pulling_%d.png' % (tn, i)] = T['%s_pulling_%d' % (tn, i)].png()
+                files['assets/uf/textures/item/%s_pulling_%d.png' % (tn, i)] = flipx(T['%s_pulling_%d' % (tn, i)].png())
+    # 身に着けたときの防具の見た目（セットごと。装備の見た目は uf_24_skin.sk の uf_wornmodel が指す uf:<セット名>）
+    for name, (l1, l2) in all_armor().items():
+        files['assets/uf/equipment/%s.json' % name] = json.dumps(
+            {'layers': {'humanoid': [{'texture': 'uf:' + name}], 'humanoid_leggings': [{'texture': 'uf:' + name}]}})
+        files['assets/uf/textures/entity/equipment/humanoid/%s.png' % name] = l1
+        files['assets/uf/textures/entity/equipment/humanoid_leggings/%s.png' % name] = l2
     for base, lst in by_base.items():
         lst.sort()
         files['assets/minecraft/items/%s.json' % base] = json.dumps({'model': {

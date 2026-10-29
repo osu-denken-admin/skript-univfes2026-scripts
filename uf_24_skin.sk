@@ -2,13 +2,16 @@
 # uf_24_skin.sk : 武具とアイテムのスキン（リソースパック）
 #   武具と、武具以外のアイテム（2026-10-28 から）には見た目の番号（custom model data）を付け、リソースパック（pack/uf_pack.zip、tools/pack/build.py で作る）で絵を差し替える
 #   リソースパックは入ってきた人に送る（GitHub の公開リポジトリから。断っても遊べる）。管理者ツールの「スキン」で送る・送らないを切り替える
-#   統合版（Geyser）には送られない（統合版は今の見た目のまま）。身に着けた防具の見た目は変わらない（持ち物の絵だけ）
+#   統合版（Geyser）には送られない（統合版は今の見た目のまま）
+#   防具は、身に着けたときの見た目も持ち物の絵に合わせる（装備の見た目 = equippable component の model。2026-10-29 から。Skript 2.13 では実験機能なので下の using が要る）
 #   前に手に入れた武具は、入ってきたときに作り直す（強化レベル・能力・あとから付けたエンチャントはそのまま）
 #   武具以外のアイテム（番号 1700 から）は作り直さず、番号だけ付ける（数と、制覇の証の名前・日付を残す）
 #     弾薬・素材・ボムなどは「同じアイテムか」で数えて消すので、番号のない前のアイテムが残っていると数えられない。
 #     そのため、入ってきたとき・画面を閉じたとき（箱から出したもの）・読み込み直したときに付け直す
 #   変数: {uf::cfg::skin::enabled}
 # ============================================================
+
+using equippable components
 
 # 見た目の番号（0 ならスキンなし）。リソースパックの番号と合わせる（tools/pack/build.py）
 function uf_skinid(id: text) :: number:
@@ -134,10 +137,26 @@ function uf_skinid(id: text) :: number:
         return 1808
     return 0
 
+# 身に着けたときの見た目（リソースパックの assets/uf/equipment/<名前>.json。tools/pack/armor.py）。なければ ""
+function uf_wornmodel(id: text) :: text:
+    if {_id} starts with "dga_":
+        set {_q::*} to split {_id} at "_"
+        if {_q::2} is "uniform" or "labcoat" or "lord":
+            return "uf:%{_q::2}%"
+        return ""
+    if {_id} is "cg_helmet" or "cg_chest" or "cg_legs" or "cg_boots":
+        return "uf:lucky"
+    if {_id} is "armor_special":
+        return "uf:special"
+    return ""
+
 function uf_skin(i: item, id: text) :: item:
     set {_n} to uf_skinid({_id})
     if {_n} > 0:
         set custom model data of {_i} to {_n}
+    set {_m} to uf_wornmodel({_id})
+    if {_m} is not "":
+        set equipped model key of {_i} to {_m}
     return {_i}
 
 # ------------------------------------------------------------
@@ -167,7 +186,7 @@ on resource pack response:
 # ------------------------------------------------------------
 # 武具の作り直しの版。強さを変えたら 1 つ上げると、入ってきた人の武具を 1 回だけ作り直す（説明の攻撃力・守りが新しくなる）
 function uf_gearrev() :: number:
-    return 2
+    return 3
 
 function uf_refreshgear(p: player):
     set {_n} to 0
@@ -212,4 +231,4 @@ on load:
 
 # リソースパックの SHA-1（tools/pack/build.py が書き換える。変わると、入ってきた人がもう一度読み込む）
 function uf_packhash() :: text:
-    return "47f8257d0bbec755b0782301ba512e074d6e80b6"
+    return "599a66cd937e20da49577176a0ccfa4cd7b79872"

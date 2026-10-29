@@ -478,6 +478,43 @@ on click on crying obsidian or reinforced deepslate or white concrete:
         else if {_ph} is "waiting":
             uf_msg(player, "&e上の階が満員。空き次第、移ります")
 
+# ------------------------------------------------------------
+# ダンジョンの周りには敵が湧かない（2026-10-29）
+#   区域（建物 dungeon1・闘技場 dungeon2）の外側 nospawn_margin ブロックまで、自然に湧く敵を止める（高さは問わない）
+#   ダンジョンの敵は Skript が出している（理由が custom）ので影響しない。動物・村人・スライムの分裂・卵や管理者が出したものも止めない
+# ------------------------------------------------------------
+function uf_nospawnmargin() :: number:
+    return 128
+
+function uf_nearddungeon(l: location) :: boolean:
+    if {uf::cfg::world::dungeon} is not set:
+        return false
+    if "%world of {_l}%" is not {uf::cfg::world::dungeon}:
+        return false
+    set {_m} to uf_nospawnmargin()
+    loop "dungeon1" and "dungeon2":
+        set {_a} to {uf::area::%loop-value%::a}
+        set {_b} to {uf::area::%loop-value%::b}
+        if {_a} is set:
+            if {_b} is set:
+                set {_x} to x-coordinate of {_l}
+                set {_z} to z-coordinate of {_l}
+                if {_x} >= min(x-coordinate of {_a}, x-coordinate of {_b}) - {_m}:
+                    if {_x} <= max(x-coordinate of {_a}, x-coordinate of {_b}) + 1 + {_m}:
+                        if {_z} >= min(z-coordinate of {_a}, z-coordinate of {_b}) - {_m}:
+                            if {_z} <= max(z-coordinate of {_a}, z-coordinate of {_b}) + 1 + {_m}:
+                                return true
+    return false
+
+on spawn:
+    uf_on("dungeon") is true
+    set {_r} to "%spawn reason%"
+    {_r} contains "natural" or "patrol" or "raid" or "village invasion" or "trap" or "lightning"
+    set {_t} to "%type of event-entity%"
+    {_t} contains "zombie" or "skeleton" or "creeper" or "spider" or "enderman" or "witch" or "slime" or "phantom" or "drowned" or "husk" or "stray" or "pillager" or "vindicator" or "evoker" or "ravager" or "silverfish" or "bogged" or "breeze"
+    uf_nearddungeon(location of event-entity) is true
+    cancel event
+
 # 壁は壊せない
 on break:
     {uf::gatekind::%uf_lockey(location of event-block)%} is set
