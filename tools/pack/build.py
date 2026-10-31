@@ -63,6 +63,10 @@ def entries():
     E.append(('carrot_on_a_stick', 1503, 'gun_shotgun', 'generated'))
     E.append(('warped_fungus_on_a_stick', 1504, 'gun_energy', 'generated'))
     E.append(('iron_chestplate', 1601, 'armor_special', 'generated'))
+    # 管理者の装備（2001 から。uf_28_adminkit.sk）
+    E.append(('netherite_sword', 2001, 'ad_sword', 'handheld'))
+    for part, (vn, k) in pn.items():
+        E.append(('leather_%s' % vn, 2010 + k, 'ad_%s' % part, 'generated'))
     # 武具以外のアイテム（1700 から。uf_24_skin.sk の uf_refreshgear は、1700 からの番号のアイテムを作り直さずに番号だけ付ける）
     # 帰還の書（id は map。前のフロアマップは回収コンパスだったが、本にしたのでスキンを付けられる）
     E.append(('honey_bottle', 1701, 'heal_kit', 'generated'))

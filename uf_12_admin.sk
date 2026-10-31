@@ -8,6 +8,7 @@
 #   /ufadmin prot <名前> <pos1|pos2|del> / prot list
 #   /ufadmin points|chips <プレイヤー> <give|take|set> <数>
 #   /ufadmin info <プレイヤー>
+#   /ufadmin reset <プレイヤー名>     アカウントを最初の状態に戻す（確認画面あり。uf_28_adminkit.sk）
 #   /ufadmin unlock <プレイヤー> <階>
 #   /ufadmin shop / shopprice <id> <価格> / shopreq <id> <階>
 #   /ufadmin sellprice <価格> / sellcat <crop|fish|ore|wood|none>   手に持ったアイテム
@@ -187,6 +188,22 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             set {_ss} to uf_stat({_u}, "sold")
             set {_sm} to uf_stat({_u}, "minutes")
             send "&7討伐 %{_sk}% / 累計獲得 %{_se}% / 売却 %{_ss}% / プレイ %{_sm}%分" to player
+
+        # アカウントのリセット（uf_28_adminkit.sk）。確認画面を通す。オフラインの人は、持ち物などを次に入ったときにリセットする
+        else if {_a} is "reset":
+            if arg-2 is not set:
+                uf_msg(player, "&c/ufadmin reset <プレイヤー名>（オフラインの人も可）")
+                stop
+            set {_t} to arg-2 parsed as player
+            if {_t} is not set:
+                set {_t} to arg-2 parsed as offlineplayer
+            if {_t} is not set:
+                uf_msg(player, "&cプレイヤー名を指定してください")
+                stop
+            set {_ru} to "%uuid of {_t}%"
+            if {_t} is online:
+                set {-uf::apl::%{_ru}%} to {_t}
+            uf_confirm(player, "x/reset/%{_ru}%", "%{_t}% のアカウントをリセットする（持ち物・ポイント・進行を全部消す）")
 
         else if {_a} is "unlock":
             set {_t} to arg-2 parsed as player

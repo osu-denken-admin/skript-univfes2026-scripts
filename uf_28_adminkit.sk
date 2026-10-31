@@ -1,0 +1,357 @@
+# ============================================================
+# uf_28_adminkit.sk : 管理者の装備（剣・スーツ）と、アカウントのリセットなどの管理者向けの機能（2026-10-31）
+#   管理者の剣 ad_sword: 左クリックでプレイヤー・NPC 以外を一撃で倒す / 右クリックで近くのモンスターを全部倒す
+#     挑戦中のダンジョンの敵は倒さない（遊んでいる人の邪魔にならないように）
+#   管理者のスーツ ad_helmet / ad_chest / ad_legs / ad_boots: 見た目は黒いスーツ（uf_24_skin.sk のスキン、着たときの見た目も）
+#     4 つそろえて着ていると能力が付く: 無敵・飛行・高速移動・高ジャンプ・採掘速度・暗視・水中呼吸・モンスターに狙われない
+#     能力ごとに、管理者ツールの「管理者の装備と能力」（open/adm）で自分だけオン・オフできる
+#   どれも管理者（権限 univfes.admin）だけが拾える・効く。ほかの人は拾えず、効果もない
+#   アカウントのリセット: 学園祭では名前（アカウント）を変えられないので、管理者が「そのプレイヤーを最初から」にできる
+#     管理者ツールの「プレイヤー」→その人の画面、または /ufadmin reset <名前>（確認画面あり。オフラインの人も可）
+#     消すもの: ポイント・チップ・レベル・スキル・クリア記録・実績・統計・回収待ち・バイクの強化・今日のクエストなど（uf_resetdata）
+#     持ち物・エンダーチェスト・経験値も消し、サバイバルにして初期スポーンへ戻し、道しるべを渡し直す（uf_resetonline）
+#     オフラインの人は、データだけ先に消し、持ち物などは次に入ったときにリセットする（{uf::resetpending::<uuid>}）
+#   変数: {uf::admoff::<能力>::<uuid>}（オフにした能力）、{uf::resetpending::<uuid>}、{-uf::suit::<uuid>}（スーツの能力が効いている）
+# ============================================================
+
+# ------------------------------------------------------------
+# アイテム
+# ------------------------------------------------------------
+function uf_adminitem(id: text) :: item:
+    if {_id} is "ad_sword":
+        set {_b} to netherite sword
+        set {_n} to "&c&l管理者の剣"
+        add "&7管理者だけが持てる剣（壊れない）" to {_d::*}
+        add "&e左クリック: プレイヤーと NPC 以外を一撃で倒す" to {_d::*}
+        add "&e右クリック: 近くのモンスターを全部倒す" to {_d::*}
+        add "&7挑戦中のダンジョンの敵は倒さない" to {_d::*}
+    else:
+        if {_id} is "ad_helmet":
+            set {_b} to uf_leather("helmet", black)
+            set {_n} to "&c&l管理者のスーツ&f（ぼうし）"
+        else if {_id} is "ad_chest":
+            set {_b} to uf_leather("chest", black)
+            set {_n} to "&c&l管理者のスーツ&f（上着）"
+        else if {_id} is "ad_legs":
+            set {_b} to uf_leather("legs", black)
+            set {_n} to "&c&l管理者のスーツ&f（ズボン）"
+        else if {_id} is "ad_boots":
+            set {_b} to uf_leather("boots", black)
+            set {_n} to "&c&l管理者のスーツ&f（くつ）"
+        else:
+            return {_none}
+        add "&7管理者だけが使える黒いスーツ（壊れない）" to {_d::*}
+        add "&74 つそろえて着ると、次の能力が付く" to {_d::*}
+        add "&b無敵・飛行・高速移動・高ジャンプ・採掘速度・暗視・水中呼吸" to {_d::*}
+        add "&b・モンスターに狙われない" to {_d::*}
+        add "&7能力は管理者ツールの「管理者の装備と能力」でオン・オフできる" to {_d::*}
+    add "&8uf:%{_id}%" to {_d::*}
+    return uf_skin(unbreakable (({_b} named {_n}) with lore {_d::*}), {_id})
+
+# 管理者以外は拾えない
+on pickup:
+    uf_id(event-item) starts with "ad_"
+    uf_admin(player) is false
+    cancel event
+
+# ------------------------------------------------------------
+# 管理者の剣
+# ------------------------------------------------------------
+# 左クリック（プレイヤーと NPC 以外を一撃で倒す。挑戦中のダンジョンの敵は uf_05_dungeon.sk が先に止める）
+on damage:
+    set {_a} to attacker
+    {_a} is a player
+    uf_id(tool of {_a}) is "ad_sword"
+    uf_admin({_a}) is true
+    victim is not a player
+    victim is not a villager
+    set damage to 100000
+
+# 右クリック（近くのモンスターを全部倒す。挑戦中のダンジョンの敵は倒さない）
+on right click:
+    uf_id(player's tool) is "ad_sword"
+    uf_admin(player) is true
+    cancel event
+    set {_u} to uuid of player
+    if {-uf::admcd::%{_u}%} is set:
+        if {-uf::tick} - {-uf::admcd::%{_u}%} < 20:
+            stop
+    set {-uf::admcd::%{_u}%} to {-uf::tick}
+    set {_n} to 0
+    loop all monsters in radius 15 of location of player:
+        set {_keep} to false
+        set {_s} to metadata value "uf_sid" of loop-value
+        if {_s} is set:
+            if {-uf::sess::%{_s}%::on} is true:
+                set {_keep} to true
+        if {_keep} is false:
+            kill loop-value
+            add 1 to {_n}
+    play sound "entity.player.attack.sweep" with volume 1 at player
+    uf_msg(player, "&c近くのモンスターを %{_n}% 体倒した")
+
+# ------------------------------------------------------------
+# 管理者のスーツ（4 つそろえて着ているとき）
+# ------------------------------------------------------------
+function uf_adminsuit(p: player) :: boolean:
+    if uf_admin({_p}) is false:
+        return false
+    if uf_id(helmet of {_p}) is not "ad_helmet":
+        return false
+    if uf_id(chestplate of {_p}) is not "ad_chest":
+        return false
+    if uf_id(leggings of {_p}) is not "ad_legs":
+        return false
+    if uf_id(boots of {_p}) is not "ad_boots":
+        return false
+    return true
+
+# 能力の名前・説明・オンかどうか（オフにした能力だけ {uf::admoff::<能力>::<uuid>} に true が入る）
+function uf_admfeatname(f: text) :: text:
+    if {_f} is "god":
+        return "無敵"
+    if {_f} is "fly":
+        return "飛行"
+    if {_f} is "speed":
+        return "高速移動"
+    if {_f} is "jump":
+        return "高ジャンプ"
+    if {_f} is "haste":
+        return "採掘速度"
+    if {_f} is "night":
+        return "暗視"
+    if {_f} is "water":
+        return "水中呼吸"
+    return "モンスターに狙われない"
+
+function uf_admfeatdesc(f: text) :: text:
+    if {_f} is "god":
+        return "ダメージを受けない・おなかがへらない・奈落でも死なない"
+    if {_f} is "fly":
+        return "空を飛べる（ジャンプを 2 回押すと飛び始める）"
+    if {_f} is "speed":
+        return "とても速く走れる"
+    if {_f} is "jump":
+        return "高くジャンプできる"
+    if {_f} is "haste":
+        return "ブロックをすばやく壊せる"
+    if {_f} is "night":
+        return "暗いところでも昼のように見える"
+    if {_f} is "water":
+        return "水の中で息が続く"
+    return "モンスターが襲ってこない"
+
+function uf_admfeaton(p: player, f: text) :: boolean:
+    if {uf::admoff::%{_f}%::%uuid of {_p}%} is true:
+        return false
+    return true
+
+# 能力を付ける（1 秒ごとに呼ぶ）
+function uf_admapply(p: player):
+    if uf_admfeaton({_p}, "god") is true:
+        set food level of {_p} to 20
+        if health of {_p} < max health of {_p}:
+            heal {_p}
+        # 奈落に落ちたら初期スポーンへ（奈落のダメージは無効にしても落ち続けるため）
+        if y-coordinate of {_p} < -60:
+            set {_to} to {uf::cfg::farspawn}
+            if {_to} is not set:
+                set {_to} to spawn of world of {_p}
+            teleport {_p} to {_to}
+    if uf_admfeaton({_p}, "fly") is true:
+        allow flight to {_p}
+    else if gamemode of {_p} is survival or adventure:
+        disallow flight for {_p}
+    if uf_admfeaton({_p}, "speed") is true:
+        apply speed 3 to {_p} for 3 seconds
+    if uf_admfeaton({_p}, "jump") is true:
+        apply jump boost 3 to {_p} for 3 seconds
+    if uf_admfeaton({_p}, "haste") is true:
+        apply haste 4 to {_p} for 3 seconds
+    if uf_admfeaton({_p}, "night") is true:
+        apply night vision 1 to {_p} for 30 seconds
+    if uf_admfeaton({_p}, "water") is true:
+        apply water breathing 1 to {_p} for 3 seconds
+
+# 能力を外す（スーツを脱いだとき・能力をオフにしたとき。残りの能力は次の 1 秒で付け直す）
+function uf_admclear(p: player):
+    remove speed from {_p}
+    remove jump boost from {_p}
+    remove haste from {_p}
+    remove night vision from {_p}
+    remove water breathing from {_p}
+    if gamemode of {_p} is survival or adventure:
+        disallow flight for {_p}
+
+every 1 second:
+    loop all players:
+        set {_p} to loop-player
+        if uf_adminsuit({_p}) is true:
+            set {-uf::suit::%uuid of {_p}%} to true
+            uf_admapply({_p})
+        else if {-uf::suit::%uuid of {_p}%} is set:
+            delete {-uf::suit::%uuid of {_p}%}
+            uf_admclear({_p})
+
+on quit:
+    delete {-uf::suit::%uuid of player%}
+
+# 無敵
+on damage of player:
+    set {_p} to victim
+    uf_adminsuit({_p}) is true
+    uf_admfeaton({_p}, "god") is true
+    cancel event
+
+# モンスターに狙われない
+on target:
+    target is a player
+    set {_p} to target
+    uf_adminsuit({_p}) is true
+    uf_admfeaton({_p}, "ghost") is true
+    cancel event
+
+# ------------------------------------------------------------
+# 管理者ツールの画面（管理者の装備と能力）
+# ------------------------------------------------------------
+function uf_ap_adm(p: player):
+    set {_g} to uf_apage({_p}, "&4管理者の装備と能力")
+    if uf_adminsuit({_p}) is true:
+        set {_st} to "&aスーツを着ているので、下の能力が効いています"
+    else:
+        set {_st} to "&7スーツを 4 つ着ると、下の能力が効きます"
+    uf_abtn({_p}, {_g}, 4, uf_item("ad_chest"), "&c&l管理者のスーツ", "%{_st}%|&7能力ごとに、ここでオン・オフできる（自分だけ）", "")
+    set {_s} to 10
+    loop "god", "fly", "speed", "jump", "haste", "night", "water" and "ghost":
+        set {_f} to loop-value
+        if uf_admfeaton({_p}, {_f}) is true:
+            uf_abtn({_p}, {_g}, {_s}, lime concrete, "&a%uf_admfeatname({_f})%", "&7%uf_admfeatdesc({_f})%|&aオン|&eクリックでオフにする", "admtoggle/%{_f}%")
+        else:
+            uf_abtn({_p}, {_g}, {_s}, red concrete, "&c%uf_admfeatname({_f})%", "&7%uf_admfeatdesc({_f})%|&cオフ|&eクリックでオンにする", "admtoggle/%{_f}%")
+        add 1 to {_s}
+    uf_abtn({_p}, {_g}, 28, uf_item("ad_sword"), "&c管理者の剣", "&7クリックで 1 本受け取る", "give/ad_sword")
+    uf_abtn({_p}, {_g}, 30, uf_item("ad_helmet"), "&cスーツ（ぼうし）", "&7クリックで 1 つ受け取る", "give/ad_helmet")
+    uf_abtn({_p}, {_g}, 31, uf_item("ad_chest"), "&cスーツ（上着）", "&7クリックで 1 つ受け取る", "give/ad_chest")
+    uf_abtn({_p}, {_g}, 32, uf_item("ad_legs"), "&cスーツ（ズボン）", "&7クリックで 1 つ受け取る", "give/ad_legs")
+    uf_abtn({_p}, {_g}, 33, uf_item("ad_boots"), "&cスーツ（くつ）", "&7クリックで 1 つ受け取る", "give/ad_boots")
+    uf_abtn({_p}, {_g}, 34, nether star, "&eスーツ 4 つをまとめて受け取る", "&7ぼうし・上着・ズボン・くつ", "admset/x")
+    uf_ashow({_p}, {_g}, "hub")
+
+# 管理者ツールの操作（uf_14_admintool.sk の uf_aact から）
+function uf_admact(p: player, c: text, a: text):
+    if {_c} is "admtoggle":
+        if uf_admfeaton({_p}, {_a}) is true:
+            set {uf::admoff::%{_a}%::%uuid of {_p}%} to true
+        else:
+            delete {uf::admoff::%{_a}%::%uuid of {_p}%}
+        uf_admclear({_p})
+        uf_msg({_p}, "&a%uf_admfeatname({_a})%: %uf_onoff(uf_admfeaton({_p}, {_a}))%")
+    else if {_c} is "admset":
+        uf_give({_p}, uf_item("ad_helmet"))
+        uf_give({_p}, uf_item("ad_chest"))
+        uf_give({_p}, uf_item("ad_legs"))
+        uf_give({_p}, uf_item("ad_boots"))
+        uf_msg({_p}, "&a管理者のスーツを受け取りました")
+    else:
+        # ここから下は、操作する相手のプレイヤー（a は uuid）が要る
+        set {_t} to {-uf::apl::%{_a}%}
+        if {_c} is "reset":
+            uf_resetplayer({_p}, {_a})
+            stop
+        if {_t} is not set:
+            uf_msg({_p}, "&cそのプレイヤーが見つかりません（画面を開き直してください）")
+            stop
+        if {_t} is not online:
+            uf_msg({_p}, "&cそのプレイヤーはオフラインです")
+            stop
+        if {_c} is "tpto":
+            teleport {_p} to {_t}
+            uf_msg({_p}, "&a%{_t}% の所へ行きました")
+        else if {_c} is "bring":
+            teleport {_t} to {_p}
+            uf_msg({_p}, "&a%{_t}% を呼びました")
+            uf_msg({_t}, "&e管理者の所へ移動しました")
+        else if {_c} is "healp":
+            heal {_t}
+            set food level of {_t} to 20
+            uf_msg({_p}, "&a%{_t}% の体力とおなかを回復しました")
+
+# ------------------------------------------------------------
+# アカウントのリセット
+# ------------------------------------------------------------
+# プレイヤーのデータ（変数）を消す。u は uuid の文字
+function uf_resetdata(u: text):
+    delete {uf::pt::%{_u}%}
+    delete {uf::chip::%{_u}%}
+    delete {uf::xp::%{_u}%}
+    delete {uf::lv::%{_u}%}
+    delete {uf::sp::%{_u}%}
+    delete {uf::skill::%{_u}%::*}
+    delete {uf::qp::%{_u}%::*}
+    delete {uf::qpday::%{_u}%}
+    delete {uf::clear::%{_u}%::*}
+    delete {uf::rec::%{_u}%::*}
+    delete {uf::recidx::%{_u}%::*}
+    delete {uf::recn::%{_u}%}
+    delete {uf::unlock::%{_u}%}
+    delete {uf::ach::%{_u}%::*}
+    delete {uf::stat::%{_u}%::*}
+    delete {uf::bikelv::%{_u}%}
+    delete {uf::travelgiven::%{_u}%}
+    delete {uf::travelback::%{_u}%}
+    delete {uf::advmode::%{_u}%}
+    delete {uf::selltoday::%{_u}%}
+    delete {uf::sellday::%{_u}%}
+    delete {uf::gearrev::%{_u}%}
+    delete {uf::joined::%{_u}%}
+
+# オンラインの人の持ち物・経験値・場所などを最初の状態にする
+function uf_resetonline(t: player):
+    set {_u} to uuid of {_t}
+    if {-uf::insess::%{_u}%} is set:
+        uf_dleave({_t})
+    uf_partyleave({_t})
+    delete {-uf::suit::%{_u}%}
+    clear inventory of {_t}
+    clear ender chest of {_t}
+    set level of {_t} to 0
+    set level progress of {_t} to 0
+    heal {_t}
+    set food level of {_t} to 20
+    set gamemode of {_t} to survival
+    disallow flight for {_t}
+    set {uf::joined::%{_u}%} to now
+    set {uf::travelgiven::%{_u}%} to true
+    uf_give({_t}, uf_item("travel"))
+    if uf_admin({_t}) is true:
+        uf_give({_t}, uf_item("admin_tool"))
+    set {_to} to {uf::cfg::farspawn}
+    if {_to} is not set:
+        set {_to} to spawn of world of {_t}
+    teleport {_t} to {_to}
+    uf_msg({_t}, "&eアカウントを最初の状態にリセットしました。はじめから楽しんでください！")
+
+# 管理者 p が、uuid が u の人をリセットする
+function uf_resetplayer(p: player, u: text):
+    uf_resetdata({_u})
+    set {_t} to {-uf::apl::%{_u}%}
+    set {_done} to false
+    if {_t} is set:
+        if {_t} is online:
+            uf_resetonline({_t})
+            set {_done} to true
+            uf_msg({_p}, "&a%{_t}% のアカウントをリセットしました")
+    if {_done} is false:
+        set {uf::resetpending::%{_u}%} to true
+        uf_msg({_p}, "&aデータを消しました。持ち物などは、その人が次に入ったときにリセットします")
+    uf_adminlog({_p}, "reset account %{_u}%")
+    uf_log("admin", "reset account %{_u}% by %{_p}%")
+
+# オフラインのときにリセットされた人が入ってきたとき（ほかの入室の処理が終わってから）
+on join:
+    {uf::resetpending::%uuid of player%} is true
+    wait 4 seconds
+    player is online
+    delete {uf::resetpending::%uuid of player%}
+    uf_resetdata("%uuid of player%")
+    uf_resetonline(player)

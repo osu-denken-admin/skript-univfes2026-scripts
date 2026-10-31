@@ -68,6 +68,17 @@ function uf_skinid(id: text) :: number:
         return 1504
     if {_id} is "armor_special":
         return 1601
+    # 管理者の装備（uf_28_adminkit.sk。1700 以上なので、作り直さずに番号だけ付ける）
+    if {_id} is "ad_sword":
+        return 2001
+    if {_id} is "ad_helmet":
+        return 2011
+    if {_id} is "ad_chest":
+        return 2012
+    if {_id} is "ad_legs":
+        return 2013
+    if {_id} is "ad_boots":
+        return 2014
     # 武具以外のアイテム（1700 から）
     if {_id} starts with "rare_":
         set {_f} to (last (length of {_id} - 5) characters of {_id}) parsed as number
@@ -148,6 +159,8 @@ function uf_wornmodel(id: text) :: text:
         return "uf:lucky"
     if {_id} is "armor_special":
         return "uf:special"
+    if {_id} is "ad_helmet" or "ad_chest" or "ad_legs" or "ad_boots":
+        return "uf:suit"
     return ""
 
 function uf_skin(i: item, id: text) :: item:
@@ -231,4 +244,4 @@ on load:
 
 # リソースパックの SHA-1（tools/pack/build.py が書き換える。変わると、入ってきた人がもう一度読み込む）
 function uf_packhash() :: text:
-    return "599a66cd937e20da49577176a0ccfa4cd7b79872"
+    return "02d7cd31e30d9c081e330d3f531f39bf5a60b401"

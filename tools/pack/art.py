@@ -797,6 +797,68 @@ def boots_lucky():
 
 
 # ------------------------------------------------------------
+# 管理者の装備（剣とスーツ。2026-10-31）
+# ------------------------------------------------------------
+def w_admin(u, v):
+    # 管理者の剣: 黒い柄に赤い宝石の柄頭、金のつば、白銀の刃に赤く光るふちと真ん中の溝
+    h = hilt(u, v, grip='#14121a', wrap='#3a1a24', guard='#e8c04a', guard_w=4.6, pommel='#ff2a4a', gu=(0, 8))
+    if h:
+        return h
+    if 8 <= u < 33:
+        w = 2.8 if u < 29 else 2.8 * (33 - u) / 4
+        if abs(v) <= w:
+            if abs(v) > w - 0.9:
+                return '#ff4a5a' if v < 0 else '#b01428'
+            if abs(v) < 0.5 and u < 28:
+                return '#ffffff' if int(u) % 3 == 0 else '#8a8f9a'
+            return shade(v, '#ffffff', '#dfe5ea', '#a9b2bd', w)
+    return None
+
+
+def helmet_fedora():
+    # 管理者のスーツ（ぼうし）: 黒いフェルト帽に赤い帯と金のバッジ
+    c = Canvas()
+    c.rect(9, 6, 22, 18, '#1c1c24')
+    c.rect(9, 6, 12, 18, '#3a3a48')
+    c.rect(20, 6, 22, 18, '#0c0c12')
+    c.rect(14, 5, 17, 6, '#0c0c12')
+    c.rect(9, 14, 22, 17, '#c62a3a')
+    c.rect(3, 18, 28, 22, '#1c1c24')
+    c.rect(3, 21, 28, 22, '#0c0c12')
+    c.rect(15, 15, 16, 16, '#e8c04a')
+    return c.outline()
+
+
+def chest_suit():
+    # 管理者のスーツ（上着）: 黒いスーツに白いシャツと赤いネクタイ、金のボタン、胸に白いチーフ
+    c = chest(('#1c1c24', '#0c0c12'))
+    c.poly([(11, 4), (21, 4), (16, 14)], '#f4f6f8')
+    c.poly([(15, 6), (17, 6), (18, 16), (16, 19), (14, 16)], '#c62a3a')
+    c.rect(15, 6, 16, 7, '#8a1c28')
+    for y in (21, 25):
+        c.rect(12, y, 13, y + 1, '#e8c04a')
+        c.rect(18, y, 19, y + 1, '#e8c04a')
+    c.rect(8, 12, 10, 13, '#ffffff')
+    c.rect(4, 9, 5, 11, '#3a3a48')
+    return c.outline()
+
+
+def legs_suit():
+    # 管理者のスーツ（ズボン）: 黒、金のバックル
+    def e(c):
+        c.rect(15, 4, 16, 5, '#e8c04a')
+    return legs('#1c1c24', '#0c0c12', '#0c0c12', e)
+
+
+def boots_suit():
+    # 管理者のスーツ（くつ）: 黒い革靴、つま先に光沢
+    def e(c):
+        c.rect(3, 21, 6, 21, '#6a6a7a')
+        c.rect(25, 21, 28, 21, '#6a6a7a')
+    return boots('#14141c', '#08080c', '#050508', e)
+
+
+# ------------------------------------------------------------
 # 銃（横から。銃口は左）
 # ------------------------------------------------------------
 def gun_handgun():
@@ -902,6 +964,11 @@ def all_textures():
         'cg_legs': legs_lucky(),
         'cg_boots': boots_lucky(),
         'armor_special': chest_special(),
+        'ad_sword': diag(w_admin, outline='#14000a'),
+        'ad_helmet': helmet_fedora(),
+        'ad_chest': chest_suit(),
+        'ad_legs': legs_suit(),
+        'ad_boots': boots_suit(),
         'gun_handgun': gun_handgun(),
         'gun_rifle': gun_rifle(),
         'gun_shotgun': gun_shotgun(),

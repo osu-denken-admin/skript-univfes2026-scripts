@@ -27,6 +27,9 @@ SETS = {
     # ラッキーセット（金色に赤）
     'lucky': dict(base='#f2c230', dark='#b8860b', light='#fff07a', trim='#d62f3a', gem='#3ac25a', leg='#f2c230',
                   boot='#b8860b', tie='#d62f3a', front='#f5d164'),
+    # 管理者のスーツ（黒いスーツに白いシャツ、赤いネクタイ・帯、金のボタン）
+    'suit': dict(base='#1c1c24', dark='#0c0c12', light='#3a3a48', trim='#4a4a5a', gem='#e8c04a', leg='#1c1c24',
+                 boot='#0a0a0e', tie='#c62a3a', front='#f4f6f8'),
     # 特殊な防具（鉄色に水色）
     'special': dict(base='#7f96b0', dark='#4f6680', light='#b8cde0', trim='#3fd0e0', gem='#3fd0e0', leg='#4f6680',
                     boot='#4f6680', tie='#b8cde0', front='#b8cde0'),

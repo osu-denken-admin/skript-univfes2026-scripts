@@ -342,6 +342,8 @@ function uf_adminopen(p: player, page: text):
         uf_ap_npcs({_p})
     else if {_k} is "chall":
         uf_ap_chall({_p})
+    else if {_k} is "adm":
+        uf_ap_adm({_p})
     else if {_k} is "player":
         uf_ap_player({_p}, {_q::2})
     else if {_k} is "areas":
@@ -381,6 +383,7 @@ function uf_ap_hub(p: player):
     uf_abtn({_p}, {_g}, 38, villager spawn egg, "&eNPC（受付・ショップ・カジノ・スキル）", "&7話しかけると画面が開く村人", "open/npcs")
     uf_abtn({_p}, {_g}, 41, crying obsidian, "&eボスへの入り方の案内", "&7壁の「右クリックで…」の文字と、額縁に飾る説明の絵", "open/guide")
     uf_abtn({_p}, {_g}, 39, gilded blackstone, "&e地下カジノ", "&715号館の地下のカジノ（建物）を作る・埋め戻す", "open/chall")
+    uf_abtn({_p}, {_g}, 42, netherite sword, "&c管理者の装備と能力", "&7管理者の剣・スーツを受け取る|&7スーツの能力（無敵・飛行など）のオン・オフ", "open/adm")
     if {uf::cfg::skin::enabled} is true:
         uf_abtn({_p}, {_g}, 40, painting, "&a武具のスキン: 送る", "&7入ってきた人にリソースパック（武具の絵）を送る|&7統合版には送られない|&eクリックで送らないようにする", "skin")
     else:
@@ -963,6 +966,10 @@ function uf_ap_player(p: player, u: text):
     uf_abtn({_p}, {_g}, 24, oak door, "&e挑戦できる最上階", "&7現在: %uf_unlock({_t})%階|&eクリックで変更", "edit/unlock/%{_u}%")
     if {-uf::insess::%{_u}%} is set:
         uf_abtn({_p}, {_g}, 31, barrier, "&cダンジョンから退出させる", "&7確認画面が出ます", "ask/%{_t}% をダンジョンから退出させる|pleave/%{_u}%")
+    uf_abtn({_p}, {_g}, 38, ender pearl, "&eそのプレイヤーの所へ行く", "&7自分がテレポートする", "tpto/%{_u}%")
+    uf_abtn({_p}, {_g}, 39, ender eye, "&eここに呼ぶ", "&7そのプレイヤーを自分の所へテレポートする", "bring/%{_u}%")
+    uf_abtn({_p}, {_g}, 41, golden apple, "&a体力とおなかを回復", "&7体力と満腹度を全部回復する", "healp/%{_u}%")
+    uf_abtn({_p}, {_g}, 43, tnt, "&cアカウントをリセット", "&7ポイント・チップ・レベル・スキル・クリア記録・実績・持ち物を全部消して最初から|&7確認画面が出ます", "ask/%{_t}% のアカウントをリセットする（持ち物・ポイント・進行を全部消す）|reset/%{_u}%")
     if {_p} is op:
         if {_t} is {_p}:
             uf_abtn({_p}, {_g}, 33, nether star, "&7OP: あり（自分）", "&7自分の OP はここでは外せません", "")
@@ -1083,7 +1090,7 @@ function uf_ap_protarea(p: player, n: text):
 function uf_ap_items(p: player, pg: number = 1):
     if {_pg} is not set:
         set {_pg} to 1
-    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "travel", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "cg_sword", "cg_bow", "cg_helmet", "cg_chest", "cg_legs", "cg_boots", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9", "sp_potion" and "admin_tool"
+    set {_ids::*} to "heal_kit", "mat_upgrade", "mat_special", "mat_part", "mat_final", "melee_basic", "melee_adv", "gun_handgun", "gun_rifle", "gun_shotgun", "gun_energy", "ammo", "acc_basic", "acc_rare", "hook", "armor_special", "ore_potion", "map", "travel", "tool_pick3", "tool_shovel3", "tool_axe", "bike_key", "bike_key_scooter", "bike_key_offroad", "bike_kit", "dgw_2", "dgw_3", "dgw_4", "dgw_5", "dgw_6", "dgw_7", "dgw_8", "dgw_9", "dgb_2", "dgb_3", "dgb_4", "dgb_5", "dgb_6", "dgb_7", "dgb_8", "dgb_9", "dga_uniform_helmet", "dga_uniform_chest", "dga_uniform_legs", "dga_uniform_boots", "dga_labcoat_helmet", "dga_labcoat_chest", "dga_labcoat_legs", "dga_labcoat_boots", "dga_lord_helmet", "dga_lord_chest", "dga_lord_legs", "dga_lord_boots", "it_onigiri", "it_speed", "it_power", "it_guard", "it_jump", "it_night", "it_bomb", "it_warp", "trophy_15", "cg_sword", "cg_bow", "cg_helmet", "cg_chest", "cg_legs", "cg_boots", "rare_2", "rare_3", "rare_4", "rare_5", "rare_6", "rare_7", "rare_8", "rare_9", "sp_potion", "admin_tool", "ad_sword", "ad_helmet", "ad_chest", "ad_legs" and "ad_boots"
     set {_last} to ceil(size of {_ids::*} / 45)
     set {_pg} to max(1, min({_pg}, {_last}))
     set {_g} to uf_apage({_p}, "&4特殊アイテム %{_pg}% / %{_last}%（クリックで1個受け取る）")
@@ -1498,6 +1505,9 @@ function uf_aact(p: player, a: text):
         else:
             delete {uf::atoolview::%{_u}%}
             uf_msg({_p}, "&a管理メニューを本の画面で開くようにしました")
+    else if {_c} is "reset" or "tpto" or "bring" or "healp" or "admtoggle" or "admset":
+        # 管理者の装備・アカウントのリセットなど（uf_28_adminkit.sk）
+        uf_admact({_p}, {_c}, {_x::2})
     else if {_c} is "pleave":
         set {_t} to {-uf::apl::%{_x::2}%}
         if {_t} is online:
