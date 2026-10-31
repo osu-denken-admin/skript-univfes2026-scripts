@@ -27,8 +27,10 @@ function uf_adminitem(id: text) :: item:
         add "&7挑戦中のダンジョンの敵は倒さない" to {_d::*}
     else:
         if {_id} is "ad_helmet":
-            set {_b} to uf_leather("helmet", black)
+            # 頭に着けたときに 3D の帽子（つば付き）を出すため、頭に着けられるドクロを土台にする（リソースパックが絵を差し替える）
+            set {_b} to skeleton skull
             set {_n} to "&c&l管理者のスーツ&f（ぼうし）"
+            add "&7頭の装備の場所に入れて着る（右クリックでは着られない）" to {_d::*}
         else if {_id} is "ad_chest":
             set {_b} to uf_leather("chest", black)
             set {_n} to "&c&l管理者のスーツ&f（上着）"

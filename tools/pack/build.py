@@ -65,8 +65,11 @@ def entries():
     E.append(('iron_chestplate', 1601, 'armor_special', 'generated'))
     # 管理者の装備（2001 から。uf_28_adminkit.sk）
     E.append(('netherite_sword', 2001, 'ad_sword', 'handheld'))
+    # ぼうしだけは、頭に着けたときに 3D の帽子（つば付き）を出すため、ドクロ（頭に着けられるアイテム）を土台にする
+    E.append(('skeleton_skull', 2011, 'ad_helmet', 'hat'))
     for part, (vn, k) in pn.items():
-        E.append(('leather_%s' % vn, 2010 + k, 'ad_%s' % part, 'generated'))
+        if part != 'helmet':
+            E.append(('leather_%s' % vn, 2010 + k, 'ad_%s' % part, 'generated'))
     # 武具以外のアイテム（1700 から。uf_24_skin.sk の uf_refreshgear は、1700 からの番号のアイテムを作り直さずに番号だけ付ける）
     # 帰還の書（id は map。前のフロアマップは回収コンパスだったが、本にしたのでスキンを付けられる）
     E.append(('honey_bottle', 1701, 'heal_kit', 'generated'))
@@ -145,6 +148,9 @@ def vanilla_model(base):
                 'fallback': {'type': 'minecraft:model', 'model': 'minecraft:item/spyglass_in_hand'}}
     if base == 'piston':
         return {'type': 'minecraft:model', 'model': 'minecraft:block/piston_inventory'}
+    if base == 'skeleton_skull':
+        return {'type': 'minecraft:special', 'base': 'minecraft:item/template_skull',
+                'model': {'type': 'minecraft:head', 'kind': 'skeleton'}}
     return {'type': 'minecraft:model', 'model': 'minecraft:item/' + base}
 
 
@@ -167,7 +173,30 @@ def custom_model(uid, kind):
         return {'type': 'minecraft:condition', 'property': 'minecraft:fishing_rod/cast',
                 'on_false': {'type': 'minecraft:model', 'model': 'uf:item/' + uid},
                 'on_true': {'type': 'minecraft:model', 'model': 'uf:item/%s_cast' % uid}}
+    if kind == 'hat':
+        # 頭に着けたとき（head）だけ 3D の帽子。持ち物・手・地面などは平らな絵
+        return {'type': 'minecraft:select', 'property': 'minecraft:display_context',
+                'cases': [{'when': 'head', 'model': {'type': 'minecraft:model', 'model': 'uf:item/%s_hat' % uid}}],
+                'fallback': {'type': 'minecraft:model', 'model': 'uf:item/' + uid}}
     return {'type': 'minecraft:model', 'model': 'uf:item/' + uid}
+
+
+def hat_model():
+    """管理者のぼうし（フェルト帽）の 3D モデル。単位は 1/16 ブロック。頭に着けたとき、モデルは 0.625 倍・y=8 が頭の真ん中に来る
+    （頭のてっぺんが y=14.4）。つば・帯・山の 3 つの箱。"""
+    def box(a, b, tex):
+        f = {'texture': '#' + tex, 'uv': [0, 0, 16, 16]}
+        return {'from': a, 'to': b, 'faces': {d: dict(f) for d in ('north', 'south', 'east', 'west', 'up', 'down')}}
+    return {
+        'textures': {'felt': 'uf:item/ad_hat_felt', 'band': 'uf:item/ad_hat_band', 'particle': 'uf:item/ad_hat_felt'},
+        'elements': [
+            box([-2, 12.8, -2], [18, 13.8, 18], 'felt'),     # つば
+            box([1, 13.8, 1], [15, 15.8, 15], 'band'),       # 赤い帯
+            box([1, 15.8, 1], [15, 19.6, 15], 'felt'),       # 山
+            box([2, 19.6, 2], [14, 20.3, 14], 'felt'),       # てっぺん（少し細く）
+        ],
+        'display': {'head': {'rotation': [0, 0, 0], 'translation': [0, 0, 0], 'scale': [1, 1, 1]}},
+    }
 
 
 def build():
@@ -181,10 +210,14 @@ def build():
         tn = tex_name(uid)
         if tn not in T:
             raise SystemExit('絵がない: ' + tn)
-        parent = {'handheld': 'minecraft:item/handheld', 'generated': 'minecraft:item/generated',
+        parent = {'handheld': 'minecraft:item/handheld', 'generated': 'minecraft:item/generated', 'hat': 'minecraft:item/generated',
                   'bow': 'minecraft:item/bow', 'rod': 'minecraft:item/handheld_rod'}[kind]
         files['assets/uf/models/item/%s.json' % uid] = json.dumps({'parent': parent, 'textures': {'layer0': 'uf:item/' + tn}})
         files['assets/uf/textures/item/%s.png' % tn] = flipx(T[tn].png()) if kind == 'bow' else T[tn].png()
+        if kind == 'hat':
+            files['assets/uf/models/item/%s_hat.json' % uid] = json.dumps(hat_model())
+            files['assets/uf/textures/item/ad_hat_felt.png'] = T['ad_hat_felt'].png()
+            files['assets/uf/textures/item/ad_hat_band.png'] = T['ad_hat_band'].png()
         if kind == 'rod':
             files['assets/uf/models/item/%s_cast.json' % uid] = json.dumps(
                 {'parent': parent, 'textures': {'layer0': 'uf:item/%s_cast' % tn}})

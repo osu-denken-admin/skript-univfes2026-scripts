@@ -159,7 +159,8 @@ function uf_wornmodel(id: text) :: text:
         return "uf:lucky"
     if {_id} is "armor_special":
         return "uf:special"
-    if {_id} is "ad_helmet" or "ad_chest" or "ad_legs" or "ad_boots":
+    # 管理者のスーツ。ぼうし（ad_helmet）は 3D の帽子なので、着たときの見た目（装備のモデル）は付けない
+    if {_id} is "ad_chest" or "ad_legs" or "ad_boots":
         return "uf:suit"
     return ""
 
@@ -244,4 +245,4 @@ on load:
 
 # リソースパックの SHA-1（tools/pack/build.py が書き換える。変わると、入ってきた人がもう一度読み込む）
 function uf_packhash() :: text:
-    return "02d7cd31e30d9c081e330d3f531f39bf5a60b401"
+    return "f4e15b4ed52b5019dd9900eb11b8a6ec0a3945e1"

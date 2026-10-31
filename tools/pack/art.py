@@ -800,19 +800,69 @@ def boots_lucky():
 # 管理者の装備（剣とスーツ。2026-10-31）
 # ------------------------------------------------------------
 def w_admin(u, v):
-    # 管理者の剣: 黒い柄に赤い宝石の柄頭、金のつば、白銀の刃に赤く光るふちと真ん中の溝
-    h = hilt(u, v, grip='#14121a', wrap='#3a1a24', guard='#e8c04a', guard_w=4.6, pommel='#ff2a4a', gu=(0, 8))
-    if h:
-        return h
-    if 8 <= u < 33:
-        w = 2.8 if u < 29 else 2.8 * (33 - u) / 4
-        if abs(v) <= w:
-            if abs(v) > w - 0.9:
-                return '#ff4a5a' if v < 0 else '#b01428'
-            if abs(v) < 0.5 and u < 28:
-                return '#ffffff' if int(u) % 3 == 0 else '#8a8f9a'
-            return shade(v, '#ffffff', '#dfe5ea', '#a9b2bd', w)
+    # 管理者の剣: 細身の長剣。白銀の刃に金の溝（赤い光の点）、金の翼のつば、赤い宝石、柄頭にも赤い宝石
+    r = math.hypot(u - 1.2, v)
+    if r <= 1.9:
+        return '#ff2a4a' if r < 1.0 else '#e8c04a'
+    if 1.9 < u < 6.6 and abs(v) <= 0.95:
+        return '#e8c04a' if int(u * 0.9) % 2 == 1 else '#3a1020'
+    av = abs(v)
+    # つば（翼のように両端が刃の方へ反る）
+    if 6.4 <= u <= 8.2 + max(0.0, av - 1.6) * 1.1 and av <= 4.8:
+        if (u - 7.3) ** 2 + v ** 2 < 1.5:
+            return '#ff2a4a'
+        if av > 4.0:
+            return '#ffffff'
+        return '#fff0a0' if v < 0 else ('#e8c04a' if av < 3 else '#b8860b')
+    if 8.2 < u < 33:
+        w = 1.9 if u < 26 else 1.9 * (33 - u) / 7
+        if u < 11:
+            w = 1.5 + (u - 8.2) * 0.14
+        if av <= w:
+            if av > w - 0.7:
+                return '#ffffff' if v < 0 else '#8e9bb0'
+            if av < 0.45 and 11 < u < 27:
+                return '#ff4a5a' if int(u) % 5 == 0 else '#e8c04a'
+            return '#eef3fa' if v < 0 else '#c4cedb'
     return None
+
+
+class _Tex16:
+    def __init__(self, pixels):
+        self.pixels = pixels
+
+    def png(self):
+        im = Image.new('RGBA', (16, 16), (0, 0, 0, 255))
+        for (x, y), c in self.pixels.items():
+            im.putpixel((x, y), hexc(c))
+        b = io.BytesIO()
+        im.save(b, 'PNG')
+        return b.getvalue()
+
+
+def hat_felt():
+    # 黒いフェルト（ほんの少し織り目）
+    return _Tex16({(x, y): ('#2a2a36' if (x + y * 2) % 5 == 0 else '#1c1c24') for x in range(16) for y in range(16)})
+
+
+def hat_band():
+    # 赤い帯（真ん中に金のバッジ）
+    px = {(x, y): ('#8a1c28' if (x + y * 2) % 5 == 0 else '#c62a3a') for x in range(16) for y in range(16)}
+    for x in range(6, 10):
+        for y in range(5, 11):
+            px[(x, y)] = '#e8c04a'
+    return _Tex16(px)
+
+
+def sword_admin():
+    c = diag(w_admin, outline='#14000a')
+    # 刃の先のまわりの光の粒（十字）
+    for (x, y) in ((27, 3), (29, 9)):
+        c.set(x, y, '#fff0a0')
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if (x + dx, y + dy) not in c.px:
+                c.set(x + dx, y + dy, '#ffe9a0')
+    return c
 
 
 def helmet_fedora():
@@ -964,7 +1014,9 @@ def all_textures():
         'cg_legs': legs_lucky(),
         'cg_boots': boots_lucky(),
         'armor_special': chest_special(),
-        'ad_sword': diag(w_admin, outline='#14000a'),
+        'ad_sword': sword_admin(),
+        'ad_hat_felt': hat_felt(),
+        'ad_hat_band': hat_band(),
         'ad_helmet': helmet_fedora(),
         'ad_chest': chest_suit(),
         'ad_legs': legs_suit(),
