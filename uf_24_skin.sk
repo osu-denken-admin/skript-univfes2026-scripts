@@ -245,4 +245,4 @@ on load:
 
 # リソースパックの SHA-1（tools/pack/build.py が書き換える。変わると、入ってきた人がもう一度読み込む）
 function uf_packhash() :: text:
-    return "f4e15b4ed52b5019dd9900eb11b8a6ec0a3945e1"
+    return "f02c95fed6bccf68110270deb329bb23dc23ab32"

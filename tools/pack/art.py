@@ -800,31 +800,47 @@ def boots_lucky():
 # 管理者の装備（剣とスーツ。2026-10-31）
 # ------------------------------------------------------------
 def w_admin(u, v):
-    # 管理者の剣: 細身の長剣。白銀の刃に金の溝（赤い光の点）、金の翼のつば、赤い宝石、柄頭にも赤い宝石
-    r = math.hypot(u - 1.2, v)
-    if r <= 1.9:
-        return '#ff2a4a' if r < 1.0 else '#e8c04a'
-    if 1.9 < u < 6.6 and abs(v) <= 0.95:
-        return '#e8c04a' if int(u * 0.9) % 2 == 1 else '#3a1020'
+    # 管理者の剣（デジタルな光の剣）: 水色に光る刃（真ん中は白、2 進数の目印）、つばは CPU チップ（金のピン）、柄に緑の LED、柄頭は USB コネクタ
     av = abs(v)
-    # つば（翼のように両端が刃の方へ反る）
-    if 6.4 <= u <= 8.2 + max(0.0, av - 1.6) * 1.1 and av <= 4.8:
-        if (u - 7.3) ** 2 + v ** 2 < 1.5:
-            return '#ff2a4a'
-        if av > 4.0:
-            return '#ffffff'
-        return '#fff0a0' if v < 0 else ('#e8c04a' if av < 3 else '#b8860b')
-    if 8.2 < u < 33:
-        w = 1.9 if u < 26 else 1.9 * (33 - u) / 7
-        if u < 11:
-            w = 1.5 + (u - 8.2) * 0.14
+    # 柄頭: USB のコネクタ（銀の金具に黒い穴）
+    if 0 <= u < 2.8 and av <= 1.5:
+        if 0.8 < u < 2.0 and av < 0.8:
+            return '#1c2230'
+        return '#e4e9f0' if v < 0 else '#aeb8c6'
+    # 柄: 黒い軸に緑の LED
+    if 2.8 <= u < 6.6 and av <= 1.05:
+        if av < 0.45 and int(u * 1.3) % 3 == 0:
+            return '#39ff88'
+        return '#2a3447' if int(u) % 2 == 0 else '#1c2230'
+    # つば: CPU チップ（黒い本体、両端に金のピン、真ん中に光るダイ）
+    if 6.6 <= u < 9.6 and av <= 5.0:
+        if 7.3 < u < 8.9 and av < 1.6:
+            return '#6cf0ff'
+        if av > 3.2:
+            return '#ffd84a' if int((v + 6) * 1.2) % 2 == 0 else '#141a28'
+        return '#2a3550' if v < 0 else '#161d30'
+    # 刃: 濃い紺に、ネオンの水色のふち。真ん中をデータが流れ、ところどころに回路の枝が出る
+    if 9.6 <= u < 33:
+        w = 2.2 if u < 28 else 2.2 * (33 - u) / 5
         if av <= w:
-            if av > w - 0.7:
-                return '#ffffff' if v < 0 else '#8e9bb0'
-            if av < 0.45 and 11 < u < 27:
-                return '#ff4a5a' if int(u) % 5 == 0 else '#e8c04a'
-            return '#eef3fa' if v < 0 else '#c4cedb'
+            if av > w - 0.8:
+                return '#b8fcff' if v < 0 else '#3fe9ff'
+            if av < 0.5:
+                return '#ffffff' if int(u / 1.6) % 2 == 0 else '#39ff88'
+            if 12 < u < 27 and int(u) % 4 == 0:
+                return '#3fe9ff'
+            return '#0e3a66' if v < 0 else '#0a2748'
     return None
+
+
+def sword_admin():
+    c = diag(w_admin, outline='#04101c')
+    # 刃のまわりに、ばらばらに飛ぶデータのかけら（1 ピクセルの四角）
+    for (x, y, col) in ((24, 4, '#ffffff'), (29, 8, '#6cf0ff'), (27, 13, '#39ff88'), (20, 3, '#6cf0ff'),
+                        (9, 19, '#6cf0ff'), (14, 13, '#ffffff')):
+        if (x, y) not in c.px:
+            c.set(x, y, col)
+    return c
 
 
 class _Tex16:
@@ -852,17 +868,6 @@ def hat_band():
         for y in range(5, 11):
             px[(x, y)] = '#e8c04a'
     return _Tex16(px)
-
-
-def sword_admin():
-    c = diag(w_admin, outline='#14000a')
-    # 刃の先のまわりの光の粒（十字）
-    for (x, y) in ((27, 3), (29, 9)):
-        c.set(x, y, '#fff0a0')
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            if (x + dx, y + dy) not in c.px:
-                c.set(x + dx, y + dy, '#ffe9a0')
-    return c
 
 
 def helmet_fedora():

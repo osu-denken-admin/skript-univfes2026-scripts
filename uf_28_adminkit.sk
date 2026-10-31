@@ -21,6 +21,7 @@ function uf_adminitem(id: text) :: item:
     if {_id} is "ad_sword":
         set {_b} to netherite sword
         set {_n} to "&c&l管理者の剣"
+        add "&b電子計算研究部の、デジタルな光の剣" to {_d::*}
         add "&7管理者だけが持てる剣（壊れない）" to {_d::*}
         add "&e左クリック: プレイヤーと NPC 以外を一撃で倒す" to {_d::*}
         add "&e右クリック: 近くのモンスターを全部倒す" to {_d::*}
