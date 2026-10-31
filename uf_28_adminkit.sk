@@ -1,6 +1,6 @@
 # ============================================================
 # uf_28_adminkit.sk : 管理者の装備（剣・スーツ）と、アカウントのリセットなどの管理者向けの機能（2026-10-31）
-#   管理者の剣 ad_sword: 左クリックでプレイヤー・NPC 以外を一撃で倒す / 右クリックで近くのモンスターを全部倒す
+#   管理者の剣 ad_sword: 左クリックでプレイヤー・NPC 以外を一撃で倒し（まわり 5 ブロックもなぎ払う）、右クリックで 25 ブロック以内のモンスターを全部倒す。シャープネス 255
 #     挑戦中のダンジョンの敵は倒さない（遊んでいる人の邪魔にならないように）
 #   管理者のスーツ ad_helmet / ad_chest / ad_legs / ad_boots: 見た目は黒いスーツ（uf_24_skin.sk のスキン、着たときの見た目も）
 #     4 つそろえて着ていると能力が付く: 無敵・飛行・高速移動・高ジャンプ・採掘速度・暗視・水中呼吸・モンスターに狙われない
@@ -20,11 +20,13 @@
 function uf_adminitem(id: text) :: item:
     if {_id} is "ad_sword":
         set {_b} to netherite sword
+        # シャープネス 255（+約 128 ダメージ）。ダメージを書き換える処理がうまく働かない場面でも、ふつうの敵は剣の力だけで倒れる
+        enchant {_b} with sharpness 255
         set {_n} to "&c&l管理者の剣"
         add "&b電子計算研究部の、デジタルな光の剣" to {_d::*}
         add "&7管理者だけが持てる剣（壊れない）" to {_d::*}
-        add "&e左クリック: プレイヤーと NPC 以外を一撃で倒す" to {_d::*}
-        add "&e右クリック: 近くのモンスターを全部倒す" to {_d::*}
+        add "&e左クリック: プレイヤーと NPC 以外を一撃で倒す（まわり 5 ブロックのモンスターもなぎ払う）" to {_d::*}
+        add "&e右クリック: 25 ブロック以内のモンスターを全部倒す（衝撃波）" to {_d::*}
         add "&7挑戦中のダンジョンの敵は倒さない" to {_d::*}
     else:
         if {_id} is "ad_helmet":
@@ -60,17 +62,37 @@ on pickup:
 # ------------------------------------------------------------
 # 管理者の剣
 # ------------------------------------------------------------
-# 左クリック（プレイヤーと NPC 以外を一撃で倒す。挑戦中のダンジョンの敵は uf_05_dungeon.sk が先に止める）
+# 剣で倒してよい相手か（プレイヤー・NPC（村人）・挑戦中のダンジョンの敵は倒さない）
+function uf_admkillable(e: entity) :: boolean:
+    if {_e} is a player:
+        return false
+    if {_e} is a villager:
+        return false
+    set {_s} to metadata value "uf_sid" of {_e}
+    if {_s} is set:
+        if {-uf::sess::%{_s}%::on} is true:
+            return false
+    return true
+
+# 左クリック: 当てた相手を一撃で倒し、まわり 5 ブロックのモンスターもまとめて倒す（なぎ払い）
+#   挑戦中のダンジョンの敵は uf_05_dungeon.sk が先に止める。それでも、剣そのものにシャープネス 255 を付けてあるので、ふつうの敵は剣の力だけで倒れる
 on damage:
     set {_a} to attacker
     {_a} is a player
     uf_id(tool of {_a}) is "ad_sword"
     uf_admin({_a}) is true
-    victim is not a player
-    victim is not a villager
+    set {_v} to victim
+    uf_admkillable({_v}) is true
     set damage to 100000
+    loop all monsters in radius 5 of location of {_v}:
+        if loop-value is not {_v}:
+            if uf_admkillable(loop-value) is true:
+                play 10 crit at location of loop-value
+                kill loop-value
+    play sound "entity.player.attack.sweep" with volume 1 at {_v}
+    play 15 crit at location of {_v}
 
-# 右クリック（近くのモンスターを全部倒す。挑戦中のダンジョンの敵は倒さない）
+# 右クリック: 25 ブロック以内のモンスターを全部倒す（衝撃波）
 on right click:
     uf_id(player's tool) is "ad_sword"
     uf_admin(player) is true
@@ -81,17 +103,13 @@ on right click:
             stop
     set {-uf::admcd::%{_u}%} to {-uf::tick}
     set {_n} to 0
-    loop all monsters in radius 15 of location of player:
-        set {_keep} to false
-        set {_s} to metadata value "uf_sid" of loop-value
-        if {_s} is set:
-            if {-uf::sess::%{_s}%::on} is true:
-                set {_keep} to true
-        if {_keep} is false:
+    loop all monsters in radius 25 of location of player:
+        if uf_admkillable(loop-value) is true:
+            play 15 crit at location of loop-value
             kill loop-value
             add 1 to {_n}
-    play sound "entity.player.attack.sweep" with volume 1 at player
-    uf_msg(player, "&c近くのモンスターを %{_n}% 体倒した")
+    play sound "entity.lightning_bolt.thunder" with volume 1 at player
+    uf_msg(player, "&c衝撃波！ 近くのモンスターを %{_n}% 体倒した")
 
 # ------------------------------------------------------------
 # 管理者のスーツ（4 つそろえて着ているとき）
