@@ -2,7 +2,7 @@
 # uf_26_travel.sk : 初期スポーン地点・15号館への道しるべ・ダンジョンの中のアドベンチャーモード
 #   初期スポーン地点（初めて入った人・ベッドのない人が復活する場所）は、15号館からずっと遠くにする
 #     管理者ツールの「ワールドとロビー」→「初期スポーン地点を遠くに決める」か /ufadmin farspawn [距離]
-#     ロビーから距離 farspawn_dist の円の上で、水・溶岩・氷・葉の上でない地面を探して、ワールドのスポーン地点にする
+#     ロビーから距離 farspawn_dist の円の上で、草原系のバイオーム（plains・meadow・forest など）の草のブロックの上を探して、ワールドのスポーン地点にする（雪・砂漠・海は選ばない）
 #   15号館への道しるべ（travel）: 初めて入ったときに 1 つ配る（前からいる人にも、次に入ったときに 1 回）
 #     15号館の外で右クリック → 使った場所を覚えて、1 階のロビーへ
 #     15号館の中（ダンジョンに挑戦していないとき）で右クリック → 覚えた場所へ戻る（なければ初期スポーン地点）
@@ -23,7 +23,7 @@ function uf_farspawn(p: player) :: boolean:
         return false
     set {_w} to world of {_c}
     set {_d} to {uf::cfg::farspawn_dist}
-    loop 16 times:
+    loop 40 times:
         # 円の上の向きを毎回変えて、立てる地面を探す（sin・cos は度）
         set {_a} to random number between 0 and 360
         set {_x} to floor(x-coordinate of {_c} + {_d} * cos({_a}))
@@ -31,17 +31,24 @@ function uf_farspawn(p: player) :: boolean:
         set {_b} to highest block at location({_x}, 100, {_z}, {_w})
         set {_t} to "%type of {_b}%"
         set {_ok} to true
-        loop "water", "lava", "ice", "leaves", "bamboo" and "cactus":
+        loop "water", "lava", "ice", "snow", "leaves", "bamboo" and "cactus":
             if {_t} contains loop-value-2:
                 set {_ok} to false
+        # 雪のステージは寂しいので、草原系のバイオーム（草のブロックの上）だけにする
+        set {_bn} to "%biome at location of {_b}%"
+        replace all "_" in {_bn} with " "
+        if {_bn} is not "plains" or "sunflower plains" or "meadow" or "forest" or "flower forest" or "birch forest":
+            set {_ok} to false
+        if {_t} does not contain "grass block":
+            set {_ok} to false
         if {_ok} is true:
             set {_l} to location({_x} + 0.5, floor(y-coordinate of {_b}) + 1, {_z} + 0.5, {_w})
             set spawn of {_w} to {_l}
             set {uf::cfg::farspawn} to {_l}
-            uf_msg({_p}, "&a初期スポーン地点を %uf_fmtloc({_l})% にしました（ロビーから約 %{_d}% ブロック、地面は %{_t}%）")
-            uf_adminlog({_p}, "farspawn %uf_fmtloc({_l})% dist=%{_d}%")
+            uf_msg({_p}, "&a初期スポーン地点を %uf_fmtloc({_l})% にしました（ロビーから約 %{_d}% ブロック、%{_bn}%）")
+            uf_adminlog({_p}, "farspawn %uf_fmtloc({_l})% dist=%{_d}% biome=%{_bn}%")
             return true
-    uf_msg({_p}, "&c立てる地面が見つかりませんでした（海の上など）。もう一度押すか、距離を変えてください")
+    uf_msg({_p}, "&c草原の地面が見つかりませんでした（海・雪・砂漠など）。もう一度押すか、距離を変えてください")
     return false
 
 # ------------------------------------------------------------
