@@ -8,6 +8,7 @@
 //   !close              チェスト画面を閉じる
 //   !pos / !inv         位置 / 持ち物を記録する
 //   !block <x> <y> <z>  そのブロックの名前を記録する
+//   !dump <x1> <y1> <z1> <x2> <y2> <z2> <ファイル>  範囲のブロック名を JSON に書き出す（読み込まれていない所は null）
 //   !click <x> <y> <z>  そのブロックを右クリックする
 //   !entity <種類>      近く（6 ブロック以内）のその種類のもの（villager など）を右クリックする
 //   !use <id>           uf:<id> の付いたアイテムを持って使う（it_speed、bike_key など）
@@ -90,7 +91,11 @@ async function exec(line) {
   else if (c === '!pos') log('[pos]', bot.entity.position.toString(), bot.game.dimension, bot.game.gameMode);
   else if (c === '!inv') bot.inventory.items().forEach((i) => log('[inv]', i.slot, itemName(i), 'x' + i.count));
   else if (c === '!block') { const b = bot.blockAt(new Vec3(+a[0], +a[1], +a[2])); log('[block]', a.join(' '), b ? `${b.name} ${JSON.stringify(b.getProperties())}` : '(読み込まれていない)'); }
-  else if (c === '!click') {
+  else if (c === '!dump') {
+    const [x1, y1, z1, x2, y2, z2] = a.slice(0, 6).map(Number); const out = {};
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) { const b = bot.blockAt(new Vec3(x, y, z)); out[`${x},${y},${z}`] = b ? b.name : null; }
+    fs.writeFileSync(a[6], JSON.stringify(out)); log('[dump]', Object.keys(out).length, a[6]);
+  } else if (c === '!click') {
     const b = bot.blockAt(new Vec3(+a[0], +a[1], +a[2]));
     if (!b) return log('[!] ブロックが読み込まれていない');
     await bot.lookAt(b.position.offset(0.5, 0.5, 0.5), true); await bot.activateBlock(b).catch((e) => log('[!]', e.message));

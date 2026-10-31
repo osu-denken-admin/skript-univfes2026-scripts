@@ -122,6 +122,7 @@ systemctl --user restart mc-server
 - `node test.js <cmds.txt のパス>`: **変数が空（`plugins/Skript/variables.csv` なし）で始める**。15号館の設定が残っているとダンジョンの項目が失敗する
 - `node drun.js <cmds.txt のパス> ../../tools/dungeon/layout`: 15号館（本番から取った建物）を再現したワールドで、2→9 階を通しで登る
 - `node lights.js <cmds.txt のパス>`: 管理者ツールの「15号館のライトを置き直す」を平らなワールドで確かめる
+- 2026-10-31（Skript 2.13.1）: `test.js` 204/204、`lights.js` 29/29
 - 2026-10-25 の結果: `drun.js` 93/93（Skript 2.16.2）。2026-10-28（Skript 2.13.1）: `test.js` 204/204、`lights.js` 29/29、`mobs.js` 112/112、`power.js` 48/48
 - この PC（Windows）のテストサーバーは `F:\Claude\testserver-1214`（Skript 2.13.1。2.16.2 の jar は `F:\Claude\testserver-jars`。15号館のワールドはないので `drun.js` は動かせない）。git の作者はこのリポジトリだけ `jtoxyz` に設定済み
 - `node power.js <cmds.txt のパス>`: 武具の強さ（ダメージ）・スキンの番号・リソースパックが送られるか・前の武具の作り直し・地下カジノ（作る・台で遊ぶ・区域・埋め戻す）。`mobs.js` と同じく `zz_mobtest.sk` を入れておく
