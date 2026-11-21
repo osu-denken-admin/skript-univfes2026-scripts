@@ -7,6 +7,13 @@
 #   技能のゲーム: 反応速度ゲーム（緑になってから window tick 以内にクリック）
 #   設定値はゲーム開始時に読むので、変更は次のゲームから反映される。
 #   集計: {uf::cstat::<ゲーム>::in|out|plays}
+#
+#   演出（2026-11-06。前は結果がチャットだけだった。共通の部品は uf_29_casinofx.sk）
+#     スロット: 専用の画面で 3 つのリールが回って 1 つずつ止まる。まん中の段がそろえば当たり（2 つそろうと「リーチ！」）
+#     ルーレット: 専用の画面のまわりのマスを玉が回り、だんだん遅くなって止まる
+#     どれも結果で枠の色が変わり（当たり = 黄色・黄緑、はずれ = 赤）、まん中に結果と所持チップ・今日の成績を出す
+#     チャットにも今までどおり 1 行ずつ出す
+#     地下カジノの台（uf_25_casinohall.sk）は画面を開かず、台の上の浮かぶ文字と光で見せる
 # ============================================================
 
 command /casino:
@@ -27,19 +34,49 @@ function uf_bet(p: player) :: number:
         return 10
     return {_b}
 
+# 賭け金の段階
+function uf_betsteps() :: numbers:
+    return 10, 50, 100, 500 and 1000
+
+# ------------------------------------------------------------
+# カジノの画面
+#   4 所持チップ / 13 今日の成績（勝っていれば緑、負けていれば赤）/ 10・11・15・16 交換
+#   19 スロット / 21・23 ルーレット（赤・黒）/ 25 反応速度 / 29〜33 賭け金（押したものになる）
+#   37 サイコロ / 39 ハイ＆ロー / 41 ガチャ / 47 的当て / 49 カジノ限定ショップ / 51 時間制限チャレンジ
+# ------------------------------------------------------------
 function uf_casinogui(p: player):
-    set {_g} to chest inventory with 6 rows named "&8地下カジノ"
+    set {_g} to chest inventory with 6 rows named "&8地下カジノ（チップ %uf_comma(uf_chip({_p}))% 枚）"
     uf_guiclear({_p})
-    set slot 4 of {_g} to gold ingot named "&e所持チップ: %uf_chip({_p})%" with lore "&7ポイント: %uf_pt({_p})%pt" and "&7交換レート: 1pt = %{uf::cfg::chip_rate}% チップ"
-    set slot 10 of {_g} to emerald named "&a100pt → チップ"
-    set slot 11 of {_g} to emerald block named "&a1000pt → チップ"
+    loop 54 times:
+        set slot (loop-value - 1) of {_g} to black stained glass pane named " "
+    set slot 4 of {_g} to uf_cxinfo({_p})
+    # 今日の成績（ひと目で勝ち負けが分かるように色で）
+    set {_n} to uf_cnet({_p})
+    if {_n} > 0:
+        set slot 13 of {_g} to (lime wool named "&a&l今日は勝っている！ %uf_cnettext({_p})%") with lore "&7当たりでもらったチップのほうが、賭けたチップより多い"
+    else if {_n} < 0:
+        set slot 13 of {_g} to (red wool named "&c&l今日は負けている… %uf_cnettext({_p})%") with lore "&7賭けたチップのほうが、当たりでもらったチップより多い" and "&7チップは遊びのお金。なくなったら休憩しよう"
+    else:
+        set slot 13 of {_g} to (white wool named "&f今日の成績: ±0") with lore "&7当たりでもらったチップ − 賭けたチップ"
+    set slot 10 of {_g} to emerald named "&a100pt → チップ" with lore "&7ポイント: %uf_comma(uf_pt({_p}))%pt" and "&7交換レート: 1pt = %{uf::cfg::chip_rate}% チップ"
+    set slot 11 of {_g} to emerald block named "&a1000pt → チップ" with lore "&7ポイント: %uf_comma(uf_pt({_p}))%pt"
     set slot 15 of {_g} to gold nugget named "&eチップ100枚 → pt"
     set slot 16 of {_g} to gold block named "&eチップ1000枚 → pt"
     set slot 19 of {_g} to uf_gameicon("slot", diamond, "&bスロット")
     set slot 21 of {_g} to uf_gameicon("roulette", red wool, "&cルーレット：赤")
     set slot 23 of {_g} to uf_gameicon("roulette", black wool, "&8ルーレット：黒")
     set slot 25 of {_g} to uf_gameicon("reaction", clock, "&a反応速度ゲーム")
-    set slot 31 of {_g} to paper named "&f賭け金: &e%uf_bet({_p})% チップ" with lore "&7クリックで変更（10 / 50 / 100 / 500 / 1000）"
+    # 賭け金（押したものになる。今の賭け金は光っている）
+    set {_bs::*} to uf_betsteps()
+    set {_icons::*} to iron nugget, gold nugget, gold ingot, gold block and diamond block
+    loop {_bs::*}:
+        set {_b} to loop-value
+        set {_i} to {_icons::%loop-index%} named "&f賭け金 &e%{_b}% &fチップ"
+        if {_b} is uf_bet({_p}):
+            set {_i} to ({_i} with enchantment glint) with lore "&a◀ 今の賭け金"
+        else:
+            set {_i} to {_i} with lore "&eクリックでこの賭け金にする"
+        set slot (28 + (loop-index parsed as number)) of {_g} to {_i}
     # 追加のゲーム（uf_21_casino2.sk）
     set slot 37 of {_g} to uf_gameicon("dice", white wool, "&fサイコロ")
     set slot 39 of {_g} to uf_gameicon("highlow", paper, "&eハイ＆ロー")
@@ -84,8 +121,11 @@ function uf_gameicon(game: text, icon: item, name: text) :: item:
         add "&7%{uf::cfg::casino::target::time}% 秒で %{uf::cfg::casino::target::goal}% 個当てたら %{uf::cfg::casino::target::mult}% 倍（半分以上なら賭け金が戻る）" to {_lore::*}
     else if {_game} is "timed":
         add "&7%{uf::cfg::casino::timed::time}% 秒以内に 1→9 を順に押せたら %{uf::cfg::casino::timed::mult}% 倍" to {_lore::*}
+    else if {_game} is "dice":
+        add "&7当たりで賭け金の %{uf::cfg::casino::dice::mult}% 倍（6 回に 1 回）" to {_lore::*}
     else:
         add "&7当たりで賭け金の %{uf::cfg::casino::%{_game}%::mult}% 倍" to {_lore::*}
+        add "&7当たる確率: %{uf::cfg::casino::%{_game}%::prob}%％" to {_lore::*}
     add "&eクリックで遊ぶ" to {_lore::*}
     return ({_icon} named {_name}) with lore {_lore::*}
 
@@ -94,6 +134,8 @@ on inventory click:
     cancel event
     event-inventory is {-uf::guiinv::%uuid of player%}
     set {_s} to index of event-slot
+    # ここから開いたゲームは、終わったらカジノの画面に戻る（uf_29_casinofx.sk の uf_cxback）
+    set {-uf::corg::%uuid of player%} to "gui"
     if {_s} is 10:
         uf_exchange(player, "tochip", 100)
     else if {_s} is 11:
@@ -103,11 +145,20 @@ on inventory click:
     else if {_s} is 16:
         uf_exchange(player, "topt", 1000)
     else if {_s} is 19:
-        uf_luck(player, "slot", "")
+        wait 1 tick
+        if player is online:
+            uf_slotgui(player, true)
+        stop
     else if {_s} is 21:
-        uf_luck(player, "roulette", "red")
+        wait 1 tick
+        if player is online:
+            uf_rlgui(player, "red", true)
+        stop
     else if {_s} is 23:
-        uf_luck(player, "roulette", "black")
+        wait 1 tick
+        if player is online:
+            uf_rlgui(player, "black", true)
+        stop
     else if {_s} is 25:
         wait 1 tick
         if player is online:
@@ -124,7 +175,10 @@ on inventory click:
             uf_hlstart(player)
         stop
     else if {_s} is 41:
-        uf_gacha(player)
+        wait 1 tick
+        if player is online:
+            uf_gachagui(player, true)
+        stop
     else if {_s} is 47:
         wait 1 tick
         if player is online:
@@ -140,8 +194,11 @@ on inventory click:
         if player is online:
             uf_cshopgui(player)
         stop
-    else if {_s} is 31:
-        uf_betnext(player)
+    else if {_s} >= 29:
+        {_s} <= 33
+        set {_bs::*} to uf_betsteps()
+        set {-uf::bet::%uuid of player%} to {_bs::%{_s} - 28%}
+        play sound "ui.button.click" with volume 0.6 at player
     else:
         stop
     wait 1 tick
@@ -168,6 +225,7 @@ function uf_exchange(p: player, dir: text, amt: number):
             stop
         uf_addpt({_p}, {_amt} / {_rate}, "chip:exchange")
         uf_msg({_p}, "&aチップ %{_amt}% 枚を %floor({_amt} / {_rate})%pt に交換した")
+    play sound "entity.experience_orb.pickup" with volume 0.6 at {_p}
 
 # 賭け金の確認と徴収（失敗時は false）
 function uf_takebet(p: player, game: text, bet: number) :: boolean:
@@ -178,13 +236,14 @@ function uf_takebet(p: player, game: text, bet: number) :: boolean:
         uf_msg({_p}, "&c賭け金は %{uf::cfg::casino::%{_game}%::min}% チップ以上です")
         return false
     if {_bet} > {uf::cfg::casino::%{_game}%::max}:
-        uf_msg({_p}, "&c賭け金は %{uf::cfg::casino::%{_game}%::max}% チップ以下です")
+        uf_msg({_p}, "&c賭け金は %{uf::cfg::casino::%{_game}%::max}% チップ以下です（賭け金を下げてね）")
         return false
     if uf_takechip({_p}, {_bet}, "bet:%{_game}%") is false:
-        uf_msg({_p}, "&cチップが足りません")
+        uf_msg({_p}, "&cチップが足りません（ポイントをチップに交換できる）")
         return false
     add {_bet} to {uf::cstat::%{_game}%::in}
     add 1 to {uf::cstat::%{_game}%::plays}
+    uf_cnetadd({_p}, 0 - {_bet})
     return true
 
 function uf_payout(p: player, game: text, n: number):
@@ -195,79 +254,445 @@ function uf_payout(p: player, game: text, n: number):
     add {_n} to {uf::cstat::%{_game}%::out}
     # ランキング用（当たりでもらったチップの合計）
     add {_n} to {uf::stat::%uuid of {_p}%::chipwon}
+    uf_cnetadd({_p}, {_n})
+
+# 賭けられなかったとき（チップが足りないなど。理由はチャットに出ている）に、画面の結果の場所に出す
+function uf_cxcant(p: player, g: inventory, s: number):
+    set slot {_s} of {_g} to (barrier named "&c遊べなかった") with lore "&7チップが足りないか、賭け金が多すぎる・少なすぎる" and "&7（くわしくはチャット）"
+    play sound "block.note_block.bass" with volume 0.8 at {_p}
 
 # ------------------------------------------------------------
-# スロット・ルーレット
+# スロット
+#   絵柄: 7 / ベル / チェリー / ダイヤ / スター（当たりはどの絵柄でも同じ倍率）
 # ------------------------------------------------------------
-function uf_luck(p: player, game: text, choice: text):
+function uf_syms() :: texts:
+    return "7", "bell", "cherry", "diamond" and "star"
+
+# 文字で出すときの絵柄（チャット・地下カジノの台）
+function uf_symtext(k: text) :: text:
+    if {_k} is "7":
+        return "&c&l7"
+    if {_k} is "bell":
+        return "&6&lベル"
+    if {_k} is "cherry":
+        return "&d&lチェリー"
+    if {_k} is "diamond":
+        return "&b&lダイヤ"
+    return "&e&lスター"
+
+# 画面に出すときの絵柄（7 は数が 7 のレッドストーン）
+function uf_symitem(k: text) :: item:
+    if {_k} is "7":
+        return (7 of redstone) named "&c&l7（セブン）"
+    if {_k} is "bell":
+        return bell named "&6&lベル"
+    if {_k} is "cherry":
+        return sweet berries named "&d&lチェリー"
+    if {_k} is "diamond":
+        return diamond named "&b&lダイヤ"
+    return nether star named "&e&lスター"
+
+# 結果を決める（賭け金を取って、当たりの払い戻しは保留にする）
+#   返す値: 3 つの絵柄・払い戻し・賭け金。賭けられなかったら何も返さない
+function uf_slotroll(p: player) :: texts:
     set {_bet} to uf_bet({_p})
-    set {_prob} to {uf::cfg::casino::%{_game}%::prob}
-    set {_mult} to {uf::cfg::casino::%{_game}%::mult}
-    if uf_takebet({_p}, {_game}, {_bet}) is false:
-        stop
-    set {_win} to false
+    set {_prob} to {uf::cfg::casino::slot::prob}
+    set {_mult} to {uf::cfg::casino::slot::mult}
+    if uf_takebet({_p}, "slot", {_bet}) is false:
+        return {_none}
+    set {_sym::*} to uf_syms()
+    set {_a} to random element out of {_sym::*}
+    set {_pay} to 0
     if random number between 0 and 100 < {_prob}:
-        set {_win} to true
-    if {_game} is "slot":
-        set {_sym::*} to "&c7", "&eベル", "&aチェリー", "&bダイヤ" and "&dスター"
-        if {_win} is true:
-            set {_a} to random element out of {_sym::*}
-            set {_r} to "%{_a}% %{_a}% %{_a}%"
-        else:
-            set {_a} to random element out of {_sym::*}
-            set {_b} to random element out of {_sym::*}
-            set {_c} to random element out of {_sym::*}
-            while {_a} is {_b}:
-                if {_b} is not {_c}:
-                    exit loop
-                set {_c} to random element out of {_sym::*}
-            set {_r} to "%{_a}% %{_b}% %{_c}%"
-        uf_msg({_p}, "&f[ %{_r}% &f]")
+        set {_b} to {_a}
+        set {_c} to {_a}
+        set {_pay} to floor({_bet} * {_mult})
     else:
-        if {_win} is true:
-            set {_res} to {_choice}
-        else if random integer between 1 and 19 is 1:
-            set {_res} to "green"
-        else if {_choice} is "red":
-            set {_res} to "black"
-        else:
-            set {_res} to "red"
-        if {_res} is "red":
-            uf_msg({_p}, "&fルーレットの結果: &c赤")
-        else if {_res} is "black":
-            uf_msg({_p}, "&fルーレットの結果: &8黒")
-        else:
-            uf_msg({_p}, "&fルーレットの結果: &a緑（0）")
-    if {_win} is true:
-        uf_payout({_p}, {_game}, {_bet} * {_mult})
-        uf_msg({_p}, "&6当たり！ &eチップ +%floor({_bet} * {_mult})%")
+        set {_b} to random element out of {_sym::*}
+        set {_c} to random element out of {_sym::*}
+        # はずれなので 3 つはそろえない（2 つそろうのは「リーチ」）
+        if {_b} is {_a}:
+            while {_c} is {_a}:
+                set {_c} to random element out of {_sym::*}
+    uf_cpend({_p}, "slot", {_pay})
+    uf_log("casino", "slot %{_p}% bet=%{_bet}% pay=%{_pay}% prob=%{_prob}% mult=%{_mult}% reels=%{_a}%,%{_b}%,%{_c}%")
+    return {_a}, {_b}, {_c}, "%{_pay}%" and "%{_bet}%"
+
+# 結果のチャット（今までと同じ形）
+function uf_slotmsg(p: player, a: text, b: text, c: text, pay: number, bet: number):
+    if {_p} is not online:
+        stop
+    uf_msg({_p}, "&f[ %uf_symtext({_a})% &f%uf_symtext({_b})% &f%uf_symtext({_c})% &f]")
+    if {_pay} > 0:
+        uf_msg({_p}, "&6当たり！ &eチップ +%uf_comma({_pay})%")
     else:
         uf_msg({_p}, "&7はずれ（-%{_bet}% チップ）")
-    uf_log("casino", "%{_game}% %{_p}% bet=%{_bet}% win=%{_win}% prob=%{_prob}% mult=%{_mult}%")
+
+# スロットの画面（5 段）
+#   4 所持チップ・結果 / 11・13・15（上）20・22・24（まん中 = 当たりの段）29・31・33（下）が 3 つのリール
+#   18・26 当たりの段の印 / 38 賭け金 / 40 回す / 42 戻る / ほかは枠（色で結果を見せる）
+function uf_slotframe() :: numbers:
+    return 0, 1, 2, 3, 5, 6, 7, 8, 9, 17, 27, 35, 36, 37, 39, 41, 43 and 44
+
+function uf_slotgui(p: player, spin: boolean = false):
+    set {_u} to uuid of {_p}
+    set {_g} to chest inventory with 5 rows named "&8スロット：まん中の段がそろうと %{uf::cfg::casino::slot::mult}% 倍"
+    uf_guiclear({_p})
+    set {_fr::*} to uf_slotframe()
+    uf_cxpaint({_g}, {_fr::*}, yellow stained glass pane named " ")
+    loop 10, 12, 14, 16, 19, 21, 23, 25, 28, 30, 32 and 34:
+        set slot loop-value of {_g} to black stained glass pane named " "
+    set slot 18 of {_g} to lime stained glass pane named "&a▶ この段がそろうと当たり"
+    set slot 26 of {_g} to lime stained glass pane named "&a◀ この段がそろうと当たり"
+    set {_sym::*} to uf_syms()
+    loop 11, 13, 15, 20, 22, 24, 29, 31 and 33:
+        set slot loop-value of {_g} to uf_symitem(random element out of {_sym::*})
+    set slot 4 of {_g} to uf_cxinfo({_p})
+    uf_slotbtn({_p}, {_g})
+    set {-uf::cs::%{_u}%::inv} to {_g}
+    uf_gui({_p}, "cslot", {_g})
+    if {_spin} is true:
+        uf_slotspin({_p})
+
+function uf_slotbtn(p: player, g: inventory):
+    set slot 38 of {_g} to paper named "&f賭け金: &e%uf_bet({_p})% &fチップ" with lore "&7クリックで変える（10 / 50 / 100 / 500 / 1000）"
+    set slot 40 of {_g} to lever named "&6&l回す！" with lore "&7賭け金 %uf_bet({_p})% チップ", "&7まん中の段に同じ絵が 3 つそろうと %{uf::cfg::casino::slot::mult}% 倍" and "&7当たる確率: %{uf::cfg::casino::slot::prob}%％"
+    set slot 42 of {_g} to arrow named "&f戻る" with lore "&7カジノの画面へ"
+
+function uf_slotspin(p: player):
+    set {_u} to uuid of {_p}
+    set {_g} to {-uf::cs::%{_u}%::inv}
+    if {_g} is not set:
+        stop
+    if uf_cbusy({_p}) is true:
+        stop
+    set {_r::*} to uf_slotroll({_p})
+    if size of {_r::*} < 5:
+        uf_cxcant({_p}, {_g}, 4)
+        stop
+    uf_cbusyon({_p})
+    add 1 to {-uf::cs::%{_u}%::tok}
+    set {_tok} to {-uf::cs::%{_u}%::tok}
+    set {_pay} to {_r::4} parsed as number
+    set {_bet} to {_r::5} parsed as number
+    set {_fr::*} to uf_slotframe()
+    uf_cxpaint({_g}, {_fr::*}, uf_cxpane("spin"))
+    set slot 4 of {_g} to clock named "&6回っている…" with lore "&7賭け金 %{_bet}% チップ"
+    # 1 つずつ止まる（2 つそろったら「リーチ」で 3 つめはゆっくり）
+    set {_stop::1} to 10
+    set {_stop::2} to 15
+    set {_stop::3} to 20
+    set {_reach} to false
+    if {_r::1} is {_r::2}:
+        set {_reach} to true
+        set {_stop::3} to 28
+    set {_sym::*} to uf_syms()
+    set {_cols::*} to 11, 13 and 15
+    set {_k} to 1
+    while {_k} <= {_stop::3}:
+        if {_p} is not online:
+            exit loop
+        set {_c} to 1
+        while {_c} <= 3:
+            set {_top} to {_cols::%{_c}%}
+            if {_k} < {_stop::%{_c}%}:
+                # 下へ 1 つずらして、上に新しい絵
+                set slot ({_top} + 18) of {_g} to slot ({_top} + 9) of {_g}
+                set slot ({_top} + 9) of {_g} to slot {_top} of {_g}
+                set slot {_top} of {_g} to uf_symitem(random element out of {_sym::*})
+            else if {_k} is {_stop::%{_c}%}:
+                set slot {_top} of {_g} to uf_symitem(random element out of {_sym::*})
+                set slot ({_top} + 9) of {_g} to uf_symitem({_r::%{_c}%})
+                set slot ({_top} + 18) of {_g} to uf_symitem(random element out of {_sym::*})
+                play sound "block.note_block.basedrum" with volume 0.8 at {_p}
+            add 1 to {_c}
+        if {_reach} is true:
+            if {_k} is {_stop::2}:
+                uf_cxpaint({_g}, {_fr::*}, magenta stained glass pane named "&d&lリーチ！")
+                set slot 4 of {_g} to nether star named "&d&lリーチ！" with lore "&7あと 1 つそろえば当たり！"
+                play sound "block.note_block.chime" with volume 1 at {_p}
+        play sound "block.note_block.hat" with volume 0.3 at {_p}
+        set {_w} to 2
+        if {_stop::3} - {_k} < 3:
+            set {_w} to 3
+        if {_reach} is true:
+            if {_k} > {_stop::2}:
+                set {_w} to 3
+        loop {_w} times:
+            wait 1 tick
+        add 1 to {_k}
+    # 結果
+    uf_csettle({_p})
+    uf_cbusyoff({_p})
+    uf_slotmsg({_p}, {_r::1}, {_r::2}, {_r::3}, {_pay}, {_bet})
+    set {_here} to false
+    if {-uf::guiinv::%{_u}%} is {_g}:
+        set {_here} to true
+    if {_pay} > 0:
+        set {_win} to uf_symitem({_r::1}) with enchantment glint
+        loop 20, 22 and 24:
+            set slot loop-value of {_g} to {_win}
+        set slot 4 of {_g} to uf_cxresitem({_p}, "big", "&6&l当たり！ +%uf_comma({_pay})% チップ", "&e%uncolored uf_symtext({_r::1})% が 3 つそろった！")
+        uf_cxsound({_p}, "big")
+        if {_here} is false:
+            uf_cxtitle({_p}, "&6&l当たり！", "&e+%uf_comma({_pay})% チップ（所持 %uf_comma(uf_chip({_p}))% 枚）")
+        # 枠を光らせる（次を回したら止める）
+        loop 8 times:
+            if {-uf::cs::%{_u}%::tok} is not {_tok}:
+                stop
+            if mod(loop-value, 2) is 1:
+                uf_cxpaint({_g}, {_fr::*}, uf_cxpane("big"))
+            else:
+                uf_cxpaint({_g}, {_fr::*}, uf_cxpane("win"))
+            wait 3 ticks
+    else:
+        uf_cxpaint({_g}, {_fr::*}, uf_cxpane("lose"))
+        set slot 4 of {_g} to uf_cxresitem({_p}, "lose", "&7はずれ… -%uf_comma({_bet})% チップ", "&7まん中の段がそろわなかった")
+        uf_cxsound({_p}, "lose")
+        if {_here} is false:
+            uf_cxtitle({_p}, "&7はずれ…", "&7-%uf_comma({_bet})% チップ（所持 %uf_comma(uf_chip({_p}))% 枚）")
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "cslot"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 40:
+        uf_slotspin(player)
+    else if {_s} is 38:
+        uf_betnext(player)
+        play sound "ui.button.click" with volume 0.6 at player
+        uf_slotbtn(player, event-inventory)
+    else if {_s} is 42:
+        wait 1 tick
+        if player is online:
+            uf_casinogui(player)
+
+# ------------------------------------------------------------
+# ルーレット（赤・黒）
+#   画面のまわりの 26 マス（赤 12・黒 12・緑 2）を玉（雪玉）が回って、だんだん遅くなって止まる
+#   当たりかどうかは今までどおり当選確率で決めて、玉はその色のマスに止まる
+# ------------------------------------------------------------
+# まわりのマス（時計回り）
+function uf_rlring() :: numbers:
+    return 0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 26, 35, 44, 53, 52, 51, 50, 49, 48, 47, 46, 45, 36, 27, 18 and 9
+
+# i 番目（1〜26）のマスの色
+function uf_rlcolor(i: number) :: text:
+    if {_i} is 1 or 14:
+        return "green"
+    if mod({_i}, 2) is 0:
+        return "red"
+    return "black"
+
+function uf_rlcell(c: text) :: item:
+    if {_c} is "red":
+        return red concrete named "&c赤"
+    if {_c} is "black":
+        return black concrete named "&7黒"
+    return lime concrete named "&a緑（0）"
+
+function uf_rlname(c: text) :: text:
+    if {_c} is "red":
+        return "&c&l赤"
+    if {_c} is "black":
+        return "&7&l黒"
+    return "&a&l緑（0）"
+
+# 中のマス（緑のテーブル）。22 賭けた色・31 結果・37 戻る・39 赤・40 賭け金・41 黒・13 所持チップは除く
+function uf_rlfelt() :: numbers:
+    return 10, 11, 12, 14, 15, 16, 19, 20, 21, 23, 24, 25, 28, 29, 30, 32, 33, 34, 38, 42 and 43
+
+# 結果を決める。返す値: 止まった色・払い戻し・賭け金（賭けられなかったら何も返さない）
+function uf_rlroll(p: player, choice: text) :: texts:
+    set {_bet} to uf_bet({_p})
+    set {_prob} to {uf::cfg::casino::roulette::prob}
+    set {_mult} to {uf::cfg::casino::roulette::mult}
+    if uf_takebet({_p}, "roulette", {_bet}) is false:
+        return {_none}
+    set {_pay} to 0
+    if random number between 0 and 100 < {_prob}:
+        set {_res} to {_choice}
+        set {_pay} to floor({_bet} * {_mult})
+    else if random integer between 1 and 19 is 1:
+        set {_res} to "green"
+    else if {_choice} is "red":
+        set {_res} to "black"
+    else:
+        set {_res} to "red"
+    uf_cpend({_p}, "roulette", {_pay})
+    uf_log("casino", "roulette %{_p}% bet=%{_bet}% choice=%{_choice}% res=%{_res}% pay=%{_pay}% prob=%{_prob}% mult=%{_mult}%")
+    return {_res}, "%{_pay}%" and "%{_bet}%"
+
+function uf_rlmsg(p: player, res: text, pay: number, bet: number):
+    if {_p} is not online:
+        stop
+    if {_res} is "red":
+        uf_msg({_p}, "&fルーレットの結果: &c赤")
+    else if {_res} is "black":
+        uf_msg({_p}, "&fルーレットの結果: &8黒")
+    else:
+        uf_msg({_p}, "&fルーレットの結果: &a緑（0）")
+    if {_pay} > 0:
+        uf_msg({_p}, "&6当たり！ &eチップ +%uf_comma({_pay})%")
+    else:
+        uf_msg({_p}, "&7はずれ（-%{_bet}% チップ）")
+
+function uf_rlgui(p: player, choice: text = "", spin: boolean = false):
+    set {_u} to uuid of {_p}
+    set {_g} to chest inventory with 6 rows named "&8ルーレット：赤か黒に賭ける（当たりで %{uf::cfg::casino::roulette::mult}% 倍）"
+    uf_guiclear({_p})
+    set {_felt::*} to uf_rlfelt()
+    uf_cxpaint({_g}, {_felt::*}, green stained glass pane named " ")
+    set {_ring::*} to uf_rlring()
+    loop {_ring::*}:
+        set slot loop-value of {_g} to uf_rlcell(uf_rlcolor(loop-index parsed as number))
+    set slot 13 of {_g} to uf_cxinfo({_p})
+    set slot 22 of {_g} to white wool named "&f賭ける色を選んでね" with lore "&7下の赤か黒を押すと、玉が回る"
+    set slot 31 of {_g} to green stained glass pane named " "
+    uf_rlbtn({_p}, {_g})
+    set {-uf::rl::%{_u}%::inv} to {_g}
+    uf_gui({_p}, "croul", {_g})
+    if {_spin} is true:
+        uf_rlspin({_p}, {_choice})
+
+function uf_rlbtn(p: player, g: inventory):
+    set slot 37 of {_g} to arrow named "&f戻る" with lore "&7カジノの画面へ"
+    set slot 39 of {_g} to red wool named "&c&l赤に賭けて回す" with lore "&7賭け金 %uf_bet({_p})% チップ" and "&7当たりで %{uf::cfg::casino::roulette::mult}% 倍（緑に止まるとはずれ）"
+    set slot 40 of {_g} to paper named "&f賭け金: &e%uf_bet({_p})% &fチップ" with lore "&7クリックで変える（10 / 50 / 100 / 500 / 1000）"
+    set slot 41 of {_g} to black wool named "&7&l黒に賭けて回す" with lore "&7賭け金 %uf_bet({_p})% チップ" and "&7当たりで %{uf::cfg::casino::roulette::mult}% 倍（緑に止まるとはずれ）"
+
+function uf_rlspin(p: player, choice: text):
+    set {_u} to uuid of {_p}
+    set {_g} to {-uf::rl::%{_u}%::inv}
+    if {_g} is not set:
+        stop
+    if {_choice} is not "red" or "black":
+        stop
+    if uf_cbusy({_p}) is true:
+        stop
+    set {_r::*} to uf_rlroll({_p}, {_choice})
+    if size of {_r::*} < 3:
+        uf_cxcant({_p}, {_g}, 31)
+        stop
+    uf_cbusyon({_p})
+    add 1 to {-uf::rl::%{_u}%::tok}
+    set {_tok} to {-uf::rl::%{_u}%::tok}
+    set {_res} to {_r::1}
+    set {_pay} to {_r::2} parsed as number
+    set {_bet} to {_r::3} parsed as number
+    set {_felt::*} to uf_rlfelt()
+    uf_cxpaint({_g}, {_felt::*}, green stained glass pane named " ")
+    set slot 22 of {_g} to uf_rlcell({_choice}) named "&fあなたの賭け: %uf_rlname({_choice})%" with lore "&7賭け金 %{_bet}% チップ"
+    set slot 31 of {_g} to clock named "&6玉が回っている…"
+    set {_ring::*} to uf_rlring()
+    # 止まるマス（結果の色のマスから 1 つ）
+    loop 26 times:
+        if uf_rlcolor(loop-value) is {_res}:
+            add loop-value to {_cand::*}
+    set {_tgt} to random element out of {_cand::*}
+    set {_pos} to random integer between 1 and 26
+    set {_steps} to 26 + mod({_tgt} - {_pos} + 26, 26)
+    set {_ball} to snowball named "&f● 玉"
+    set {_k} to 1
+    while {_k} <= {_steps}:
+        if {_p} is not online:
+            exit loop
+        set slot {_ring::%{_pos}%} of {_g} to uf_rlcell(uf_rlcolor({_pos}))
+        set {_pos} to mod({_pos}, 26) + 1
+        set slot {_ring::%{_pos}%} of {_g} to {_ball}
+        play sound "block.note_block.hat" with volume 0.25 at {_p}
+        set {_left} to {_steps} - {_k}
+        set {_w} to 1
+        if {_left} <= 12:
+            set {_w} to 2
+        if {_left} <= 6:
+            set {_w} to 3
+        if {_left} <= 2:
+            set {_w} to 5
+        loop {_w} times:
+            wait 1 tick
+        add 1 to {_k}
+    # 止まったマスを点滅させてから結果
+    set {_cell} to uf_rlcell({_res})
+    set {_ts} to {_ring::%{_tgt}%}
+    loop 3 times:
+        set slot {_ts} of {_g} to {_cell}
+        wait 3 ticks
+        set slot {_ts} of {_g} to {_ball}
+        wait 3 ticks
+    set slot {_ts} of {_g} to {_cell} with enchantment glint
+    uf_csettle({_p})
+    uf_cbusyoff({_p})
+    uf_rlmsg({_p}, {_res}, {_pay}, {_bet})
+    set {_here} to false
+    if {-uf::guiinv::%{_u}%} is {_g}:
+        set {_here} to true
+    if {_pay} > 0:
+        uf_cxpaint({_g}, {_felt::*}, uf_cxpane("win"))
+        set slot 31 of {_g} to uf_cxresitem({_p}, "win", "%uf_rlname({_res})%&f！ &6&l当たり！ +%uf_comma({_pay})% チップ", "&7賭けた色に止まった")
+        uf_cxsound({_p}, "win")
+        if {_here} is false:
+            uf_cxtitle({_p}, "&6&l当たり！", "%uf_rlname({_res})% &eに止まった！ +%uf_comma({_pay})% チップ")
+    else:
+        uf_cxpaint({_g}, {_felt::*}, uf_cxpane("lose"))
+        set slot 31 of {_g} to uf_cxresitem({_p}, "lose", "%uf_rlname({_res})%&7 … はずれ -%uf_comma({_bet})% チップ", "&7あなたの賭け: %uf_rlname({_choice})%")
+        uf_cxsound({_p}, "lose")
+        if {_here} is false:
+            uf_cxtitle({_p}, "&7はずれ…", "%uf_rlname({_res})% &7に止まった（-%uf_comma({_bet})% チップ）")
+    set slot 13 of {_g} to uf_cxinfo({_p})
+
+on inventory click:
+    {-uf::gui::%uuid of player%} is "croul"
+    cancel event
+    event-inventory is {-uf::guiinv::%uuid of player%}
+    set {_s} to index of event-slot
+    if {_s} is 39:
+        uf_rlspin(player, "red")
+    else if {_s} is 41:
+        uf_rlspin(player, "black")
+    else if {_s} is 40:
+        uf_betnext(player)
+        play sound "ui.button.click" with volume 0.6 at player
+        uf_rlbtn(player, event-inventory)
+    else if {_s} is 37:
+        wait 1 tick
+        if player is online:
+            uf_casinogui(player)
 
 # ------------------------------------------------------------
 # 反応速度ゲーム
+#   赤（待て）→ 緑（今だ！）になったら押す。結果は画面の色（成功 = 黄色、フライング = 赤、遅い = 灰色）で見せる
+#   途中で画面を閉じたら、その回は負け（前は閉じても続いて、あとでほかの画面を閉じてしまっていた）
 # ------------------------------------------------------------
 function uf_reaction(p: player):
+    if uf_cbusy({_p}) is true:
+        stop
     set {_bet} to uf_bet({_p})
     if uf_takebet({_p}, "reaction", {_bet}) is false:
         stop
+    uf_cbusyon({_p})
     set {_u} to uuid of {_p}
     set {_window} to {uf::cfg::casino::reaction::window}
     set {_mult} to {uf::cfg::casino::reaction::mult}
-    set {_g} to chest inventory with 3 rows named "&8緑になったらクリック！"
+    set {_g} to chest inventory with 3 rows named "&8緑になったらクリック！（成功で %{_mult}% 倍）"
     loop 27 times:
         set slot (loop-value - 1) of {_g} to red stained glass pane named "&c待て…"
+    delete {-uf::react::%{_u}%::*}
     set {-uf::react::%{_u}%::state} to "wait"
     set {-uf::react::%{_u}%::bet} to {_bet}
     set {-uf::react::%{_u}%::mult} to {_mult}
+    set {-uf::react::%{_u}%::inv} to {_g}
     uf_gui({_p}, "react", {_g})
     loop (random integer between 30 and 80) times:
         wait 1 tick
         if {-uf::react::%{_u}%::state} is not "wait":
             stop
+        if {_p} is not online:
+            stop
     loop 27 times:
         set slot (loop-value - 1) of {_g} to lime stained glass pane named "&a今だ！"
+    play sound "block.note_block.pling" with volume 0.8 at {_p}
     set {-uf::react::%{_u}%::state} to "go"
     set {-uf::react::%{_u}%::t} to {-uf::tick}
     set {-uf::react::%{_u}%::window} to {_window}
@@ -275,11 +700,45 @@ function uf_reaction(p: player):
         wait 1 tick
         if {-uf::react::%{_u}%::state} is not "go":
             stop
+        if {_p} is not online:
+            stop
     set {-uf::react::%{_u}%::state} to "done"
-    if {_p} is online:
+    uf_reactres({_p}, "slow", 0)
+
+# 結果の画面（kind: win / early（フライング）/ slow（遅い））
+function uf_reactres(p: player, kind: text, dt: number):
+    set {_u} to uuid of {_p}
+    set {_g} to {-uf::react::%{_u}%::inv}
+    set {_bet} to {-uf::react::%{_u}%::bet}
+    uf_cbusyoff({_p})
+    if {_g} is not set:
+        stop
+    if {_kind} is "win":
+        set {_pay} to floor({_bet} * {-uf::react::%{_u}%::mult})
+        uf_payout({_p}, "reaction", {_pay})
+        set {_ms} to {_dt} * 50
+        loop 27 times:
+            set slot (loop-value - 1) of {_g} to uf_cxpane("big")
+        set slot 13 of {_g} to uf_cxresitem({_p}, "big", "&6&l成功！ +%uf_comma({_pay})% チップ", "&e反応 約 %{_ms}% ミリ秒")
+        uf_cxsound({_p}, "big")
+        uf_msg({_p}, "&6成功！ 反応 約%{_ms}%ms &eチップ +%floor({_pay})%")
+        uf_log("casino", "reaction %{_p}% result=win ticks=%{_dt}%")
+    else if {_kind} is "early":
+        loop 27 times:
+            set slot (loop-value - 1) of {_g} to uf_cxpane("lose")
+        set slot 13 of {_g} to uf_cxresitem({_p}, "lose", "&c&lフライング！ -%uf_comma({_bet})% チップ", "&7緑になる前に押してしまった")
+        uf_cxsound({_p}, "lose")
+        uf_msg({_p}, "&cフライング！（-%{_bet}% チップ）")
+        uf_log("casino", "reaction %{_p}% result=early")
+    else:
+        loop 27 times:
+            set slot (loop-value - 1) of {_g} to gray stained glass pane named "&7遅かった…"
+        set {_lim} to {-uf::react::%{_u}%::window} * 50
+        set slot 13 of {_g} to uf_cxresitem({_p}, "lose", "&7遅かった… -%uf_comma({_bet})% チップ", "&7緑になってから %{_lim}% ミリ秒以内に押そう")
+        uf_cxsound({_p}, "lose")
         uf_msg({_p}, "&7遅かった…（-%{_bet}% チップ）")
-        close inventory of {_p}
-    uf_log("casino", "reaction %{_p}% bet=%{_bet}% result=slow")
+        uf_log("casino", "reaction %{_p}% bet=%{_bet}% result=slow")
+    uf_cxback({_p}, {_g}, 40)
 
 on inventory click:
     {-uf::gui::%uuid of player%} is "react"
@@ -288,21 +747,20 @@ on inventory click:
     set {_st} to {-uf::react::%{_u}%::state}
     if {_st} is "wait":
         set {-uf::react::%{_u}%::state} to "done"
-        uf_msg(player, "&cフライング！（-%{-uf::react::%{_u}%::bet}% チップ）")
-        uf_log("casino", "reaction %player% result=early")
+        uf_reactres(player, "early", 0)
     else if {_st} is "go":
         set {-uf::react::%{_u}%::state} to "done"
         set {_dt} to {-uf::tick} - {-uf::react::%{_u}%::t}
         if {_dt} <= {-uf::react::%{_u}%::window}:
-            set {_win} to {-uf::react::%{_u}%::bet} * {-uf::react::%{_u}%::mult}
-            uf_payout(player, "reaction", {_win})
-            uf_msg(player, "&6成功！ 反応 約%{_dt} * 50%ms &eチップ +%floor({_win})%")
-            uf_log("casino", "reaction %player% result=win ticks=%{_dt}%")
+            uf_reactres(player, "win", {_dt})
         else:
-            uf_msg(player, "&7遅かった…")
-    else:
-        stop
-    wait 1 tick
-    if player is online:
-        close inventory of player
+            uf_reactres(player, "slow", {_dt})
 
+# 待っている間・緑の間に閉じたら、その回は負け
+on inventory close:
+    {-uf::react::%uuid of player%::state} is "wait" or "go"
+    event-inventory is {-uf::react::%uuid of player%::inv}
+    set {-uf::react::%uuid of player%::state} to "quit"
+    uf_cbusyoff(player)
+    uf_msg(player, "&7反応速度ゲームをやめた（賭け金は戻らない）")
+    uf_log("casino", "reaction %player% result=quit")

@@ -1017,6 +1017,7 @@ function uf_ap_chall(p: player):
     uf_abtn({_p}, {_g}, 4, gilded blackstone, "&e地下カジノ", "%{_st}%|&715号館の 1 階の西の端の階段から下りた先|&7中は x -276〜-233・y 56〜60・z 94〜124", "")
     uf_abtn({_p}, {_g}, 11, gold block, "&a地下カジノを作る", "&7階段の先の土を掘って、部屋・台・浮かぶ文字・カジノの NPC を置く|&7もう作ってあれば、作り直す（台を置き直す）|&7カジノの区域をこの部屋にする|&7確認画面が出ます", "ask/15号館の地下を掘ってカジノを作る（作り直す）|chall/build")
     uf_abtn({_p}, {_g}, 13, ender pearl, "&e地下カジノへ行く", "&7入口（階段の下）へ移動", "chall/tp")
+    uf_abtn({_p}, {_g}, 22, name tag, "&e浮かぶ文字と台の表示を置き直す", "&7台の名前・スロットのリールの画面・ルーレットの結果の文字を置き直す|&7ブロックはそのまま|&72026-11-06 より前に作った地下カジノは 1 回押す（スロットの名前が台に埋まっていた）", "chall/labels")
     uf_abtn({_p}, {_g}, 15, dirt, "&c地下カジノを埋め戻す", "&7部屋を土に戻し、台・浮かぶ文字・NPC・カジノの区域を消す|&7確認画面が出ます", "ask/地下カジノを土で埋め戻す|chall/fill")
     uf_ashow({_p}, {_g}, "hub")
 
@@ -1548,6 +1549,8 @@ function uf_aact(p: player, a: text):
             uf_chbuild({_p})
         else if {_x::2} is "fill":
             uf_chfill({_p})
+        else if {_x::2} is "labels":
+            uf_chrelabel({_p})
         else:
             set {_w} to uf_chworld()
             if {_w} is not set:

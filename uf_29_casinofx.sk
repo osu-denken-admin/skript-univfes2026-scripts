@@ -1,0 +1,261 @@
+# ============================================================
+# uf_29_casinofx.sk : カジノの演出の共通の部品（2026-11-06）
+#   前はどのゲームも結果がチャットだけで、勝っているのか負けているのかが目で見て分からなかった
+#   → 画面（チェストの画面）の中で、リールが回る・玉が転がる・サイコロが転がる・カードがめくれる・カプセルが回る、
+#     結果で枠の色が変わる（当たり = 黄緑・黄色、はずれ = 赤）、地下カジノの台は浮かぶ文字と光で見せる
+#   ゲームごとの演出は uf_10_casino.sk（スロット・ルーレット・反応速度）、
+#     uf_21_casino2.sk（サイコロ・ハイ＆ロー・ガチャ・的当て・時間制限チャレンジ）、
+#     uf_25_casinohall.sk（地下カジノの台: スロットのリール・ルーレットの玉）
+#   ここにあるもの: 数の区切り（1,000）・今日の成績・払い戻しの保留・回している間の印・結果の色と音と粒子・画面下の表示
+#
+#   今日の成績 {uf::cnet::<uuid>}（{uf::cnetday::<uuid>} の日だけ有効）
+#     賭けたチップを引き、払い戻しを足す（交換・カジノ限定ショップは数えない。ガチャは使ったチップだけ引く）
+#   払い戻しの保留 {uf::cpend::<uuid>::<ゲーム>}
+#     当たりは結果を決めたときに保留にして、演出で結果を見せたときに払う（先に残高が増えて結果が分かってしまわないように）
+#     読み込み直しや抜けたことで演出が途中で止まっても、入ってきたとき・読み込み直したときに払う
+#   ガチャの景品の保留 {uf::gpend::<uuid>::*}（"id:個数"）も同じ
+#   回している間 {-uf::cbusy::<uuid>}（tick）: 同じ人が同時にいくつも回さないように。10 秒たつと自動で外れる
+#   どこから遊んだか {-uf::corg::<uuid>}: hall（地下カジノの台）/ gui（カジノの画面）。{-uf::corgl::<uuid>} は台の場所
+# ============================================================
+
+# ------------------------------------------------------------
+# 数の区切り（30000 → 30,000）
+# ------------------------------------------------------------
+function uf_comma(n: number) :: text:
+    set {_neg} to false
+    if {_n} < 0:
+        set {_neg} to true
+    set {_s} to "%floor(abs({_n}))%"
+    set {_len} to length of {_s}
+    set {_out} to ""
+    set {_i} to 1
+    while {_i} <= {_len}:
+        set {_c} to subtext of {_s} from characters {_i} to {_i}
+        set {_out} to "%{_out}%%{_c}%"
+        set {_rest} to {_len} - {_i}
+        if {_rest} > 0:
+            if mod({_rest}, 3) is 0:
+                set {_out} to "%{_out}%,"
+        add 1 to {_i}
+    if {_neg} is true:
+        return "-%{_out}%"
+    return {_out}
+
+# ------------------------------------------------------------
+# 今日の成績
+# ------------------------------------------------------------
+function uf_cday() :: text:
+    return now formatted as "yyyy-MM-dd"
+
+function uf_cnet(p: player) :: number:
+    set {_u} to uuid of {_p}
+    set {_d} to uf_cday()
+    if {uf::cnetday::%{_u}%} is not {_d}:
+        return 0
+    set {_v} to {uf::cnet::%{_u}%}
+    if {_v} is not set:
+        return 0
+    return {_v}
+
+function uf_cnetadd(p: player, n: number):
+    set {_u} to uuid of {_p}
+    set {_d} to uf_cday()
+    if {uf::cnetday::%{_u}%} is not {_d}:
+        set {uf::cnetday::%{_u}%} to {_d}
+        set {uf::cnet::%{_u}%} to 0
+    add {_n} to {uf::cnet::%{_u}%}
+
+# 例: &a&l+230 ▲（勝っている） / &c&l-120 ▼（負けている） / &7±0
+function uf_cnettext(p: player) :: text:
+    set {_n} to uf_cnet({_p})
+    if {_n} > 0:
+        return "&a&l+%uf_comma({_n})% ▲"
+    if {_n} < 0:
+        return "&c&l%uf_comma({_n})% ▼"
+    return "&7±0"
+
+# ------------------------------------------------------------
+# 払い戻しの保留と精算
+# ------------------------------------------------------------
+function uf_cpend(p: player, game: text, n: number):
+    set {_n} to floor({_n})
+    if {_n} <= 0:
+        stop
+    add {_n} to {uf::cpend::%uuid of {_p}%::%{_game}%}
+
+# 保留の払い戻しを払う。払ったチップの合計を返す
+function uf_csettle(p: player) :: number:
+    set {_u} to uuid of {_p}
+    set {_total} to 0
+    loop {uf::cpend::%{_u}%::*}:
+        add loop-index to {_games::*}
+        set {_amt::%loop-index%} to loop-value
+    delete {uf::cpend::%{_u}%::*}
+    loop {_games::*}:
+        uf_payout({_p}, loop-value, {_amt::%loop-value%})
+        add {_amt::%loop-value%} to {_total}
+    return {_total}
+
+function uf_gpendadd(p: player, prize: text):
+    add {_prize} to {uf::gpend::%uuid of {_p}%::*}
+
+# 保留のガチャの景品を渡す（オンラインのときだけ）。渡した数を返す
+function uf_gsettle(p: player) :: number:
+    if {_p} is not online:
+        return 0
+    set {_u} to uuid of {_p}
+    set {_l::*} to {uf::gpend::%{_u}%::*}
+    delete {uf::gpend::%{_u}%::*}
+    set {_n} to 0
+    loop {_l::*}:
+        set {_q::*} to split loop-value at ":"
+        set {_it} to uf_item({_q::1})
+        set {_c} to {_q::2} parsed as number
+        if {_c} is not set:
+            set {_c} to 1
+        if {_it} is set:
+            uf_give({_p}, {_it}, {_c})
+            add 1 to {_n}
+    return {_n}
+
+# 演出の途中で止まった分（読み込み直し・抜けた）を、入ってきたとき・読み込み直したときに渡す
+on join:
+    wait 3 seconds
+    player is online
+    set {_c} to uf_csettle(player)
+    if {_c} > 0:
+        uf_msg(player, "&6前に当たったチップ &e+%uf_comma({_c})% &6を受け取った")
+    set {_g} to uf_gsettle(player)
+    if {_g} > 0:
+        uf_msg(player, "&d前に回したガチャの景品を受け取った")
+
+on load:
+    loop all players:
+        uf_csettle(loop-player)
+        uf_gsettle(loop-player)
+
+# ------------------------------------------------------------
+# 回している間の印（同じ人が同時にいくつも回さないように）
+# ------------------------------------------------------------
+function uf_cbusy(p: player) :: boolean:
+    set {_t} to {-uf::cbusy::%uuid of {_p}%}
+    if {_t} is not set:
+        return false
+    if {-uf::tick} - {_t} > 200:
+        return false
+    return true
+
+function uf_cbusyon(p: player):
+    set {-uf::cbusy::%uuid of {_p}%} to {-uf::tick}
+
+function uf_cbusyoff(p: player):
+    delete {-uf::cbusy::%uuid of {_p}%}
+
+on quit:
+    delete {-uf::cbusy::%uuid of player%}
+    delete {-uf::corg::%uuid of player%}
+    delete {-uf::corgl::%uuid of player%}
+
+# ------------------------------------------------------------
+# 画面の部品
+#   kind: big（大当たり）/ win（当たり）/ even（賭け金が戻った）/ lose（はずれ）/ spin（回っている）/ wait（ふつう）
+# ------------------------------------------------------------
+function uf_cxpane(kind: text) :: item:
+    if {_kind} is "big":
+        return yellow stained glass pane named "&6&l大当たり！"
+    if {_kind} is "win":
+        return lime stained glass pane named "&a&l当たり！"
+    if {_kind} is "even":
+        return light blue stained glass pane named "&b賭け金が戻った"
+    if {_kind} is "lose":
+        return red stained glass pane named "&cはずれ…"
+    if {_kind} is "spin":
+        return orange stained glass pane named "&6回っている…"
+    return gray stained glass pane named " "
+
+function uf_cxpaint(g: inventory, slots: numbers, i: item):
+    loop {_slots::*}:
+        set slot loop-value of {_g} to {_i}
+
+# 所持チップと今日の成績（画面の上のほうに置く）
+function uf_cxinfo(p: player) :: item:
+    return (gold ingot named "&6所持チップ: &e%uf_comma(uf_chip({_p}))% 枚") with lore "&7今日の成績: %uf_cnettext({_p})% &7チップ", "&7賭け金: &e%uf_bet({_p})% &7チップ" and "&8（今日の成績 = 当たりでもらった分 − 賭けた分）"
+
+# 結果を見せるアイテム（画面のまん中などに置く）
+function uf_cxresitem(p: player, kind: text, head: text, sub: text) :: item:
+    if {_kind} is "big":
+        set {_i} to gold block
+    else if {_kind} is "win":
+        set {_i} to emerald block
+    else if {_kind} is "even":
+        set {_i} to light blue wool
+    else:
+        set {_i} to red wool
+    set {_i} to {_i} named {_head}
+    if {_kind} is "big" or "win":
+        set {_i} to {_i} with enchantment glint
+    return {_i} with lore {_sub}, "&7所持チップ: &e%uf_comma(uf_chip({_p}))% 枚" and "&7今日の成績: %uf_cnettext({_p})% &7チップ"
+
+# 結果の音
+function uf_cxsound(p: player, kind: text):
+    if {_p} is not online:
+        stop
+    if {_kind} is "big":
+        play sound "ui.toast.challenge_complete" with volume 0.8 at {_p}
+        play sound "entity.firework_rocket.twinkle" with volume 0.8 at {_p}
+    else if {_kind} is "win":
+        play sound "entity.player.levelup" with volume 0.8 at {_p}
+    else if {_kind} is "even":
+        play sound "entity.experience_orb.pickup" with volume 0.8 at {_p}
+    else:
+        play sound "block.note_block.bass" with volume 0.9 and pitch 0.6 at {_p}
+
+# 画面の外（地下カジノの台・画面を閉じた後）で、結果を画面のまん中に大きく出す
+function uf_cxtitle(p: player, head: text, sub: text):
+    if {_p} is not online:
+        stop
+    send title colored {_head} with subtitle colored {_sub} to {_p} for 2 seconds
+
+# 台のまわりの粒子（当たりは光、はずれは煙）
+function uf_cxfx(l: location, kind: text):
+    if {_kind} is "big" or "win":
+        loop 12 times:
+            play 2 happy villager at {_l} ~ vector(random number between -0.8 and 0.8, random number between 0 and 1.2, random number between -0.8 and 0.8)
+        loop 8 times:
+            play 1 end rod at {_l} ~ vector(random number between -0.6 and 0.6, random number between 0.2 and 1.6, random number between -0.6 and 0.6)
+        if {_kind} is "big":
+            loop 10 times:
+                play 3 crit at {_l} ~ vector(random number between -1 and 1, random number between 0 and 1.8, random number between -1 and 1)
+            play sound "entity.firework_rocket.blast" with volume 1 at {_l}
+            play sound "entity.firework_rocket.twinkle" with volume 1 at {_l}
+    else if {_kind} is "lose":
+        play 6 large smoke at {_l}
+
+# 画面の結果を見せたあと、少し待ってから戻す（地下カジノの台から開いた人は閉じる、カジノの画面から開いた人はカジノの画面へ）
+#   待っている間にほかの画面を開いていたら、何もしない
+function uf_cxback(p: player, g: inventory, ticks: number):
+    loop {_ticks} times:
+        wait 1 tick
+    if {_p} is not online:
+        stop
+    if {-uf::guiinv::%uuid of {_p}%} is not {_g}:
+        stop
+    if {-uf::corg::%uuid of {_p}%} is "hall":
+        close inventory of {_p}
+    else:
+        uf_casinogui({_p})
+
+# ------------------------------------------------------------
+# 画面下（アクションバー）: 地下カジノの中では、所持チップ・今日の成績・賭け金を出す（main.sk から）
+#   カジノの区域が決まっていないとき（どこでも /casino が使えるとき）は出さない
+# ------------------------------------------------------------
+function uf_cbar(p: player) :: text:
+    if uf_on("casino") is false:
+        return {_none}
+    if {uf::area::casino::a} is not set:
+        return {_none}
+    if {uf::area::casino::b} is not set:
+        return {_none}
+    if uf_inbox(location of {_p}, {uf::area::casino::a}, {uf::area::casino::b}) is false:
+        return {_none}
+    return "&6&lチップ &e%uf_comma(uf_chip({_p}))% &8｜ &f今日 %uf_cnettext({_p})% &8｜ &f賭け金 &e%uf_bet({_p})%"

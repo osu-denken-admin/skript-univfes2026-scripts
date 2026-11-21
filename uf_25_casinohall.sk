@@ -8,6 +8,14 @@
 #     東の壁: 的当て・時間制限チャレンジ・反応速度 / 北のカウンター: 賭け金・チップの交換・カジノ限定ショップ、カジノの NPC
 #   台の場所は {uf::cmach::<x>,<y>,<z>} = ゲーム。浮かぶ文字には scoreboard tag「uf_chall」
 #   作ると、カジノの区域（casino。/casino が使える範囲）をこの部屋にし、ここはダンジョンの区域から外す（chall。uf_00_core.sk の uf_indarea）
+#
+#   台の演出（2026-11-06。前は結果がチャットだけだった。共通の部品は uf_29_casinofx.sk）
+#     スロット: 台の上の画面（浮かぶ文字「uf_chreel:<z>」）でリールが回って 1 つずつ止まる。当たりは画面が光って粒子、はずれは煙
+#       1 台を回せるのは 1 人ずつ（回っている間はほかの人は待つ）。結果は次に回すまで画面に残る（まわりの人にも見える）
+#     ルーレット: 白い玉（ブロックの表示「uf_chball」）が 8 マスを回って止まり、上に結果（浮かぶ文字「uf_chrlres」）を出す。1 回ずつ
+#     どちらも結果を画面のまん中に大きく出す（タイトル）。ほかの台（サイコロ・ガチャなど）は、カジノの画面と同じ専用の画面
+#   浮かぶ文字と表示だけを置き直す: 管理者ツールの「地下カジノ」→「浮かぶ文字と台の表示を置き直す」（uf_chlabels。ブロックはそのまま）
+#     2026-11-06 より前に作った地下カジノは、スロットの文字が台のブロックの中に埋まっていたので、1 回押す
 # ============================================================
 
 function uf_chworld() :: world:
@@ -37,6 +45,51 @@ function uf_chlabel(w: world, x: number, y: number, z: number, txt: text):
 function uf_chlabelsdel():
     loop all text displays:
         if scoreboard tags of loop-value contains "uf_chall":
+            kill loop-value
+    loop all block displays:
+        if scoreboard tags of loop-value contains "uf_chall":
+            kill loop-value
+    delete {-uf::chreel::*}
+    delete {-uf::chrlres}
+
+# 浮かぶ文字（台の名前）と、スロットのリールの表示を置く（前のものは消してから）
+#   スロットの名前は台のブロックの手前（x -274.6）に置く（2026-11-06 より前は x -275.3 で、ブロックの中に埋まっていた）
+function uf_chlabels(w: world):
+    uf_chlabelsdel()
+    loop integers between 0 and 8:
+        set {_z} to 98 + loop-value * 3
+        uf_chlabel({_w}, -274.6, 59.05, {_z} + 0.5, "&b&lスロット")
+        uf_chreel({_w}, {_z})
+    uf_chlabel({_w}, -259.5, 58.8, 109.5, "&c&lルーレット%nl%&7赤か黒のボタンを押す")
+    uf_chlabel({_w}, -248.5, 58.6, 107.5, "&f&lサイコロ")
+    uf_chlabel({_w}, -248.5, 58.6, 113.5, "&e&lハイ＆ロー")
+    loop -240 and -237:
+        uf_chlabel({_w}, loop-value + 0.5, 58.7, 94.5, "&d&lガチャ")
+    uf_chlabel({_w}, -233.7, 58.9, 104.5, "&c&l的当て")
+    uf_chlabel({_w}, -233.7, 58.9, 111.5, "&b&l時間制限チャレンジ")
+    uf_chlabel({_w}, -233.7, 58.9, 118.5, "&a&l反応速度ゲーム")
+    uf_chlabel({_w}, -265.5, 58.4, 97.5, "&f&l賭け金を変える")
+    uf_chlabel({_w}, -261.5, 58.4, 97.5, "&e&lチップの交換")
+    uf_chlabel({_w}, -257.5, 58.4, 97.5, "&d&lカジノ限定ショップ")
+    uf_chlabel({_w}, -261.5, 59.9, 95.5, "&6&l地下カジノ%nl%&7ボタンを押して遊ぶ（チップで遊ぶ。現実のお金は使わない）")
+
+# 管理者ツールの「浮かぶ文字と台の表示を置き直す」
+function uf_chrelabel(p: player):
+    set {_w} to uf_chworld()
+    if {_w} is not set:
+        uf_msg({_p}, "&c先に「ワールドとロビー」で15号館（ダンジョン）のワールドを登録してください")
+        stop
+    if {uf::chall::built} is not set:
+        uf_msg({_p}, "&c地下カジノがまだありません（先に「地下カジノを作る」）")
+        stop
+    uf_chlabels({_w})
+    uf_msg({_p}, "&a地下カジノの浮かぶ文字と台の表示を置き直しました")
+    uf_log("admin", "casino hall labels by %{_p}%")
+
+# 再起動や読み込み直しで残ったルーレットの玉を消す
+on load:
+    loop all block displays:
+        if scoreboard tags of loop-value contains "uf_chball":
             kill loop-value
 
 # 作る。p は作った人（終わったら知らせる）
@@ -108,7 +161,6 @@ function uf_chbuild(p: player):
         uf_chmach({_w}, -276, 57, {_z}, "slot")
         uf_chmach({_w}, -276, 58, {_z}, "slot")
         uf_chmach({_w}, -275, 57, {_z}, "slot")
-        uf_chlabel({_w}, -275.3, 58.6, {_z} + 0.5, "&b&lスロット")
     # 真ん中: ルーレット（ふちは木、中は赤と黒、真ん中に金）
     loop integers between -262 and -258:
         set {_x} to loop-value
@@ -133,7 +185,6 @@ function uf_chbuild(p: player):
         else:
             uf_chset({_w}, {_x}, 57, {_z}, "polished_blackstone_button[face=floor,facing=south]")
         uf_chmach({_w}, {_x}, 57, {_z}, "roulette_%{_q::3}%")
-    uf_chlabel({_w}, -259.5, 58.8, 109.5, "&c&lルーレット%nl%&7赤か黒のボタンを押す")
     # サイコロ・ハイ＆ローの台（緑の台の真ん中にボタン）
     loop "dice,106" and "highlow,112":
         set {_q::*} to split loop-value at ","
@@ -145,15 +196,12 @@ function uf_chbuild(p: player):
                 uf_chmach({_w}, {_x}, 56, {_z0} + loop-value-3, {_q::1})
         uf_chset({_w}, -249, 57, {_z0} + 1, "stone_button[face=floor,facing=south]")
         uf_chmach({_w}, -249, 57, {_z0} + 1, {_q::1})
-    uf_chlabel({_w}, -248.5, 58.6, 107.5, "&f&lサイコロ")
-    uf_chlabel({_w}, -248.5, 58.6, 113.5, "&e&lハイ＆ロー")
     # 北: ガチャ 2 台（金の台にエンダーチェスト）
     loop -240 and -237:
         uf_chset({_w}, loop-value, 56, 94, "gold_block")
         uf_chset({_w}, loop-value, 57, 94, "ender_chest[facing=south]")
         uf_chmach({_w}, loop-value, 56, 94, "gacha")
         uf_chmach({_w}, loop-value, 57, 94, "gacha")
-        uf_chlabel({_w}, loop-value + 0.5, 58.7, 94.5, "&d&lガチャ")
     # 東の壁: 的当て・時間制限チャレンジ・反応速度（壁のブロックにボタン）
     loop "target,104,target", "timed,111,lodestone" and "reaction,118,redstone_lamp":
         set {_q::*} to split loop-value at ","
@@ -163,9 +211,6 @@ function uf_chbuild(p: player):
             uf_chmach({_w}, -233, loop-value-2, {_z}, {_q::1})
         uf_chset({_w}, -234, 57, {_z}, "stone_button[face=wall,facing=west]")
         uf_chmach({_w}, -234, 57, {_z}, {_q::1})
-    uf_chlabel({_w}, -233.7, 58.9, 104.5, "&c&l的当て")
-    uf_chlabel({_w}, -233.7, 58.9, 111.5, "&b&l時間制限チャレンジ")
-    uf_chlabel({_w}, -233.7, 58.9, 118.5, "&a&l反応速度ゲーム")
     # 北のカウンター（z 97）。内側（z 95・96）に NPC
     loop integers between -268 and -256:
         uf_chset({_w}, loop-value, 56, 97, "dark_oak_planks")
@@ -176,8 +221,8 @@ function uf_chbuild(p: player):
         uf_chset({_w}, {_x}, 57, 97, "stone_button[face=floor,facing=north]")
         uf_chmach({_w}, {_x}, 56, 97, {_q::2})
         uf_chmach({_w}, {_x}, 57, 97, {_q::2})
-        uf_chlabel({_w}, {_x} + 0.5, 58.4, 97.5, {_q::3})
-    uf_chlabel({_w}, -261.5, 59.9, 95.5, "&6&l地下カジノ%nl%&7ボタンを押して遊ぶ（チップで遊ぶ。現実のお金は使わない）")
+    # 浮かぶ文字・スロットのリールの表示（uf_chlabels）
+    uf_chlabels({_w})
     # カジノの NPC（前に置いたものは消してから）
     loop all villagers:
         if uf_npckind(loop-value) is "casino":
@@ -250,16 +295,15 @@ function uf_cmuse(p: player, g: text, l: location):
     if uf_on("casino") is false:
         uf_msg({_p}, "&cカジノは現在停止中です")
         stop
+    # 台から開いたゲームは、終わったら画面を閉じる（uf_29_casinofx.sk の uf_cxback）
+    set {-uf::corg::%uuid of {_p}%} to "hall"
+    set {-uf::corgl::%uuid of {_p}%} to {_l}
     if {_g} is "slot":
-        play sound "block.note_block.chime" with volume 0.6 at {_l}
-        uf_luck({_p}, "slot", "")
-        send action bar "&7賭け金: &e%uf_bet({_p})% チップ &7/ 所持チップ: &e%uf_chip({_p})%" to {_p}
+        uf_chslot({_p}, {_l})
     else if {_g} is "roulette_red":
-        uf_luck({_p}, "roulette", "red")
-        send action bar "&7赤に賭けた（賭け金 %uf_bet({_p})%）/ 所持チップ: &e%uf_chip({_p})%" to {_p}
+        uf_chroul({_p}, "red", {_l})
     else if {_g} is "roulette_black":
-        uf_luck({_p}, "roulette", "black")
-        send action bar "&7黒に賭けた（賭け金 %uf_bet({_p})%）/ 所持チップ: &e%uf_chip({_p})%" to {_p}
+        uf_chroul({_p}, "black", {_l})
     else if {_g} is "roulette_info":
         uf_msg({_p}, "&7ルーレット: 赤か黒のボタンを押すと、今の賭け金で賭ける（当たりで %{uf::cfg::casino::roulette::mult}% 倍）")
     else if {_g} is "dice":
@@ -267,7 +311,7 @@ function uf_cmuse(p: player, g: text, l: location):
     else if {_g} is "highlow":
         uf_hlstart({_p})
     else if {_g} is "gacha":
-        uf_gacha({_p})
+        uf_gachagui({_p}, true)
     else if {_g} is "target":
         uf_tgstart({_p})
     else if {_g} is "timed":
@@ -275,6 +319,7 @@ function uf_cmuse(p: player, g: text, l: location):
     else if {_g} is "reaction":
         uf_reaction({_p})
     else if {_g} is "exchange":
+        set {-uf::corg::%uuid of {_p}%} to "gui"
         uf_casinogui({_p})
     else if {_g} is "cshop":
         uf_cshopgui({_p})
@@ -282,3 +327,249 @@ function uf_cmuse(p: player, g: text, l: location):
         uf_betnext({_p})
         uf_msg({_p}, "&f賭け金を &e%uf_bet({_p})% チップ &fにした（スロット・ルーレットなどで使う）")
         play sound "ui.button.click" with volume 0.6 at {_p}
+
+# 台ごとの「回っている間」（同じ台を 2 人が同時に回さないように。10 秒で自動で外れる）
+function uf_chbusy(k: text) :: boolean:
+    set {_t} to {-uf::chbusy::%{_k}%}
+    if {_t} is not set:
+        return false
+    if {-uf::tick} - {_t} > 200:
+        return false
+    return true
+
+# ------------------------------------------------------------
+# スロットの台（西の壁の 9 台。z は 98・101・…・122）
+#   台の画面（赤いレンガの前）に浮かぶ文字でリールを出す。押した人の結果はまわりの人にも見える
+# ------------------------------------------------------------
+function uf_chreeltext(a: text, b: text, c: text, head: text) :: text:
+    set {_t} to "&8[ %uf_symtext({_a})% &8┃ %uf_symtext({_b})% &8┃ %uf_symtext({_c})% &8]"
+    if {_head} is "":
+        return {_t}
+    return "%{_head}%%nl%%{_t}%"
+
+# その台のリールの表示（なければ置く）
+function uf_chreel(w: world, mz: number) :: entity:
+    set {_e} to {-uf::chreel::%{_mz}%}
+    if {_e} is set:
+        if {_e} is alive:
+            return {_e}
+    delete {_e}
+    set {_tag} to "uf_chreel:%{_mz}%"
+    loop all text displays:
+        if scoreboard tags of loop-value contains {_tag}:
+            set {_e} to loop-value
+    if {_e} is not set:
+        spawn a text display at location(-274.97, 58.3, {_mz} + 0.5, {_w})
+        set {_e} to last spawned entity
+        set billboard of {_e} to fixed
+        set yaw of {_e} to 270
+        set display scale of {_e} to vector(0.8, 0.8, 0.8)
+        add "uf_chall" to scoreboard tags of {_e}
+        add {_tag} to scoreboard tags of {_e}
+        set {_sym::*} to uf_syms()
+        set text of {_e} to uf_chreeltext(random element out of {_sym::*}, random element out of {_sym::*}, random element out of {_sym::*}, "&e&lボタンで回す")
+    set {-uf::chreel::%{_mz}%} to {_e}
+    return {_e}
+
+function uf_chslot(p: player, l: location):
+    set {_w} to world of {_l}
+    set {_mz} to floor(z-coordinate of {_l})
+    set {_bk} to "slot%{_mz}%"
+    if uf_chbusy({_bk}) is true:
+        uf_msg({_p}, "&7この台は回っている途中。止まるまで待ってね")
+        stop
+    if uf_cbusy({_p}) is true:
+        stop
+    set {_r::*} to uf_slotroll({_p})
+    if size of {_r::*} < 5:
+        play sound "block.note_block.bass" with volume 0.8 at {_p}
+        stop
+    uf_cbusyon({_p})
+    set {-uf::chbusy::%{_bk}%} to {-uf::tick}
+    add 1 to {-uf::chtok::%{_bk}%}
+    set {_tok} to {-uf::chtok::%{_bk}%}
+    set {_pay} to {_r::4} parsed as number
+    set {_bet} to {_r::5} parsed as number
+    set {_e} to uf_chreel({_w}, {_mz})
+    set {_ml} to location(-274.5, 57.5, {_mz} + 0.5, {_w})
+    set {_scr} to location(-276, 57, {_mz}, {_w})
+    play sound "block.note_block.chime" with volume 0.6 at {_ml}
+    set {_sym::*} to uf_syms()
+    set {_cur::1} to random element out of {_sym::*}
+    set {_cur::2} to random element out of {_sym::*}
+    set {_cur::3} to random element out of {_sym::*}
+    set {_stop::1} to 8
+    set {_stop::2} to 12
+    set {_stop::3} to 16
+    set {_reach} to false
+    if {_r::1} is {_r::2}:
+        set {_reach} to true
+        set {_stop::3} to 23
+    set {_head} to "&6回っている…"
+    set {_k} to 1
+    while {_k} <= {_stop::3}:
+        set {_c} to 1
+        while {_c} <= 3:
+            if {_k} < {_stop::%{_c}%}:
+                set {_cur::%{_c}%} to random element out of {_sym::*}
+            else if {_k} is {_stop::%{_c}%}:
+                set {_cur::%{_c}%} to {_r::%{_c}%}
+                play sound "block.note_block.basedrum" with volume 0.8 at {_ml}
+            add 1 to {_c}
+        if {_reach} is true:
+            if {_k} is {_stop::2}:
+                set {_head} to "&d&lリーチ！"
+                play sound "block.note_block.chime" with volume 1 at {_ml}
+        set text of {_e} to uf_chreeltext({_cur::1}, {_cur::2}, {_cur::3}, {_head})
+        play sound "block.note_block.hat" with volume 0.3 at {_ml}
+        set {_w2} to 2
+        if {_reach} is true:
+            if {_k} > {_stop::2}:
+                set {_w2} to 3
+        loop {_w2} times:
+            wait 1 tick
+        add 1 to {_k}
+    # 結果
+    uf_csettle({_p})
+    uf_cbusyoff({_p})
+    delete {-uf::chbusy::%{_bk}%}
+    uf_slotmsg({_p}, {_r::1}, {_r::2}, {_r::3}, {_pay}, {_bet})
+    if {_pay} > 0:
+        set text of {_e} to uf_chreeltext({_r::1}, {_r::2}, {_r::3}, "&6&l★ 当たり！ +%uf_comma({_pay})% ★")
+        uf_cxfx({_ml}, "big")
+        uf_cxsound({_p}, "big")
+        uf_cxtitle({_p}, "&6&l当たり！", "&e+%uf_comma({_pay})% チップ（所持 %uf_comma(uf_chip({_p}))% 枚）")
+        # 画面を光らせる（シーランタン ⇔ グロウストーン。最後は必ずシーランタンに戻す）
+        loop 6 times:
+            if mod(loop-value, 2) is 1:
+                set block at {_scr} to glowstone
+            else:
+                set block at {_scr} to sea lantern
+            wait 3 ticks
+        set block at {_scr} to sea lantern
+    else:
+        set text of {_e} to uf_chreeltext({_r::1}, {_r::2}, {_r::3}, "&7はずれ…")
+        uf_cxfx({_ml}, "lose")
+        uf_cxsound({_p}, "lose")
+        uf_cxtitle({_p}, "&7はずれ…", "&7-%uf_comma({_bet})% チップ（所持 %uf_comma(uf_chip({_p}))% 枚）")
+    # しばらくしたら見出しだけ消す（次に回されていたら何もしない）
+    loop 60 times:
+        wait 1 tick
+    if {-uf::chtok::%{_bk}%} is {_tok}:
+        if {_e} is alive:
+            set text of {_e} to uf_chreeltext({_r::1}, {_r::2}, {_r::3}, "&8前の結果")
+
+# ------------------------------------------------------------
+# ルーレットの台（まん中。8 マスのまわりを白い玉が回る。まん中の金のブロックが緑（0））
+# ------------------------------------------------------------
+# i 番目（1〜8、時計回り）のマスの場所（建てるときの _cells と同じ順）
+function uf_chrlcell(w: world, i: number) :: location:
+    set {_d::*} to "-1,-1", "0,-1", "1,-1", "1,0", "1,1", "0,1", "-1,1" and "-1,0"
+    set {_q::*} to split {_d::%{_i}%} at ","
+    return location(-260 + ({_q::1} parsed as number) + 0.5, 57.25, 109 + ({_q::2} parsed as number) + 0.5, {_w})
+
+# 結果を出す浮かぶ文字（なければ置く）
+function uf_chrlres(w: world) :: entity:
+    set {_e} to {-uf::chrlres}
+    if {_e} is set:
+        if {_e} is alive:
+            return {_e}
+    delete {_e}
+    loop all text displays:
+        if scoreboard tags of loop-value contains "uf_chrlres":
+            set {_e} to loop-value
+    if {_e} is not set:
+        spawn a text display at location(-259.5, 58.15, 109.5, {_w})
+        set {_e} to last spawned entity
+        set billboard of {_e} to center
+        add "uf_chall" to scoreboard tags of {_e}
+        add "uf_chrlres" to scoreboard tags of {_e}
+    set {-uf::chrlres} to {_e}
+    return {_e}
+
+function uf_chroul(p: player, choice: text, l: location):
+    set {_w} to world of {_l}
+    if uf_chbusy("roul") is true:
+        uf_msg({_p}, "&7ルーレットが回っている途中。止まったら押してね")
+        stop
+    if uf_cbusy({_p}) is true:
+        stop
+    set {_r::*} to uf_rlroll({_p}, {_choice})
+    if size of {_r::*} < 3:
+        play sound "block.note_block.bass" with volume 0.8 at {_p}
+        stop
+    uf_cbusyon({_p})
+    set {-uf::chbusy::roul} to {-uf::tick}
+    add 1 to {-uf::chtok::roul}
+    set {_tok} to {-uf::chtok::roul}
+    set {_res} to {_r::1}
+    set {_pay} to {_r::2} parsed as number
+    set {_bet} to {_r::3} parsed as number
+    set {_rt} to uf_chrlres({_w})
+    set text of {_rt} to "&f%{_p}% が %uf_rlname({_choice})% &fに %uf_comma({_bet})% チップ%nl%&6玉が回っている…"
+    send title " " with subtitle colored "%uf_rlname({_choice})% &fに %uf_comma({_bet})% チップ賭けた！" to {_p} for 2 seconds
+    # 玉（白いブロックを小さくしたもの）
+    set {_pos} to random integer between 1 and 8
+    spawn a block display at uf_chrlcell({_w}, {_pos})
+    set {_ball} to last spawned entity
+    set block data of {_ball} to ("white concrete" parsed as block data)
+    set display translation of {_ball} to vector(-0.14, 0, -0.14)
+    set display scale of {_ball} to vector(0.28, 0.28, 0.28)
+    set teleport duration of {_ball} to 2 ticks
+    add "uf_chall" to scoreboard tags of {_ball}
+    add "uf_chball" to scoreboard tags of {_ball}
+    # 止まるマス（赤 = 1・3・5・7、黒 = 2・4・6・8、緑はまん中）
+    if {_res} is "red":
+        set {_cand::*} to 1, 3, 5 and 7
+        set {_tgt} to random element out of {_cand::*}
+    else if {_res} is "black":
+        set {_cand::*} to 2, 4, 6 and 8
+        set {_tgt} to random element out of {_cand::*}
+    else:
+        set {_tgt} to random integer between 1 and 8
+    set {_steps} to 16 + mod({_tgt} - {_pos} + 8, 8)
+    set {_k} to 1
+    while {_k} <= {_steps}:
+        set {_pos} to mod({_pos}, 8) + 1
+        teleport {_ball} to uf_chrlcell({_w}, {_pos})
+        play sound "block.note_block.hat" with volume 0.4 at {_l}
+        set {_left} to {_steps} - {_k}
+        set {_w2} to 2
+        if {_left} <= 8:
+            set {_w2} to 3
+        if {_left} <= 4:
+            set {_w2} to 4
+        if {_left} <= 1:
+            set {_w2} to 6
+        loop {_w2} times:
+            wait 1 tick
+        add 1 to {_k}
+    set {_at} to uf_chrlcell({_w}, {_pos})
+    if {_res} is "green":
+        # まん中（緑 = 0）に落ちる
+        set {_at} to location(-259.5, 57.25, 109.5, {_w})
+        teleport {_ball} to {_at}
+        loop 4 times:
+            wait 1 tick
+    # 結果
+    uf_csettle({_p})
+    uf_cbusyoff({_p})
+    delete {-uf::chbusy::roul}
+    uf_rlmsg({_p}, {_res}, {_pay}, {_bet})
+    if {_pay} > 0:
+        set text of {_rt} to "%uf_rlname({_res})%&f！ &6&l当たり！%nl%&e%{_p}% +%uf_comma({_pay})% チップ"
+        uf_cxfx({_at}, "win")
+        uf_cxsound({_p}, "win")
+        uf_cxtitle({_p}, "&6&l当たり！", "%uf_rlname({_res})% &eに止まった！ +%uf_comma({_pay})% チップ")
+    else:
+        set text of {_rt} to "%uf_rlname({_res})%&f！ &7はずれ…%nl%&7%{_p}% -%uf_comma({_bet})% チップ"
+        uf_cxfx({_at}, "lose")
+        uf_cxsound({_p}, "lose")
+        uf_cxtitle({_p}, "&7はずれ…", "%uf_rlname({_res})% &7に止まった（-%uf_comma({_bet})% チップ）")
+    # しばらくしたら玉を片付けて、結果は「前の結果」にする（次に回されていたら何もしない）
+    loop 60 times:
+        wait 1 tick
+    kill {_ball}
+    if {-uf::chtok::roul} is {_tok}:
+        if {_rt} is alive:
+            set text of {_rt} to "&8前の結果: %uf_rlname({_res})%"
