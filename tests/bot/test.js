@@ -382,8 +382,10 @@ T.dungeonexit = async ({ A, P }) => {
   con('gamerule keepInventory false'); con('gamerule keep_inventory false');
   // ダンジョンの区域を受付・2 階の開始地点のまわりだけにする（管理者は敵に倒されないようクリエイティブ）
   con(`gamemode creative ${A.username}`);
-  con(`tp ${A.username} -2 -60 -2`); await sleep(800); A.chat('/ufadmin area dungeon1 pos1');
-  con(`tp ${A.username} 14 -55 14`); await sleep(800); A.chat('/ufadmin area dungeon1 pos2'); await sleep(400);
+  // テレポートは管理者ボットのチャットで送る（コンソールから送ると、遅いマシンでは区域のコマンドと順番が入れ替わって、角 1 が角 2 と同じ場所になることがあった）
+  //   角 1 は地面の 1 つ下（y -61）にする（土の道など、少し低いブロックの上に立っても区域の中になるように）
+  A.chat(`/tp ${A.username} -2 -61 -2`); await sleep(500); A.chat('/ufadmin area dungeon1 pos1'); await sleep(300);
+  A.chat(`/tp ${A.username} 14 -55 14`); await sleep(500); A.chat('/ufadmin area dungeon1 pos2'); await sleep(400);
   con(`tp ${A.username} 0 -60 0`); await sleep(400);
   con(`gamemode survival ${P.username}`); con(`clear ${P.username}`); con(`tp ${P.username} 0 -60 0`); await sleep(800);
   con(`give ${P.username} dirt 5`); await sleep(500);
@@ -452,8 +454,10 @@ T.travel = async ({ A, P }) => {
   const respawn = async () => { await sleep(1200); if (!P.entity || P.health <= 0) { P.respawn(); } await sleep(1500); };
   const use = async () => { await hold(P, '道しるべ'); await P.look(0, Math.PI / 2, true); P.activateItem(); await sleep(300); P.deactivateItem(); await sleep(1500); };
   con(`gamemode creative ${A.username}`);
-  con(`tp ${A.username} -2 -60 -2`); await sleep(800); A.chat('/ufadmin area dungeon1 pos1');
-  con(`tp ${A.username} 14 -55 14`); await sleep(800); A.chat('/ufadmin area dungeon1 pos2'); await sleep(400);
+  // テレポートは管理者ボットのチャットで送る（コンソールから送ると、遅いマシンでは区域のコマンドと順番が入れ替わって、角 1 が角 2 と同じ場所になることがあった）
+  //   角 1 は地面の 1 つ下（y -61）にする（土の道など、少し低いブロックの上に立っても区域の中になるように）
+  A.chat(`/tp ${A.username} -2 -61 -2`); await sleep(500); A.chat('/ufadmin area dungeon1 pos1'); await sleep(300);
+  A.chat(`/tp ${A.username} 14 -55 14`); await sleep(500); A.chat('/ufadmin area dungeon1 pos2'); await sleep(400);
   con(`tp ${A.username} 0 -60 0`); await sleep(400);
   // ダンジョンの外で死んでも、道しるべはなくならない（落とさずに、復活したときに持っている）
   con('gamerule keepInventory false'); con('gamerule keep_inventory false');
