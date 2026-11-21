@@ -15,7 +15,8 @@
 #     ルーレット: 白い玉（ブロックの表示「uf_chball」）が 8 マスを回って止まり、上に結果（浮かぶ文字「uf_chrlres」）を出す。1 回ずつ
 #     どちらも結果を画面のまん中に大きく出す（タイトル）。ほかの台（サイコロ・ガチャなど）は、カジノの画面と同じ専用の画面
 #   浮かぶ文字と表示だけを置き直す: 管理者ツールの「地下カジノ」→「浮かぶ文字と台の表示を置き直す」（uf_chlabels。ブロックはそのまま）
-#     2026-11-21 より前に作った地下カジノは、スロットの文字が台のブロックの中に埋まっていたので、1 回押す
+#     2026-11-21 より前に作った地下カジノ（スロットの文字が台のブロックの中に埋まっていた）は、だれかが地下カジノに入ったときに
+#     1 回だけ自動で置き直す（{uf::chall::labelv} が 2 になる。押さなくてよい）
 # ============================================================
 
 function uf_chworld() :: world:
@@ -81,8 +82,32 @@ function uf_chrelabel(p: player):
         uf_msg({_p}, "&c地下カジノがまだありません（先に「地下カジノを作る」）")
         stop
     uf_chlabels({_w})
+    set {uf::chall::labelv} to 2
     uf_msg({_p}, "&a地下カジノの浮かぶ文字と台の表示を置き直しました")
     uf_log("admin", "casino hall labels by %{_p}%")
+
+# 前に作った地下カジノの浮かぶ文字を、1 回だけ自動で置き直す
+#   浮かぶ文字は読み込まれている場所のものしか消せないので、だれかが地下カジノの中に 10 秒ほどいたとき（まわりが読み込まれてから）にする
+every 5 seconds:
+    {uf::chall::built} is set
+    {uf::chall::labelv} is not 2
+    {uf::area::chall::a} is set
+    {uf::area::chall::b} is set
+    set {_w} to uf_chworld()
+    {_w} is set
+    set {_in} to false
+    loop all players:
+        if uf_inbox(location of loop-player, {uf::area::chall::a}, {uf::area::chall::b}) is true:
+            set {_in} to true
+    if {_in} is false:
+        delete {-uf::challseen}
+        stop
+    add 1 to {-uf::challseen}
+    {-uf::challseen} >= 2
+    delete {-uf::challseen}
+    uf_chlabels({_w})
+    set {uf::chall::labelv} to 2
+    uf_log("admin", "casino hall labels migrated automatically")
 
 # 再起動や読み込み直しで残ったルーレットの玉を消す
 on load:
@@ -221,6 +246,7 @@ function uf_chbuild(p: player):
         uf_chmach({_w}, {_x}, 57, 97, {_q::2})
     # 浮かぶ文字・スロットのリールの表示（uf_chlabels）
     uf_chlabels({_w})
+    set {uf::chall::labelv} to 2
     # カジノの NPC（前に置いたものは消してから）
     loop all villagers:
         if uf_npckind(loop-value) is "casino":

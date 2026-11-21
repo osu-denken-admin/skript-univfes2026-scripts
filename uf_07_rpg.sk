@@ -52,6 +52,8 @@ function uf_addxp(p: player, n: number):
         add 1 to {uf::sp::%{_u}%}
         send title "&6LEVEL UP!" with subtitle "&eLv.%{_lv}%（スキルポイント +1）" to {_p} for 2 seconds
         uf_log("rpg", "levelup %{_p}% (%{_u}%) lv=%{_lv}%")
+        # このレベルで使えるようになった施設（uf_30_lobby.sk）
+        uf_unlocknotify({_p}, {_lv})
         if {_lv} >= {uf::cfg::level::max}:
             set {uf::xp::%{_u}%} to 0
             exit loop
@@ -387,7 +389,14 @@ function uf_skillgui(p: player, tab: text = ""):
     set {_sp} to {uf::sp::%{_u}%}
     if {_sp} is not set:
         set {_sp} to 0
-    set slot 8 of {_g} to bottle o' enchanting named "&eLv.%{_lv}%" with lore "&7経験値: %{_xp}% / %uf_need({_lv})%", "&7スキルポイント: &a%{_sp}%", "&7ダンジョンの討伐・突破とクエストで経験値が入る" and "&7カジノ限定ショップの「スキルの霊薬」でも増える"
+    delete {_ll::*}
+    add "&7経験値: %{_xp}% / %uf_need({_lv})%" to {_ll::*}
+    add "&7スキルポイント: &a%{_sp}%" to {_ll::*}
+    add "&7ダンジョンの討伐・突破とクエストで経験値が入る" to {_ll::*}
+    add "&7カジノ限定ショップの「スキルの霊薬」でも増える" to {_ll::*}
+    add "&6レベルで使えるようになる施設:" to {_ll::*}
+    add uf_unlocklines({_p}) to {_ll::*}
+    set slot 8 of {_g} to bottle o' enchanting named "&eLv.%{_lv}%" with lore {_ll::*}
     # 系統の印と、スキルの木
     set slot 18 of {_g} to (uf_sktabicon({_tab}) named "&l%uf_sktabname({_tab})%") with lore uf_sktabdesc({_tab}) and "&7左のスキルを取ると、右のスキルが開く"
     set {_s} to 20

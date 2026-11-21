@@ -7,6 +7,7 @@
 #   操作はボタンの画面（uf_pgui）でできる。受付の画面の「パーティー」か /party で開く
 #     近くにいる人の顔を押すと招待、招待されたら「参加する」「断る」、入っていれば「抜ける」
 #   コマンド（/party invite <名前> / accept / decline / leave / list）も残してある
+#   通信が切れても rejoin_seconds 秒（初期 120）は席を残す（下の on quit）。ダンジョンの挑戦も同じ（uf_05_dungeon.sk）
 # ============================================================
 
 function uf_members(p: player) :: players:
@@ -221,6 +222,48 @@ command /party [<text>] [<text>]:
                 else:
                     send "&7- &f%loop-value%" to player
 
+# 通信が切れても、rejoin_seconds 秒（初期 120）のうちに入り直せば、そのままパーティーにいられる（2026-11-21。前は抜けた瞬間に解散・脱退）
+#   {-uf::paway::<uuid>} = 抜けた時の tick、{-uf::pawayp::<uuid>} = 抜けた人（時間が過ぎたら uf_partyleave に渡す）
+function uf_rejoinsec() :: number:
+    set {_v} to {uf::cfg::rejoin_seconds}
+    if {_v} is not set:
+        return 120
+    return {_v}
+
 on quit:
     delete {-uf::pinv::%uuid of player%}
-    uf_partyleave(player)
+    {-uf::party::%uuid of player%} is set
+    if uf_rejoinsec() <= 0:
+        uf_partyleave(player)
+        stop
+    set {-uf::paway::%uuid of player%} to {-uf::tick}
+    set {-uf::pawayp::%uuid of player%} to player
+    loop uf_members(player):
+        if loop-value is online:
+            if loop-value is not player:
+                uf_msg(loop-value, "&e%player% の通信が切れた。%uf_rejoinsec()% 秒のうちに戻れば、そのままパーティーにいられる")
+
+on join:
+    set {_u} to uuid of player
+    {-uf::paway::%{_u}%} is set
+    delete {-uf::paway::%{_u}%}
+    delete {-uf::pawayp::%{_u}%}
+    set {_l} to {-uf::party::%{_u}%}
+    {_l} is set
+    set {-uf::pmem::%{_l}%::%{_u}%} to player
+    loop {-uf::pmem::%{_l}%::*}:
+        if loop-value is online:
+            if loop-value is not player:
+                uf_msg(loop-value, "&a%player% が戻ってきた")
+    uf_msg(player, "&aパーティーに戻った")
+
+every 5 seconds:
+    loop {-uf::paway::*}:
+        if {-uf::tick} - loop-value > uf_rejoinsec() * 20:
+            add loop-index to {_gone::*}
+    loop {_gone::*}:
+        set {_p} to {-uf::pawayp::%loop-value%}
+        delete {-uf::paway::%loop-value%}
+        delete {-uf::pawayp::%loop-value%}
+        if {_p} is set:
+            uf_partyleave({_p})

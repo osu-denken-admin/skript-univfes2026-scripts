@@ -36,6 +36,10 @@
 #   {-uf::arena::<階>::mid|boss}     その闘技場を使っているセッション / {-uf::await::<階>::mid|boss::*} 待っているセッション
 #   {-uf::down::<uuid>}              倒れている（蘇生待ち）
 #   {-uf::tolobby::<uuid>}           復活したら 1 階へ戻す
+#   {-uf::away::<uuid>} / {-uf::awayp::<uuid>}  通信が切れた時の tick と、その人（2026-11-21）
+#     rejoin_seconds 秒（初期 120）のうちに入り直せば、挑戦に戻る（階を移っていれば新しい階に、闘技場の戦いの途中なら闘技場へ）
+#     過ぎたら挑戦から外す（uf_dawaygone）。次に入ってきたときに 1 階へ（{-uf::tolobbyj::<uuid>}）
+#     前は抜けた瞬間に退出扱いで、入り直しても戻れなかった
 # ============================================================
 
 # セッションの階
@@ -298,6 +302,10 @@ function uf_dbegin(s: number, mem: players):
             if loop-value is alive:
                 teleport loop-value to {uf::floor::%{_f}%::start}
             send title "&c%{_f}%階" with subtitle "&7中ボスの壁を突破し、反対側の階段を目指せ" to loop-value for 3 seconds
+        else if {-uf::away::%uuid of loop-value%} is set:
+            # 通信が切れていて戻ってくるのを待っている人も、一緒に次の階へ（戻ってきたときに開始地点へ）
+            set {-uf::sess::%{_s}%::mem::%uuid of loop-value%} to loop-value
+            set {-uf::insess::%uuid of loop-value%} to {_s}
     uf_log("dungeon", "floor start f=%{_f}% s=%{_s}%")
     uf_placechests({_s})
     uf_spawnwave({_s})
@@ -675,6 +683,8 @@ function uf_dnext(s: number):
     loop {-uf::sess::%{_s}%::mem::*}:
         if loop-value is online:
             add loop-value to {_mem::*}
+        else if {-uf::away::%uuid of loop-value%} is set:
+            add loop-value to {_mem::*}
     uf_dend({_s}, "advance", false)
     if size of {_mem::*} > 0:
         uf_dbegin({_ns}, {_mem::*})
@@ -810,10 +820,15 @@ on death:
 function uf_dwipecheck(s: number):
     if {-uf::sess::%{_s}%::on} is not true:
         stop
+    # だれもいない（全員の通信が切れている）ときは、戻ってくるのを待つ（下の 5 秒ごとの処理が、待ちすぎたら終わらせる）
+    set {_on} to 0
     loop {-uf::sess::%{_s}%::mem::*}:
         if loop-value is online:
+            add 1 to {_on}
             if {-uf::down::%uuid of loop-value%} is not set:
                 stop
+    if {_on} is 0:
+        stop
     uf_dsay({_s}, "&4全滅… 挑戦は終了です。1 階へ戻ります")
     uf_log("dungeon", "wipe f=%uf_sf({_s})% s=%{_s}%")
     uf_dend({_s}, "wipe")
@@ -845,6 +860,8 @@ function uf_dend(s: number, reason: text, tolobby: boolean = true):
         delete {-uf::down::%uuid of {_p}%}
         uf_soulclear({_p})
         if {_tolobby} is true:
+            delete {-uf::away::%uuid of {_p}%}
+            delete {-uf::awayp::%uuid of {_p}%}
             if {_p} is online:
                 uf_dtakemap({_p})
                 if {uf::cfg::lobby} is set:
@@ -852,6 +869,9 @@ function uf_dend(s: number, reason: text, tolobby: boolean = true):
                         teleport {_p} to {uf::cfg::lobby}
                     else:
                         set {-uf::tolobby::%uuid of {_p}%} to true
+            else:
+                # 通信が切れている人は、次に入ってきたときに 1 階へ
+                set {-uf::tolobbyj::%uuid of {_p}%} to true
     uf_log("dungeon", "end f=%{_f}% s=%{_s}% reason=%{_reason}%")
     delete {-uf::sess::%{_s}%::*}
 
@@ -932,12 +952,123 @@ function uf_dleave(p: player):
     else:
         uf_dwipecheck({_f})
 
+# 通信が切れたとき: すぐには退出させず、rejoin_seconds 秒（初期 120）待つ（uf_04_party.sk の uf_rejoinsec）
 on quit:
-    if {-uf::insess::%uuid of player%} is set:
+    set {_u} to uuid of player
+    set {_s} to {-uf::insess::%{_u}%}
+    {_s} is set
+    if uf_rejoinsec() <= 0:
         uf_dleave(player)
+        stop
+    if {-uf::sess::%{_s}%::on} is not true:
+        uf_dleave(player)
+        stop
+    set {-uf::away::%{_u}%} to {-uf::tick}
+    set {-uf::awayp::%{_u}%} to player
+    # 倒れていた人は、通信が切れている間は蘇生できないので、蘇生の受付は消す（戻ってきたら復帰地点で復活する）
+    uf_soulclear(player)
+    uf_log("dungeon", "away %player% s=%{_s}%")
+    loop {-uf::sess::%{_s}%::mem::*}:
+        if loop-value is online:
+            if loop-value is not player:
+                uf_msg(loop-value, "&e%player% の通信が切れた。%uf_rejoinsec()% 秒のうちに戻れば、挑戦に戻れる")
+
+# 戻ってきたとき
+on join:
+    set {_u} to uuid of player
+    if {-uf::tolobbyj::%{_u}%} is set:
+        delete {-uf::tolobbyj::%{_u}%}
+        delete {-uf::away::%{_u}%}
+        delete {-uf::awayp::%{_u}%}
+        wait 1 second
+        player is online
+        uf_dtakemap(player)
+        if {uf::cfg::lobby} is set:
+            teleport player to {uf::cfg::lobby}
+        uf_msg(player, "&7ダンジョンの挑戦は終わっていたので、1 階に戻った")
+        stop
+    {-uf::away::%{_u}%} is set
+    delete {-uf::away::%{_u}%}
+    delete {-uf::awayp::%{_u}%}
+    set {_s} to {-uf::insess::%{_u}%}
+    {_s} is set
+    if {-uf::sess::%{_s}%::on} is not true:
+        delete {-uf::insess::%{_u}%}
+        stop
+    set {-uf::sess::%{_s}%::mem::%{_u}%} to player
+    if {-uf::sess::%{_s}%::bb} is set:
+        set {-uf::bbof::%{_u}%} to {_s}
+    uf_log("dungeon", "rejoin %player% s=%{_s}%")
+    wait 1 second
+    player is online
+    {-uf::insess::%{_u}%} is {_s}
+    set {_to} to uf_drejoinpos({_s}, player)
+    if {_to} is set:
+        teleport player to {_to}
+    set {_has} to false
+    loop all items in inventory of player:
+        if uf_id(loop-value) is "map":
+            set {_has} to true
+    if {_has} is false:
+        uf_give(player, uf_item("map"))
+    uf_msg(player, "&a通信が戻った。%uf_sf({_s})%階の挑戦の続きから")
+    loop {-uf::sess::%{_s}%::mem::*}:
+        if loop-value is online:
+            if loop-value is not player:
+                uf_msg(loop-value, "&a%player% が戻ってきた")
+
+# 戻ってきた人の行き先（今いる場所のままでよければ何も返さない）
+#   中ボス・ボスと戦っている途中なら闘技場の入口、そうでなければ、挑戦中の階の中にいればそのまま、外なら復帰地点
+function uf_drejoinpos(s: number, p: player) :: location:
+    set {_f} to uf_sf({_s})
+    set {_ph} to {-uf::sess::%{_s}%::phase}
+    if {_ph} is "mid" or "midwin":
+        set {_a} to {uf::floor::%{_f}%::marena::player}
+    else if {_ph} is "boss" or "bosswin":
+        set {_a} to {uf::floor::%{_f}%::barena::player}
+    if {_a} is set:
+        if "%world of {_a}%" is "%world of {_p}%":
+            if distance between {_a} and {_p} < 40:
+                return {_none}
+        return {_a}
+    if {uf::floor::%{_f}%::p1} is set:
+        if {uf::floor::%{_f}%::p2} is set:
+            if uf_inbox(location of {_p}, {uf::floor::%{_f}%::p1}, {uf::floor::%{_f}%::p2}) is true:
+                return {_none}
+    return uf_scp({_s})
+
+# 待っても戻ってこなかった人を、挑戦から外す
+function uf_dawaygone(u: text):
+    set {_p} to {-uf::awayp::%{_u}%}
+    delete {-uf::away::%{_u}%}
+    delete {-uf::awayp::%{_u}%}
+    set {_s} to {-uf::insess::%{_u}%}
+    delete {-uf::insess::%{_u}%}
+    delete {-uf::down::%{_u}%}
+    delete {-uf::bbof::%{_u}%}
+    set {-uf::tolobbyj::%{_u}%} to true
+    if {_s} is not set:
+        stop
+    delete {-uf::sess::%{_s}%::mem::%{_u}%}
+    uf_log("dungeon", "away timeout %{_u}% s=%{_s}%")
+    if {-uf::sess::%{_s}%::on} is not true:
+        stop
+    loop {-uf::sess::%{_s}%::mem::*}:
+        if loop-value is online:
+            uf_msg(loop-value, "&7%{_p}% は戻ってこなかったので、挑戦から外れた")
+    if size of {-uf::sess::%{_s}%::mem::*} is 0:
+        uf_dend({_s}, "allleft")
+    else:
+        uf_dwipecheck({_s})
 
 # 時間切れ・全員不在・待ちの再試行・reload で中断された待ちの復旧・空いた階の壁を閉じ直す
 every 5 seconds:
+    # 通信が切れて、待っても戻ってこなかった人
+    loop {-uf::away::*}:
+        if {-uf::tick} - loop-value > uf_rejoinsec() * 20:
+            add loop-index to {_gone::*}
+    loop {_gone::*}:
+        uf_dawaygone(loop-value)
     loop integers between 2 and 9:
         set {_f} to loop-value-1
         # 点検で開けた壁は、近くに人がいなければ閉じ直す（挑戦中は壁を開けないので、いつでも閉じてよい）
@@ -970,7 +1101,7 @@ every 5 seconds:
                             set {_any} to true
                     if {_any} is true:
                         set {-uf::sess::%{_f}%::seen} to {-uf::tick}
-                    else if {-uf::tick} - {-uf::sess::%{_f}%::seen} > 600:
+                    else if {-uf::tick} - {-uf::sess::%{_f}%::seen} > max(600, uf_rejoinsec() * 20 + 100):
                         uf_dend({_f}, "empty")
 
 # ------------------------------------------------------------

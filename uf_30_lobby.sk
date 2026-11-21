@@ -1,0 +1,284 @@
+# ============================================================
+# uf_30_lobby.sk : ロビーの施設と、プレイヤーのレベルでの解放（2026-11-21）
+#   レベル（uf_07_rpg.sk の Lv）が上がると、施設が 1 つずつ使えるようになる（rpg モジュールがオフなら全部使える。管理者はいつでも）
+#     金床 unlock::anvil（初期 Lv2）/ エンチャント台 unlock::enchant（初期 Lv3）/ 鍛冶屋 unlock::smith（初期 Lv5。NPC と /upgrade。uf_22_smith.sk）
+#     管理者ツールの「設定」→「レベル・スキル」で変えられる。解放のレベルになったときに知らせる（uf_unlocknotify）
+#   ロビーの金床・エンチャント台: 管理者ツールの「NPC とロビーの施設」（か /ufadmin lobbyblock）で、見ているブロックの上に置く
+#     ここで置いたものだけが特別（ほかの場所の金床・エンチャント台はふつうのまま）。壊せない
+#     金床: 使っても傷まない・壊れない（on anvil damage を止める。念のため、変わっていたら 2 秒ごとに元に戻す）。経験値のレベルはふつうに使う
+#     エンチャント台: ラピスラズリはいらない（台を開くと、持ち出せないラピスラズリを入れておく）。代わりにポイントを払う
+#       ポイント = 表示のレベル × enchant_pt（初期 10。いちばん強い 30 レベルで 300pt）。経験値のレベルはふつうに要る
+#       まわりに本棚を並べると強いエンチャントが出る（管理者ツールの「本棚を並べる」で、空いている所だけに置く）
+#   変数: {uf::lobbyblk::<場所>} = anvil|enchant、{uf::lobbyblkloc::<場所>}・{uf::lobbyblkdata::<場所>}（元のブロックの状態）
+#         {-uf::lanvil::<uuid>}（ロビーの金床を使っている）・{-uf::lench::<uuid>}・{-uf::lenchinv::<uuid>}（ロビーのエンチャント台）
+# ============================================================
+
+# ------------------------------------------------------------
+# レベルでの解放
+# ------------------------------------------------------------
+function uf_unlockkinds() :: texts:
+    return "anvil", "enchant" and "smith"
+
+function uf_unlocklv(k: text) :: number:
+    set {_v} to {uf::cfg::unlock::%{_k}%}
+    if {_v} is not set:
+        return 1
+    return {_v}
+
+function uf_unlockname(k: text) :: text:
+    if {_k} is "anvil":
+        return "金床（使っても壊れない）"
+    if {_k} is "enchant":
+        return "エンチャント台（ラピスラズリなし・ポイントで）"
+    return "鍛冶屋（武具の強化・特殊能力）"
+
+function uf_unlocked(p: player, k: text) :: boolean:
+    if uf_on("rpg") is false:
+        return true
+    if uf_admin({_p}) is true:
+        return true
+    if uf_lvof({_p}) >= uf_unlocklv({_k}):
+        return true
+    return false
+
+function uf_lockedmsg(p: player, k: text):
+    set {_lv} to uf_unlocklv({_k})
+    set {_cur} to uf_lvof({_p})
+    uf_msg({_p}, "&c%uf_unlockname({_k})% は Lv.%{_lv}% から使える &7（今は Lv.%{_cur}%。ダンジョンやクエストでレベルを上げよう）")
+    send title "&c&lLv.%{_lv}% から" with subtitle "&f%uf_unlockname({_k})% はまだ使えない（今は Lv.%{_cur}%）" to {_p} for 2 seconds
+    play sound "block.note_block.bass" with volume 0.8 at {_p}
+
+# レベルが上がったとき（uf_07_rpg.sk の uf_addxp から）。そのレベルで使えるようになった施設を知らせる
+function uf_unlocknotify(p: player, lv: number):
+    if uf_on("rpg") is false:
+        stop
+    loop uf_unlockkinds():
+        if uf_unlocklv(loop-value) is {_lv}:
+            uf_msg({_p}, "&6&l解放！ &e%uf_unlockname(loop-value)% &6が使えるようになった")
+            play sound "ui.toast.challenge_complete" with volume 0.8 at {_p}
+
+# 解放の一覧（スキルの画面などに出す）
+function uf_unlocklines(p: player) :: texts:
+    loop uf_unlockkinds():
+        set {_k} to loop-value
+        if uf_unlocked({_p}, {_k}) is true:
+            add "&aLv.%uf_unlocklv({_k})% %uf_unlockname({_k})% &a✔" to {_out::*}
+        else:
+            add "&7Lv.%uf_unlocklv({_k})% %uf_unlockname({_k})% &8（まだ）" to {_out::*}
+    return {_out::*}
+
+# ------------------------------------------------------------
+# ロビーの施設を置く・外す（管理者ツール・/ufadmin lobbyblock）
+# ------------------------------------------------------------
+# 見ているブロックの上に置く。置けたら true
+function uf_lobbyplace(p: player, kind: text) :: boolean:
+    set {_b} to targeted block of {_p}
+    if {_b} is not set:
+        return false
+    if {_b} is air:
+        return false
+    set {_l} to location of block above {_b}
+    if block at {_l} is not air:
+        return false
+    if {_kind} is "anvil":
+        set {_f} to "%horizontal facing of {_p}%"
+        if {_f} is not "north" or "south" or "east" or "west":
+            set {_f} to "north"
+        set block at {_l} to ("minecraft:anvil[facing=%{_f}%]" parsed as block data)
+    else:
+        set block at {_l} to enchanting table
+    set {_k} to uf_lockey({_l})
+    set {uf::lobbyblk::%{_k}%} to {_kind}
+    set {uf::lobbyblkloc::%{_k}%} to {_l}
+    set {uf::lobbyblkdata::%{_k}%} to "%block data of block at {_l}%"
+    uf_adminlog({_p}, "lobby block %{_kind}% %uf_fmtloc({_l})%")
+    return true
+
+# 近く（4 ブロック以内）のロビーの施設を外す（ブロックも消す）。外した数を返す
+function uf_lobbydel(p: player) :: number:
+    set {_n} to 0
+    loop {uf::lobbyblk::*}:
+        set {_l} to {uf::lobbyblkloc::%loop-index%}
+        if {_l} is set:
+            if "%world of {_l}%" is "%world of {_p}%":
+                if distance between {_l} and {_p} <= 4:
+                    add loop-index to {_del::*}
+    loop {_del::*}:
+        set block at {uf::lobbyblkloc::%loop-value%} to air
+        delete {uf::lobbyblk::%loop-value%}
+        delete {uf::lobbyblkloc::%loop-value%}
+        delete {uf::lobbyblkdata::%loop-value%}
+        add 1 to {_n}
+    if {_n} > 0:
+        uf_adminlog({_p}, "lobby block removed %{_n}%")
+    return {_n}
+
+function uf_lobbycount(kind: text) :: number:
+    set {_n} to 0
+    loop {uf::lobbyblk::*}:
+        if loop-value is {_kind}:
+            add 1 to {_n}
+    return {_n}
+
+# いちばん近い（6 ブロック以内）ロビーのエンチャント台のまわりに本棚を並べる（空気のところだけ。手前の 1 つは通り道にあける）
+#   ふつうのマイクラと同じく、台から 2 ブロック離れた輪に本棚があると強いエンチャントが出る（15 個で最大）。置いた数を返す
+function uf_lobbyshelves(p: player) :: number:
+    set {_best} to 7
+    loop {uf::lobbyblk::*}:
+        if loop-value is "enchant":
+            set {_l} to {uf::lobbyblkloc::%loop-index%}
+            if "%world of {_l}%" is "%world of {_p}%":
+                if distance between {_l} and {_p} < {_best}:
+                    set {_best} to distance between {_l} and {_p}
+                    set {_t} to {_l}
+    if {_t} is not set:
+        return -1
+    set {_tx} to floor(x-coordinate of {_t})
+    set {_ty} to floor(y-coordinate of {_t})
+    set {_tz} to floor(z-coordinate of {_t})
+    set {_w} to world of {_t}
+    # 手前（プレイヤーに近い向き）の 1 つはあける
+    set {_px} to floor(x-coordinate of {_p}) - {_tx}
+    set {_pz} to floor(z-coordinate of {_p}) - {_tz}
+    set {_n} to 0
+    set {_dx} to -2
+    while {_dx} <= 2:
+        set {_dz} to -2
+        while {_dz} <= 2:
+            if max(abs({_dx}), abs({_dz})) is 2:
+                set {_skip} to false
+                if {_dx} is max(-2, min(2, {_px})):
+                    if {_dz} is max(-2, min(2, {_pz})):
+                        set {_skip} to true
+                set {_l} to location({_tx} + {_dx}, {_ty}, {_tz} + {_dz}, {_w})
+                if {_skip} is false:
+                    if block at {_l} is air:
+                        if {_n} < 15:
+                            set block at {_l} to bookshelf
+                            add 1 to {_n}
+            add 1 to {_dz}
+        add 1 to {_dx}
+    uf_adminlog({_p}, "lobby shelves %{_n}% at %uf_fmtloc({_t})%")
+    return {_n}
+
+# ------------------------------------------------------------
+# 使う（右クリック）・壊させない
+# ------------------------------------------------------------
+on right click:
+    event-block is set
+    set {_kind} to {uf::lobbyblk::%uf_lockey(location of event-block)%}
+    {_kind} is set
+    if uf_unlocked(player, {_kind}) is false:
+        cancel event
+        uf_lockedmsg(player, {_kind})
+        stop
+    if {_kind} is "anvil":
+        set {-uf::lanvil::%uuid of player%} to true
+    else:
+        set {-uf::lench::%uuid of player%} to {-uf::tick}
+
+on break:
+    {uf::lobbyblk::%uf_lockey(location of event-block)%} is set
+    cancel event
+    uf_msg(player, "&7ロビーの施設は壊せない（管理者は管理者ツールの「NPC とロビーの施設」で外せる）")
+
+# ------------------------------------------------------------
+# 金床: 傷まない・壊れない
+# ------------------------------------------------------------
+on anvil damage:
+    loop viewers of event-inventory:
+        if {-uf::lanvil::%uuid of loop-value%} is set:
+            cancel event
+            stop
+
+# 念のため: 近くに人がいるときに、傷んだ・消えた金床を元に戻す（読み込まれていない場所は触らない）
+every 2 seconds:
+    loop {uf::lobbyblk::*}:
+        if loop-value is "anvil":
+            set {_l} to {uf::lobbyblkloc::%loop-index%}
+            set {_d} to {uf::lobbyblkdata::%loop-index%}
+            if {_l} is set:
+                if {_d} is set:
+                    set {_near} to false
+                    loop all players:
+                        if "%world of loop-value-2%" is "%world of {_l}%":
+                            if distance between loop-value-2 and {_l} < 48:
+                                set {_near} to true
+                    if {_near} is true:
+                        if "%block data of block at {_l}%" is not {_d}:
+                            set block at {_l} to ({_d} parsed as block data)
+
+# ------------------------------------------------------------
+# エンチャント台: ラピスラズリの代わりにポイント
+# ------------------------------------------------------------
+# 台に入れておく、持ち出せないラピスラズリ
+function uf_freelapis() :: item:
+    return ((64 of lapis lazuli) named "&9エンチャント用のラピスラズリ") with lore "&7ロビーのエンチャント台の中だけで使える（持ち出せない）" and "&8uf:freelapis"
+
+# 持ち物に紛れこんだものを消す
+function uf_takefreelapis(p: player):
+    if {_p} is not online:
+        stop
+    loop integers between 0 and 40:
+        if uf_id(slot loop-value of inventory of {_p}) is "freelapis":
+            set slot loop-value of inventory of {_p} to air
+
+on inventory open:
+    set {_t} to {-uf::lench::%uuid of player%}
+    {_t} is set
+    {-uf::tick} - {_t} <= 10
+    delete {-uf::lench::%uuid of player%}
+    set {_g} to event-inventory
+    set {-uf::lenchinv::%uuid of player%} to {_g}
+    wait 1 tick
+    player is online
+    set slot 1 of {_g} to uf_freelapis()
+
+# ラピスラズリを取り出させない
+on inventory click:
+    {-uf::lenchinv::%uuid of player%} is set
+    uf_id(event-item) is "freelapis"
+    cancel event
+
+on enchant:
+    {-uf::lenchinv::%uuid of player%} is set
+    set {_lv} to displayed enchanting cost
+    set {_pt} to floor({_lv} * {uf::cfg::enchant_pt})
+    if uf_takept(player, {_pt}, "enchant") is false:
+        cancel event
+        uf_msg(player, "&cポイントが足りません（このエンチャントは %{_pt}%pt / 所持 %uf_pt(player)%pt）")
+        play sound "block.note_block.bass" with volume 0.8 at player
+        stop
+    uf_msg(player, "&dエンチャントした！ &7（-%{_pt}%pt / 残り %uf_pt(player)%pt）")
+    uf_log("shop", "enchant %player% (%uuid of player%) lv=%{_lv}% pt=%{_pt}%")
+    wait 1 tick
+    player is online
+    set {_g} to {-uf::lenchinv::%uuid of player%}
+    {_g} is set
+    set slot 1 of {_g} to uf_freelapis()
+
+on inventory close:
+    delete {-uf::lanvil::%uuid of player%}
+    set {_g} to {-uf::lenchinv::%uuid of player%}
+    {_g} is set
+    event-inventory is {_g}
+    delete {-uf::lenchinv::%uuid of player%}
+    # 閉じると台の中の物が持ち物に戻るので、その前にラピスラズリを消す
+    set slot 1 of {_g} to air
+    wait 1 tick
+    uf_takefreelapis(player)
+
+on drop:
+    uf_id(event-item) is "freelapis"
+    cancel event
+    wait 1 tick
+    uf_takefreelapis(player)
+
+on join:
+    wait 2 seconds
+    uf_takefreelapis(player)
+
+on quit:
+    delete {-uf::lanvil::%uuid of player%}
+    delete {-uf::lench::%uuid of player%}
+    delete {-uf::lenchinv::%uuid of player%}

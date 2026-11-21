@@ -7,6 +7,8 @@
 #   特殊能力: 特殊素材 1 個 ＋ その階のレアドロップ品 1 個で、その階の能力を 1 つ付ける（付け直すと前の能力は消える）
 #         武器（dgw_・melee_）には uf_rareab、防具（dga_・armor_special）には uf_rareabarmor（uf_19_gear.sk）
 #   交換: 武器パーツ 3 個 → 最終強化パーツ 1 個
+#   プレイヤーのレベルが unlock::smith（初期 Lv5）になると使える（uf_30_lobby.sk。管理者はいつでも）
+#   強化・能力付けで作り直しても、金床・エンチャント台で付けたエンチャントは残す（uf_rebuild）
 # ============================================================
 
 command /upgrade:
@@ -52,6 +54,7 @@ function uf_abkind(id: text) :: text:
     return ""
 
 # 同じ武具を、強化レベルと能力を保ったまま作り直す（lv が -1 なら今のまま）
+#   金床・エンチャント台で付けたエンチャント（ダメージ増加など）も付け直す（2026-11-21。前は鍛冶屋で強化すると消えていた）
 function uf_rebuild(i: item, lv: number, ab: text) :: item:
     set {_id} to uf_id({_i})
     if {_lv} < 0:
@@ -60,11 +63,18 @@ function uf_rebuild(i: item, lv: number, ab: text) :: item:
     if {_ab} is not "":
         add "&d特殊能力: %uf_abname({_ab})%" to lore of {_new}
         add "&8ufab:%{_ab}%" to lore of {_new}
+    loop enchantments of {_i}:
+        if {_new} is not enchanted with loop-value:
+            enchant {_new} with loop-value
     return {_new}
 
 function uf_smithgui(p: player):
     if uf_smithopen() is false:
         uf_msg({_p}, "&c鍛冶屋は現在お休みです")
+        stop
+    # レベルで解放（uf_30_lobby.sk）
+    if uf_unlocked({_p}, "smith") is false:
+        uf_lockedmsg({_p}, "smith")
         stop
     set {_t} to tool of {_p}
     set {_id} to uf_id({_t})

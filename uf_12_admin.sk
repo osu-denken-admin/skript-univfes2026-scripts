@@ -10,6 +10,8 @@
 #   /ufadmin info <プレイヤー>
 #   /ufadmin reset <プレイヤー名>     アカウントを最初の状態に戻す（確認画面あり。uf_28_adminkit.sk）
 #   /ufadmin unlock <プレイヤー> <階>
+#   /ufadmin level <プレイヤー> <レベル>   （レベルで金床・エンチャント台・鍛冶屋が使えるようになる。uf_30_lobby.sk）
+#   /ufadmin lobbyblock <enchant|anvil|shelves|del>   見ているブロックの上にロビーの施設を置く（管理者ツールの「NPC とロビーの施設」と同じ）
 #   /ufadmin shop / shopprice <id> <価格> / shopreq <id> <階>
 #   /ufadmin sellprice <価格> / sellcat <crop|fish|ore|wood|none>   手に持ったアイテム
 #   /ufadmin casino [<ゲーム> <項目> <値>]
@@ -220,6 +222,33 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             set {uf::unlock::%uuid of {_t}%} to floor({_f})
             uf_msg(player, "&a%{_t}% の最上階を %floor({_f})%階 にしました")
             uf_adminlog(player, "unlock %{_t}% %floor({_f})%")
+
+        else if {_a} is "level":
+            set {_t} to arg-2 parsed as player
+            set {_f} to arg-3 parsed as number
+            if {_t} is not set:
+                uf_msg(player, "&cオンラインのプレイヤー名を指定してください")
+                stop
+            if {_f} is not set:
+                uf_msg(player, "&cレベルを指定してください")
+                stop
+            set {_f} to max(1, min({uf::cfg::level::max}, floor({_f})))
+            set {uf::lv::%uuid of {_t}%} to {_f}
+            uf_msg(player, "&a%{_t}% のレベルを Lv.%{_f}% にしました")
+            uf_adminlog(player, "level %{_t}% %{_f}%")
+
+        else if {_a} is "lobbyblock":
+            if arg-2 is "del":
+                uf_msg(player, "&e近くのロビーの施設を %uf_lobbydel(player)% 個外しました")
+            else if arg-2 is "shelves":
+                uf_msg(player, "&a本棚を %uf_lobbyshelves(player)% 個置きました（-1 は近くにエンチャント台がない）")
+            else if arg-2 is "enchant" or "anvil":
+                if uf_lobbyplace(player, arg-2) is true:
+                    uf_msg(player, "&aロビーの施設（%arg-2%）を置きました")
+                else:
+                    uf_msg(player, "&c置けませんでした（置きたい場所の下のブロックを見る。上が空いていること）")
+            else:
+                uf_msg(player, "&c/ufadmin lobbyblock <enchant|anvil|shelves|del>")
 
         else if {_a} is "shop":
             uf_adminopen(player, "shop")

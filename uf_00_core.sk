@@ -86,6 +86,8 @@ function uf_defaults():
     # 1 つの階に同時に入れるパーティーの数（uf_05_dungeon.sk。セッションの番号の都合で 9 まで）
     uf_setdef("floor_parties", 4)
     uf_setdef("party_max", 4)
+    # 通信が切れても、この秒数のうちに入り直せば挑戦・パーティーに戻れる（uf_04_party.sk・uf_05_dungeon.sk。0 なら前と同じですぐ退出）
+    uf_setdef("rejoin_seconds", 120)
 
     # ダンジョン：宝箱
     uf_setdef("chest::min", 1)
@@ -145,6 +147,12 @@ function uf_defaults():
     uf_setdef("level::step", 50)
     uf_setdef("skill::max", 5)
     uf_setdef("skill_reset_cost", 500)
+    # レベルで解放する施設（uf_30_lobby.sk）: 金床・エンチャント台（ロビーに置く）・鍛冶屋
+    uf_setdef("unlock::anvil", 2)
+    uf_setdef("unlock::enchant", 3)
+    uf_setdef("unlock::smith", 5)
+    # ロビーのエンチャント台: ラピスラズリの代わりにポイント（表示のレベル 1 につき）
+    uf_setdef("enchant_pt", 10)
 
     # カジノ（prob は ％、mult は払い戻し倍率）
     uf_setdef("casino::slot::enabled", true)

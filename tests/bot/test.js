@@ -996,6 +996,125 @@ T.npc = async ({ A, P }) => {
   check('npc removed', !!(await waitMsg(A, from, /近くの NPC を 1 人消しました/)));
 };
 
+// ロビーの施設とレベルでの解放（uf_30_lobby.sk）・鍛冶屋でエンチャントが消えない（uf_22_smith.sk）・新しい /guide
+T.lobby = async ({ A, P }) => {
+  closeWin(A); closeWin(P);
+  // 鍛冶屋で強化しても、ほかで付けたエンチャントが残る（A は管理者なので、レベルに関係なく使える）
+  A.chat('/ufadmin give dgw_2'); A.chat('/ufadmin give mat_upgrade'); await sleep(1500);
+  await hold(A, 'さしぼうソード');
+  con(`enchant ${A.username} minecraft:sharpness 3`); await sleep(1000);
+  let w = await cmdWin(A, '/upgrade');
+  let from = A.msgs.length;
+  w = await clickWin(A, 11);
+  check('smith upgrade for the enchantment check', !!(await waitMsg(A, from, /強化成功！/)));
+  await sleep(500);
+  const comp = (it, type) => (it && it.components || []).find((c) => c.type === type);
+  const ench = JSON.stringify(comp(A.heldItem, 'enchantments') || '');
+  check('smith keeps enchantments added outside', /sharpness/.test(ench) || /"level":3/.test(ench), ench.slice(0, 200));
+  closeWin(A); await sleep(500);
+  // 鍛冶屋はレベルで解放（P は管理者ではない）
+  A.chat(`/ufadmin level ${P.username} 1`); await sleep(800);
+  from = P.msgs.length; P.chat('/upgrade');
+  check('smith is locked below its level', !!(await waitMsg(P, from, /鍛冶屋.*Lv\.5 から使える/)));
+  // ロビーの金床（見ているブロックの上に置く）
+  con(`tp ${A.username} 20.5 -60 17.5`); con(`tp ${P.username} 21.5 -60 17.5`); await sleep(1500);
+  await A.lookAt(new Vec3(20.5, -60, 20.5), true); await sleep(400);
+  from = A.msgs.length; A.chat('/ufadmin lobbyblock anvil');
+  await waitMsg(A, from, /ロビーの施設|置けませんでした/);
+  await sleep(500);
+  const bname = (b, x, y, z) => { const k = b.blockAt(new Vec3(x, y, z)); return k ? k.name : '?'; };
+  check('lobby anvil placed', bname(A, 20, -60, 20) === 'anvil', bname(A, 20, -60, 20));
+  from = P.msgs.length;
+  await P.lookAt(new Vec3(20.5, -59.5, 20.5), true);
+  await P.activateBlock(P.blockAt(new Vec3(20, -60, 20))).catch(() => {});
+  check('anvil is locked below its level', !!(await waitMsg(P, from, /金床.*Lv\.2 から使える/)));
+  closeWin(P);
+  A.chat(`/ufadmin level ${P.username} 5`); await sleep(800);
+  let p = waitWindow(P, 4000);
+  await P.activateBlock(P.blockAt(new Vec3(20, -60, 20))).catch(() => {});
+  w = await p;
+  check('anvil opens after reaching its level', !!w && /anvil/.test(String(w.type)), w ? String(w.type) : 'no window');
+  closeWin(P); await sleep(500);
+  // 傷んだ・消えた金床は元に戻る
+  con('setblock 20 -60 20 minecraft:damaged_anvil'); await sleep(3500);
+  check('lobby anvil is repaired', bname(A, 20, -60, 20) === 'anvil', bname(A, 20, -60, 20));
+  // 鍛冶屋は Lv5 で開く
+  w = await cmdWin(P, '/upgrade');
+  check('smith opens after reaching its level', titleOf(w).includes('鍛冶屋'), titleOf(w).slice(0, 60));
+  closeWin(P); await sleep(500);
+  // ロビーのエンチャント台: ラピスラズリなし、ポイントで
+  await A.lookAt(new Vec3(23.5, -60, 20.5), true); await sleep(400);
+  from = A.msgs.length; A.chat('/ufadmin lobbyblock enchant');
+  await waitMsg(A, from, /ロビーの施設|置けませんでした/);
+  await sleep(500);
+  check('lobby enchanting table placed', bname(A, 23, -60, 20) === 'enchanting_table', bname(A, 23, -60, 20));
+  con(`clear ${P.username}`); con(`give ${P.username} iron_sword`); con(`xp set ${P.username} 30 levels`);
+  A.chat(`/ufadmin points ${P.username} set 1000`);
+  con(`tp ${P.username} 23.5 -60 18.5`); await sleep(1500);
+  await P.lookAt(new Vec3(23.5, -59.3, 20.5), true);
+  let t = null;
+  try { t = await P.openEnchantmentTable(P.blockAt(new Vec3(23, -60, 20))); } catch (e) { log('open table', e.message); }
+  await sleep(600);
+  check('lobby table opens with lapis already in it', !!t && !!t.slots[1] && t.slots[1].name === 'lapis_lazuli', t && t.slots[1] ? t.slots[1].name : 'none');
+  if (t) {
+    const sw = t.items().find((i) => i.name === 'iron_sword');
+    if (sw) await t.putTargetItem(sw).catch((e) => log('put', e.message));
+    from = P.msgs.length;
+    await Promise.race([t.enchant(0).catch((e) => log('enchant', e.message)), sleep(6000)]);
+    check('enchanting is paid with points', !!(await waitMsg(P, from, /エンチャントした！ （-\d+pt/, 4000)));
+    t.close();
+  }
+  await sleep(1200);
+  check('lobby lapis does not stay in the inventory', !P.inventory.items().some((i) => i.name === 'lapis_lazuli'));
+  check('the sword got enchanted', P.inventory.items().some((i) => i.name === 'iron_sword' && !!comp(i, 'enchantments')));
+  // 片付け
+  con(`tp ${A.username} 21.5 -60 19.5`); await sleep(1000);
+  from = A.msgs.length; A.chat('/ufadmin lobbyblock del');
+  check('lobby facilities removed', !!(await waitMsg(A, from, /ロビーの施設を 2 個外しました/)));
+  con(`clear ${P.username}`); con(`xp set ${P.username} 0 levels`);
+  // ブロックを見たままだと、次のテストで本（管理者ツール）を空中で右クリックしても無視されるので、前を向かせる
+  await A.look(0, 0, true); await P.look(0, 0, true);
+  // 新しい遊び方
+  from = P.msgs.length; P.chat('/guide');
+  check('guide mentions the return book and the lobby facilities', !!(await waitMsg(P, from, /帰還の書/)) && !!(await waitMsg(P, from, /エンチャント台/)));
+};
+
+// 通信が切れても、少しの間ならダンジョンの挑戦とパーティーに戻れる（uf_04_party.sk・uf_05_dungeon.sk）
+T.rejoin = async ({ A }) => {
+  const NM = 'UfRejoin';
+  let R = await mk(NM); await sleep(2500);
+  con(`gamemode creative ${NM}`); con(`tp ${NM} 0 -60 0`); await sleep(1000);
+  let from = R.msgs.length;
+  let w = await cmdWin(R, '/dungeon'); await clickWin(R, 10); await sleep(2000);
+  check('rejoin bot starts a run', !!(await waitMsg(R, from, /帰還の書.*退出する/)));
+  R.quit(); await sleep(2500);
+  R = await mk(NM); await sleep(3500);
+  check('rejoining within the grace time returns to the run', R.msgs.some((m) => /挑戦の続きから/.test(m)), R.msgs.slice(-5).join(' | '));
+  check('the return book is still there', !!invFind(R, '帰還の書'));
+  from = R.msgs.length; R.chat('/dungeon leave');
+  check('can leave normally after rejoining', !!(await waitMsg(R, from, /ダンジョンから退出しました/)));
+  // 待ち時間を短くして、戻ってこなかったら挑戦から外れる
+  A.chat('/ufadmin cfg rejoin_seconds 5'); await sleep(800);
+  con(`tp ${NM} 0 -60 0`); await sleep(800);
+  w = await cmdWin(R, '/dungeon'); await clickWin(R, 10); await sleep(2000);
+  R.quit(); await sleep(13000);
+  R = await mk(NM); await sleep(3500);
+  check('after the grace time the run is over and you are back in the lobby', R.msgs.some((m) => /挑戦は終わっていた/.test(m)), R.msgs.slice(-5).join(' | '));
+  A.chat('/ufadmin cfg rejoin_seconds 120'); await sleep(800);
+  // パーティー: 抜けてもすぐ戻ればそのまま
+  from = A.msgs.length;
+  R.chat(`/party invite ${A.username}`); await sleep(800);
+  A.chat('/party accept'); await sleep(800);
+  R.quit(); await sleep(2000);
+  check('party members are told about the disconnect', !!(await waitMsg(A, from, /UfRejoin の通信が切れた/)));
+  R = await mk(NM); await sleep(3000);
+  check('party members are told when they come back', !!(await waitMsg(A, from, /UfRejoin が戻ってきた/)));
+  from = A.msgs.length; A.chat('/party list');
+  check('the party is still there', !!(await waitMsg(A, from, /UfRejoin/)));
+  A.chat('/party leave'); await sleep(500);
+  R.quit(); await sleep(1000);
+};
+
 // OP の付け外し（プレイヤーの詳細で付ける → OP の一覧で外す）
 T.ops = async ({ A, P }) => {
   closeWin(A);
@@ -1048,7 +1167,7 @@ T.security = async ({ P }) => {
   await sleep(3500);
   con(`tp UfAdmin 0 -60 0`); con(`tp UfPlayer 1 -60 0`);
   await sleep(1000);
-  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'travel', 'partygui', 'multiparty', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'ops', 'security'];
+  const order = ['admintool', 'economy', 'dungeon', 'death', 'dungeonexit', 'travel', 'partygui', 'multiparty', 'revive', 'casino', 'rpg', 'tools', 'guns', 'admingui2', 'gear', 'items', 'boards', 'npc', 'lobby', 'rejoin', 'ops', 'security'];
   for (const name of order) {
     if (ONLY && !ONLY.includes(name)) continue;
     log('===== ' + name);

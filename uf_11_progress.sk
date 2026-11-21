@@ -342,18 +342,30 @@ command /status:
         set {_se} to uf_stat({_u}, "earned")
         set {_sm} to uf_stat({_u}, "minutes")
         send "&7ダンジョン討伐: %{_sk}% / 累計獲得: %{_se}%pt / プレイ %{_sm}%分" to player
+        loop uf_unlocklines(player):
+            send "&7- %loop-value%" to player
 
+# 遊び方（2026-11-21 に今の遊び方に書き直した。前は「フロアマップ」「/party invite」など古い説明だった）
+#   数字は設定から読む（ポイントを落とす割合・通信が切れても戻れる時間・施設が使えるレベル）
 command /guide:
     description: 遊び方
     trigger:
+        set {_loss} to round({uf::cfg::death_loss_rate} * 100)
+        set {_rj} to {uf::cfg::rejoin_seconds}
+        set {_la} to uf_unlocklv("anvil")
+        set {_le} to uf_unlocklv("enchant")
+        set {_ls} to uf_unlocklv("smith")
         send "&6=== 15号館へようこそ ===" to command sender
-        send "&f1. まずはサバイバル！ 木・鉱石・作物・魚を集めて &e/sell &fで売るとポイントになる" to command sender
-        send "&f2. 1階のショップ（&e/buy&f）で回復キットや武器を買える" to command sender
-        send "&f3. 15号館 1階の受付（&e/dungeon&f）で2階から挑戦。中ではフロアマップから外に出られる" to command sender
-        send "&f4. 仲間と &e/party invite <名前> &fで協力。倒れた仲間はしゃがんで蘇生" to command sender
-        send "&f5. 死ぬとポイントの半分を落とす。死んだ場所に戻れば回収できる" to command sender
-        send "&f6. &e/quest &fで今日のクエスト、&e/status &fで自分の記録、&e/ranking &fで順位" to command sender
-        send "&f7. 地下カジノ（&e/casino&f）はチップで遊ぶ。現実のお金は使わない" to command sender
+        send "&f1. まずはサバイバル！ 木・鉱石・作物・魚を集めて、手に持って &e/sell&f（全部なら &e/sell all&f）で売るとポイントになる" to command sender
+        send "&f2. 「&b15号館への道しるべ&f」を右クリックすると 15号館の 1 階へ。15号館でもう一度使うと、元の場所に戻れる" to command sender
+        send "&f3. 1 階の受付（村人か &e/dungeon&f）で、2 階から挑戦。入るともらえる「&d帰還の書&f」で、復帰地点に戻る・ダンジョンから出る" to command sender
+        send "&f4. 階の途中の壁（&5泣く黒曜石&f）を右クリックすると中ボス、出口の階段の壁（&8強化深層岩&f）を右クリックするとボスと戦える" to command sender
+        send "&f5. 仲間と組むときは &e/party&f（近くの人の顔を押して招待）。倒れた仲間は、倒れた場所でしゃがみ続けると助けられる" to command sender
+        send "&f6. ダンジョンで倒れると、ポイントの %{_loss}%％ をその場に落とす（戻れば拾える）。持ち物は落とさない" to command sender
+        send "&f7. 通信が切れても、%{_rj}% 秒のうちに入り直せば、ダンジョンとパーティーにそのまま戻れる" to command sender
+        send "&f8. レベルが上がると、ロビーの施設が使えるようになる: &eLv.%{_la}% 金床&f（壊れない）/ &eLv.%{_le}% エンチャント台&f（ラピスラズリなし・ポイントで）/ &eLv.%{_ls}% 鍛冶屋&f（武具の強化・特殊能力）" to command sender
+        send "&f9. &e/skill&f スキル、&e/quest&f 今日のクエスト、&e/status&f 自分の記録、&e/ranking&f 順位、&e/points&f ポイント" to command sender
+        send "&f10. ショップ（村人か &e/buy&f）で道具や武器。地下カジノ（村人か &e/casino&f）はチップで遊ぶ。&7現実のお金は使わない" to command sender
 
 on join:
     set {uf::name::%uuid of player%} to name of player
