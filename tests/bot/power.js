@@ -120,6 +120,9 @@ async function join() {
   check('room interior is air', blk(-250, 58, 120) === 'air');
   check('casino NPC placed', Object.values(b.entities).some((e) => e.name === 'villager' && e.position.distanceTo(new Vec3(-261.5, 56, 95.5)) < 1.5));
   check('labels placed', Object.values(b.entities).filter((e) => e.name === 'text_display').length >= 10, String(Object.values(b.entities).filter((e) => e.name === 'text_display').length));
+  // スロットのリールの画面（台の手前。名前は台のブロックの中に埋めない）
+  check('slot reel display in front of the machine', Object.values(b.entities).some((e) => e.name === 'text_display' && e.position.distanceTo(new Vec3(-274.97, 58.3, 98.5)) < 0.3));
+  check('slot label is not inside the machine', !Object.values(b.entities).some((e) => e.name === 'text_display' && e.position.x < -275 && e.position.x > -276 && e.position.z > 98 && e.position.z < 99));
 
   b.chat('/ufadmin chips ' + NAME + ' set 5000'); await sleep(800);
   const chips = async () => { const f0 = b.msgs.length; b.chat('/ufadmin info ' + NAME); const m = await waitMsg(f0, /chip (\d+)/, 4000); return m ? Number(m.match(/chip (\d+)/)[1]) : null; };
@@ -133,7 +136,8 @@ async function join() {
   const c0 = await chips();
   from = b.msgs.length;
   await b.activateBlock(b.blockAt(new Vec3(-275, 57, 98)));
-  const sm = await waitMsg(from, /当たり|はずれ/, 3000);
+  // 台の画面でリールが回ってから結果（2026-11-21 から演出のぶん数秒かかる）
+  const sm = await waitMsg(from, /当たり|はずれ/, 6000);
   check('slot machine plays', !!sm, sm || '');
   const c1 = await chips();
   check('slot uses the bet', c1 < c0 || c1 > c0, `${c0} -> ${c1}`);
@@ -141,7 +145,9 @@ async function join() {
   con(`tp ${NAME} -260.5 56 106.5 0 40`); await sleep(1200);
   from = b.msgs.length;
   await b.activateBlock(b.blockAt(new Vec3(-261, 57, 108)));
-  check('roulette red button plays', !!(await waitMsg(from, /ルーレットの結果/, 3000)));
+  await sleep(1500);
+  check('roulette ball is rolling', Object.values(b.entities).some((e) => e.name === 'block_display' && e.position.distanceTo(new Vec3(-259.5, 57.25, 109.5)) < 2));
+  check('roulette red button plays', !!(await waitMsg(from, /ルーレットの結果/, 6000)));
   // 交換のカウンター → カジノの画面
   con(`tp ${NAME} -261.5 56 98.5 180 30`); await sleep(1200);
   await b.activateBlock(b.blockAt(new Vec3(-262, 57, 97))); await sleep(1500);

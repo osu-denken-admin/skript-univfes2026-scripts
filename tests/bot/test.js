@@ -587,17 +587,30 @@ T.casino = async ({ A, P }) => {
   A.chat(`/ufadmin chips ${P.username} give 1000`); await sleep(800);
   let w = await cmdWin(P, '/casino');
   check('casino opens', titleOf(w).includes('地下カジノ'), titleOf(w));
+  check('casino shows chips and today\'s result', itemText(w && w.slots[4]).includes('所持チップ') && itemText(w && w.slots[13]).includes('今日'));
+  // スロット: 専用の画面が開いて回る（2 回目からは「回す！」= 40）。結果は枠の色とまん中の段・4 の結果で見せる
   let wins = 0, losses = 0;
+  let from = P.msgs.length;
+  w = await clickWin(P, 19);
+  check('slot machine screen opens', titleOf(w).includes('スロット'), titleOf(w).slice(0, 60));
   for (let i = 0; i < 6; i++) {
-    const from = P.msgs.length;
-    w = await clickWin(P, 19);
-    const m = await waitMsg(P, from, /(当たり|はずれ)/);
+    if (i > 0) { from = P.msgs.length; await P.clickWindow(40, 0, 0).catch(() => {}); }
+    const m = await waitMsg(P, from, /(当たり！|はずれ)/);
     if (m && m.includes('当たり')) wins++; else if (m) losses++;
+    await sleep(300);
   }
   check('slot plays 6 times', wins + losses === 6, `win=${wins} lose=${losses}`);
-  let from = P.msgs.length;
+  const cw = P.currentWindow;
+  check('slot shows the result on the screen', cw && /当たり|はずれ/.test(itemText(cw.slots[4])) && !!cw.slots[22], cw ? itemText(cw.slots[4]).slice(0, 120) : 'no window');
+  // ルーレット: 専用の画面で玉（雪玉）が回って止まる
+  w = await cmdWin(P, '/casino');
+  from = P.msgs.length;
   w = await clickWin(P, 21);
+  check('roulette screen opens', titleOf(w).includes('ルーレット'), titleOf(w).slice(0, 60));
   check('roulette plays', !!(await waitMsg(P, from, /ルーレットの結果/)));
+  await sleep(500);
+  check('roulette shows the result on the screen', !!P.currentWindow && /当たり|はずれ/.test(itemText(P.currentWindow.slots[31])), P.currentWindow ? itemText(P.currentWindow.slots[31]).slice(0, 120) : 'no window');
+  w = await cmdWin(P, '/casino');
   from = P.msgs.length;
   w = await clickWin(P, 10);
   check('exchange 100pt -> chips', !!(await waitMsg(P, from, /100pt をチップ 100 枚に交換/)) || !!(await waitMsg(P, from, /ポイントが足りません/)));
@@ -623,6 +636,8 @@ T.casino = async ({ A, P }) => {
   from = P.msgs.length;
   w = await clickWin(P, 3);
   check('dice rolls', !!(await waitMsg(P, from, /サイコロの目: \d/)) && !!(await waitMsg(P, from, /(当たり|はずれ)/)));
+  await sleep(300);
+  check('dice shows the big die and the result', !!P.currentWindow && P.currentWindow.slots[12] && /concrete/.test(P.currentWindow.slots[12].name) && /当たり|はずれ/.test(itemText(P.currentWindow.slots[40])));
   w = await clickWin(P, 8);
   check('dice back to casino', titleOf(w).includes('地下カジノ'), titleOf(w).slice(0, 60));
   w = await clickWin(P, 39);
@@ -631,6 +646,7 @@ T.casino = async ({ A, P }) => {
   from = P.msgs.length;
   w = await clickWin(P, side);
   check('high-low plays', !!(await waitMsg(P, from, /次のカード: \d+/)) && !!(await waitMsg(P, from, /(当たり|はずれ)/)));
+  check('high-low flips the next card on the screen', !!P.currentWindow && P.currentWindow.slots[22] && P.currentWindow.slots[22].name === 'paper');
   w = P.currentWindow && titleOf(P.currentWindow).includes('地下カジノ') ? P.currentWindow : await cmdWin(P, '/casino');
   w = await clickWin(P, 39);
   from = P.msgs.length;
@@ -644,6 +660,7 @@ T.casino = async ({ A, P }) => {
   check('gacha gives a prize', !!(await waitMsg(P, from, /\[ガチャ\]/)));
   await sleep(500);
   check('gacha prize is in the inventory', count() > before, `${before} -> ${count()}`);
+  check('gacha shows the prize on the screen', !!P.currentWindow && !!P.currentWindow.slots[13] && P.currentWindow.slots[13].name !== 'ender_chest');
   closeWin(P); await sleep(500);
   // 的当て: 動く的（target ブロック）をクリックし続ける
   w = await cmdWin(P, '/casino');

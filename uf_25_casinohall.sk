@@ -9,13 +9,13 @@
 #   台の場所は {uf::cmach::<x>,<y>,<z>} = ゲーム。浮かぶ文字には scoreboard tag「uf_chall」
 #   作ると、カジノの区域（casino。/casino が使える範囲）をこの部屋にし、ここはダンジョンの区域から外す（chall。uf_00_core.sk の uf_indarea）
 #
-#   台の演出（2026-11-06。前は結果がチャットだけだった。共通の部品は uf_29_casinofx.sk）
+#   台の演出（2026-11-21。前は結果がチャットだけだった。共通の部品は uf_29_casinofx.sk）
 #     スロット: 台の上の画面（浮かぶ文字「uf_chreel:<z>」）でリールが回って 1 つずつ止まる。当たりは画面が光って粒子、はずれは煙
 #       1 台を回せるのは 1 人ずつ（回っている間はほかの人は待つ）。結果は次に回すまで画面に残る（まわりの人にも見える）
 #     ルーレット: 白い玉（ブロックの表示「uf_chball」）が 8 マスを回って止まり、上に結果（浮かぶ文字「uf_chrlres」）を出す。1 回ずつ
 #     どちらも結果を画面のまん中に大きく出す（タイトル）。ほかの台（サイコロ・ガチャなど）は、カジノの画面と同じ専用の画面
 #   浮かぶ文字と表示だけを置き直す: 管理者ツールの「地下カジノ」→「浮かぶ文字と台の表示を置き直す」（uf_chlabels。ブロックはそのまま）
-#     2026-11-06 より前に作った地下カジノは、スロットの文字が台のブロックの中に埋まっていたので、1 回押す
+#     2026-11-21 より前に作った地下カジノは、スロットの文字が台のブロックの中に埋まっていたので、1 回押す
 # ============================================================
 
 function uf_chworld() :: world:
@@ -49,11 +49,9 @@ function uf_chlabelsdel():
     loop all block displays:
         if scoreboard tags of loop-value contains "uf_chall":
             kill loop-value
-    delete {-uf::chreel::*}
-    delete {-uf::chrlres}
 
 # 浮かぶ文字（台の名前）と、スロットのリールの表示を置く（前のものは消してから）
-#   スロットの名前は台のブロックの手前（x -274.6）に置く（2026-11-06 より前は x -275.3 で、ブロックの中に埋まっていた）
+#   スロットの名前は台のブロックの手前（x -274.6）に置く（2026-11-21 より前は x -275.3 で、ブロックの中に埋まっていた）
 function uf_chlabels(w: world):
     uf_chlabelsdel()
     loop integers between 0 and 8:
@@ -347,13 +345,8 @@ function uf_chreeltext(a: text, b: text, c: text, head: text) :: text:
         return {_t}
     return "%{_head}%%nl%%{_t}%"
 
-# その台のリールの表示（なければ置く）
+# その台のリールの表示（なければ置く）。浮かぶ文字は生き物ではないので「生きているか」では確かめず、毎回タグで探す
 function uf_chreel(w: world, mz: number) :: entity:
-    set {_e} to {-uf::chreel::%{_mz}%}
-    if {_e} is set:
-        if {_e} is alive:
-            return {_e}
-    delete {_e}
     set {_tag} to "uf_chreel:%{_mz}%"
     loop all text displays:
         if scoreboard tags of loop-value contains {_tag}:
@@ -368,7 +361,6 @@ function uf_chreel(w: world, mz: number) :: entity:
         add {_tag} to scoreboard tags of {_e}
         set {_sym::*} to uf_syms()
         set text of {_e} to uf_chreeltext(random element out of {_sym::*}, random element out of {_sym::*}, random element out of {_sym::*}, "&e&lボタンで回す")
-    set {-uf::chreel::%{_mz}%} to {_e}
     return {_e}
 
 function uf_chslot(p: player, l: location):
@@ -456,8 +448,7 @@ function uf_chslot(p: player, l: location):
     loop 60 times:
         wait 1 tick
     if {-uf::chtok::%{_bk}%} is {_tok}:
-        if {_e} is alive:
-            set text of {_e} to uf_chreeltext({_r::1}, {_r::2}, {_r::3}, "&8前の結果")
+        set text of {_e} to uf_chreeltext({_r::1}, {_r::2}, {_r::3}, "&8前の結果")
 
 # ------------------------------------------------------------
 # ルーレットの台（まん中。8 マスのまわりを白い玉が回る。まん中の金のブロックが緑（0））
@@ -470,11 +461,6 @@ function uf_chrlcell(w: world, i: number) :: location:
 
 # 結果を出す浮かぶ文字（なければ置く）
 function uf_chrlres(w: world) :: entity:
-    set {_e} to {-uf::chrlres}
-    if {_e} is set:
-        if {_e} is alive:
-            return {_e}
-    delete {_e}
     loop all text displays:
         if scoreboard tags of loop-value contains "uf_chrlres":
             set {_e} to loop-value
@@ -484,7 +470,6 @@ function uf_chrlres(w: world) :: entity:
         set billboard of {_e} to center
         add "uf_chall" to scoreboard tags of {_e}
         add "uf_chrlres" to scoreboard tags of {_e}
-    set {-uf::chrlres} to {_e}
     return {_e}
 
 function uf_chroul(p: player, choice: text, l: location):
@@ -571,5 +556,4 @@ function uf_chroul(p: player, choice: text, l: location):
         wait 1 tick
     kill {_ball}
     if {-uf::chtok::roul} is {_tok}:
-        if {_rt} is alive:
-            set text of {_rt} to "&8前の結果: %uf_rlname({_res})%"
+        set text of {_rt} to "&8前の結果: %uf_rlname({_res})%"

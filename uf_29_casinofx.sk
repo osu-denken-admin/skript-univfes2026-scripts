@@ -1,5 +1,5 @@
 # ============================================================
-# uf_29_casinofx.sk : カジノの演出の共通の部品（2026-11-06）
+# uf_29_casinofx.sk : カジノの演出の共通の部品（2026-11-21）
 #   前はどのゲームも結果がチャットだけで、勝っているのか負けているのかが目で見て分からなかった
 #   → 画面（チェストの画面）の中で、リールが回る・玉が転がる・サイコロが転がる・カードがめくれる・カプセルが回る、
 #     結果で枠の色が変わる（当たり = 黄緑・黄色、はずれ = 赤）、地下カジノの台は浮かぶ文字と光で見せる
@@ -155,6 +155,11 @@ on quit:
     delete {-uf::cbusy::%uuid of player%}
     delete {-uf::corg::%uuid of player%}
     delete {-uf::corgl::%uuid of player%}
+    # ゲームの画面を覚えていたもの（uf_10_casino.sk・uf_21_casino2.sk）
+    delete {-uf::cs::%uuid of player%::inv}
+    delete {-uf::rl::%uuid of player%::inv}
+    delete {-uf::dc::%uuid of player%::inv}
+    delete {-uf::gc::%uuid of player%::inv}
 
 # ------------------------------------------------------------
 # 画面の部品
