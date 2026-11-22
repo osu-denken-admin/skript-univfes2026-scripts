@@ -487,6 +487,9 @@ T.travel = async ({ A, P }) => {
   const xyz = m && m.match(/(-?\d+), (-?\d+), (-?\d+)/);
   const d = xyz ? Math.hypot(Number(xyz[1]) - 0.5, Number(xyz[3]) - 0.5) : -1;
   check('far spawn point is set about 300 blocks from the lobby', !!xyz && Math.abs(d - 300) < 3, m || 'no message');
+  // 座標で決める（/ufadmin farspawn x y z）
+  from = A.msgs.length; A.chat('/ufadmin farspawn 10 -60 12');
+  check('initial spawn point can be set by coordinates', !!(await waitMsg(A, from, /初期スポーン地点を world 10, -60, 12 にしました/)));
   // 片付け（ほかのテストのために元に戻す）
   con('setworldspawn 0 -60 0'); A.chat('/ufadmin cfg farspawn_dist 5000');
   A.chat('/ufadmin area dungeon1 del'); con(`clear ${P.username}`); await sleep(500);

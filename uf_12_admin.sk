@@ -2,6 +2,7 @@
 # uf_12_admin.sk : 管理者向け機能（権限 univfes.admin。OP は自動で持つ）
 #   /ufadmin                         管理メニュー（管理者ツールと同じ）
 #   /ufadmin tool                    管理者ツール（本）を受け取る
+#   /ufadmin farspawn [距離] / farspawn <x> <y> <z> / farspawn here   初期スポーン地点（uf_26_travel.sk）
 #   /ufadmin module <名前|list> [on|off]
 #   /ufadmin world <survival|dungeon|event>   今いるワールドを登録
 #   /ufadmin area <shop|casino> <pos1|pos2|del>
@@ -38,7 +39,29 @@ command /ufadmin [<text>] [<text>] [<text>] [<text>]:
             stop
 
         # 初期スポーン地点をロビーから遠くに決める（uf_26_travel.sk）。距離を付けると、その距離にしてから決める
+        #   /ufadmin farspawn <x> <y> <z> でその場所に（ロビーのワールド）、/ufadmin farspawn here で今いる場所に（uf_setfarspawn）
         if {_a} is "farspawn":
+            if arg-2 is "here":
+                uf_setfarspawn(player, location of player)
+                stop
+            if arg-4 is set:
+                set {_x} to arg-2 parsed as number
+                set {_y} to arg-3 parsed as number
+                set {_z} to arg-4 parsed as number
+                if {_x} is not set:
+                    uf_msg(player, "&c/ufadmin farspawn <x> <y> <z>（数字で）")
+                    stop
+                if {_y} is not set:
+                    uf_msg(player, "&c/ufadmin farspawn <x> <y> <z>（数字で）")
+                    stop
+                if {_z} is not set:
+                    uf_msg(player, "&c/ufadmin farspawn <x> <y> <z>（数字で）")
+                    stop
+                set {_w} to world of player
+                if {uf::cfg::lobby} is set:
+                    set {_w} to world of {uf::cfg::lobby}
+                uf_setfarspawn(player, location(floor({_x}) + 0.5, floor({_y}), floor({_z}) + 0.5, {_w}))
+                stop
             if arg-2 is set:
                 set {_d} to arg-2 parsed as number
                 if {_d} is not set:

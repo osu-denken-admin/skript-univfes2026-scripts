@@ -443,6 +443,7 @@ function uf_ap_worlds(p: player):
     uf_abtn({_p}, {_g}, 31, red bed, "&eロビー（ダンジョンからの退出先）", "&7現在: %uf_locstr({uf::cfg::lobby})%|&eクリックで今いる場所にする", "lobby")
     # 初期スポーン地点（uf_26_travel.sk）
     uf_abtn({_p}, {_g}, 33, compass, "&e初期スポーン地点を遠くに決める", "&7現在: %uf_locstr({uf::cfg::farspawn})%|&7ロビーから約 %{uf::cfg::farspawn_dist}% ブロック離れた地面を探して、ワールドのスポーン地点にする|&7初めて入った人・ベッドのない人がここに出る|&7押すたびに別の場所になる|&7確認画面が出ます", "ask/初期スポーン地点をロビーから遠くに決め直す|farspawn")
+    uf_abtn({_p}, {_g}, 32, lime bed, "&e今いる場所を初期スポーン地点にする", "&7現在: %uf_locstr({uf::cfg::farspawn})%|&7今立っている場所を、初めて入った人・ベッドのない人が出る場所にする|&7（座標で決めるときは /ufadmin farspawn x y z）|&7確認画面が出ます", "ask/今いる場所を初期スポーン地点にする|farspawnhere")
     uf_abtn({_p}, {_g}, 34, paper, "&e初期スポーン地点の遠さ", "&7現在: %{uf::cfg::farspawn_dist}% ブロック|&eクリックで変更", "edit/cfg/farspawn_dist")
     uf_ashow({_p}, {_g}, "hub")
 
@@ -1537,6 +1538,8 @@ function uf_aact(p: player, a: text):
         uf_layout_lights({_p})
     else if {_c} is "farspawn":
         uf_farspawn({_p})
+    else if {_c} is "farspawnhere":
+        uf_setfarspawn({_p}, location of {_p})
     else if {_c} is "view":
         if uf_usebook({_p}) is true:
             set {uf::atoolview::%{_u}%} to "chest"
