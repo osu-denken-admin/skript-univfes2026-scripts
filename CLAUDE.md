@@ -11,14 +11,14 @@
 - **このリポジトリは公開（public）**。秘密情報や接続先アドレスを書かない・コミットしない: GitHub トークン、RCON パスワード、playit のアドレス、Discord の Webhook URL（使うときは環境変数 `UF_DISCORD_WEBHOOK`）。ログを貼ってもらうときは伏せてもらう
 - ボットの**テスト**（`test.js` `lights.js` `drun.js`）は**ローカルのテストサーバーだけ**。ワールドを書き換えるので本番にはつながない
 - 本番のゲームには、Claude がボット `ClaudeBot`（`tests/bot/live.js`）で入ってよい（2026-10-26 にユーザーが決めた）。入る前にユーザーに伝える。OP を付けてある（`online-mode=false` なので同じ名前で入れば誰でも OP になるが、ユーザーは「同じ名前の人はいない」と判断）。開発が終わったら管理者ツールの「OP の一覧」で外す。入ったらすぐクリエイティブにする（`live.js` が自動でする。2026-10-26 にサバイバルのまま立たせて 25 回倒され、全員のチャットに死亡が流れた）
-- 本番サーバーには Claude が SSH で直接入ってよい（2026-10-26 から）: `ssh -o BatchMode=yes denken@denken-mc "<コマンド>"`（Tailscale 経由、この PC の鍵 `0qb36-pc` を登録済み）。打つ前に何をするか伝える。停止・再起動・ファイルの削除など大きな操作は先にユーザーに確認する
+- 本番サーバーには Claude が SSH で直接入ってよい（2026-10-26 から）: `ssh -o BatchMode=yes denken@minecraft-server "<コマンド>"`（Tailscale 経由、この PC の鍵 `0qb36-pc` を登録済み）。打つ前に何をするか伝える。停止・再起動・ファイルの削除など大きな操作は先にユーザーに確認する
   - サーバーのコンソールに送るとき: `screen -S mcserver -p 0 -X stuff "<コマンド>\r"`。**`-p 0` がないと届かない**（2026-10-25 に `save-off` のあとの `save-on` が届かず、翌日まで自動保存が止まっていた）。結果は `logs/latest.log` で確かめる
 - ユーザーに本番のコマンドを渡すときは、1 つずつ `bash` のコードブロックで渡す。`<パス>` のようなプレースホルダは使わず、実際の値を書く（そのまま打たれてしまう）
 - ゲーム内の操作は、管理者ツール（本）でできるようにする。コマンドだけの機能にしない（使えない人が出る）
 
 ## 本番環境
 
-- サーバー: Linux の `denken-mc`（ユーザー `denken`）。Paper 1.21.4（`paper-1.21.4-232.jar`）、**Skript 2.13.1**（`plugins/Skript-2.13.1.jar`。前に 2.16.2 と書いていたのは間違いで、2026-10-26 に確認）、Java 21
+- サーバー: Linux の `minecraft-server`（ユーザー `denken`。2026-11-22 に、ホスト名と Tailscale の名前が前の `denken-mc` から変わっていたのが分かった。SSH の鍵の指紋が同じなので同じマシン）。Paper 1.21.4（`paper-1.21.4-232.jar`）、**Skript 2.13.1**（`plugins/Skript-2.13.1.jar`。前に 2.16.2 と書いていたのは間違いで、2026-10-26 に確認）、Java 21
 - フォルダ: `/home/denken/workspace/paper1214`。スクリプトは `plugins/Skript/scripts`（このリポジトリの clone）
 - `online-mode=false`。起動時の Mojang・Modrinth などへの `Connection reset` は、サーバーのネットワークがマイクラ関係の接続先だけを切っているため（2026-10-26 に確認: minecraft-services.net・Mojang・Modrinth は TLS の最初で 0.04 秒で切断、GitHub・Google・Cloudflare・Microsoft のログインは通る）。Java 版は影響なし。統合版の Geyser は起動時に `minecraft-services.net` が要るので、WARP のプロキシを通して直した（下の「起動」）。プロキシなしだと `Cannot setup authentication! Are you offline?` で起動できない
 - プラグイン: PlugManX, Chunky, CrackShot, DiscordSRV, Elevator, FastAsyncWorldEdit, floodgate, Geyser-Spigot, GeyserExtras, GeyserSkinManager, ImageFrame, Jecon, LuckPerms, LunaChat, QuickShop-Hikari（`/shop` `/qs` を使う。こちらのショップは `/buy`）, Sit, SkinsRestorer, SkQuery 4.3.2（Skript 2.13.1 では 152 個中 102 個が読み込まれる。4.3.2 は Skript 2.16.2 では壊れる）, Vault, ViaVersion 系, WorldEdit（FAWE が代わりをしている。名前がかぶって読み込まれていなかった `worldedit-bukkit-7.4.0-beta-01.jar` は 2026-10-26 に `plugins/_unused/` へ移した）, worldedit-selection-viewer, WorldGuard
@@ -132,7 +132,7 @@ systemctl --user restart mc-server
 - この PC（Windows）のテストサーバーは `F:\Claude\testserver-1214`（Skript 2.13.1。2.16.2 の jar は `F:\Claude\testserver-jars`。15号館のワールドはないので `drun.js` は動かせない）。git の作者はこのリポジトリだけ `jtoxyz` に設定済み
 - `node power.js <cmds.txt のパス>`: 武具の強さ（ダメージ）・スキンの番号・リソースパックが送られるか・前の武具の作り直し・地下カジノ（作る・台で遊ぶ・区域・埋め戻す）。`mobs.js` と同じく `zz_mobtest.sk` を入れておく
 - `node mobs.js <cmds.txt のパス>`: ダンジョンの敵（全階の中ボス・ボスの技・怒り・体力のバー・片付け、表の全行）。先に `tests/bot/-zz_mobtest.sk` をテストサーバーに `zz_mobtest.sk` として入れる
-- `node live.js denken-mc 25565 ClaudeBot <コマンドのファイル> <記録のファイル>`: 本番に入りっぱなしにするボット。コマンドのファイルに 1 行ずつ足すと実行し、チャット・本・チェスト画面の中身を記録に書く（使い方はファイルの先頭）
+- `node live.js minecraft-server 25565 ClaudeBot <コマンドのファイル> <記録のファイル>`: 本番に入りっぱなしにするボット。コマンドのファイルに 1 行ずつ足すと実行し、チャット・本・チェスト画面の中身を記録に書く（使い方はファイルの先頭）
 - mineflayer の注意: 乗っている本人には、サーバーが乗り物の位置・向きを送ってこない（本人が動かす側のため）。馬を動かすのは `vehicle_move`、向きは `look` の通信を直接送る
 - mineflayer の注意: 1.21.4 のしゃがみはパケットを直接送る（`test.js` の `sneak`）。アイテムを使う前に `deactivateItem`
 - ボットが近くのブロックや敵を見たまま `activateItem`（空中を右クリック）すると、サーバーに無視される。ブロックを見ているなら `activateBlock`、そうでなければ前か上を向いてから使う

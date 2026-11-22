@@ -62,7 +62,7 @@
 
 ## 3. 本番の環境
 
-- Linux のマシン `denken-mc`（ユーザー `denken`）。フォルダは `/home/denken/workspace/paper1214`
+- Linux のマシン `minecraft-server`（ユーザー `denken`）。フォルダは `/home/denken/workspace/paper1214`
 - **Paper 1.21.4（`paper-1.21.4-232.jar`）、Skript 2.13.1**、Java 21
 - プラグイン: PlugManX, Chunky, CrackShot, DiscordSRV, Elevator, FastAsyncWorldEdit, floodgate, Geyser-Spigot, GeyserExtras, GeyserSkinManager, ImageFrame, Jecon, LuckPerms, LunaChat, QuickShop-Hikari, Sit, SkinsRestorer, SkQuery 4.3.2, Skript, Vault, ViaBackwards, ViaRewind, ViaVersion, worldedit-selection-viewer, WorldGuard
   - WorldEdit は FastAsyncWorldEdit が代わりをしている（名前がかぶって読み込まれなかった jar は `plugins/_unused/`）

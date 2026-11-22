@@ -137,7 +137,7 @@ node drun.js "テストサーバーのフォルダ/cmds.txt" "../../tools/dungeo
 テストではなく、Claude が本番のゲームの中で操作するためのボットです（名前は `ClaudeBot`、OP あり）。**入る前にユーザーに伝えます。** ワールドを勝手に書き換える操作はしません。
 
 ```bash
-node live.js denken-mc 25565 ClaudeBot cmd.txt log.txt
+node live.js minecraft-server 25565 ClaudeBot cmd.txt log.txt
 ```
 
 `cmd.txt` に 1 行ずつ足すと実行し、チャット・本・チェスト画面の中身を `log.txt` に書きます。コマンドの一覧は `live.js` の先頭にあります（`!tool` で管理者ツールを開き、`!book <スロット>` で項目を押す、など）。開発が終わったら、管理者ツールの「OP の一覧」で `ClaudeBot` の OP を外します。

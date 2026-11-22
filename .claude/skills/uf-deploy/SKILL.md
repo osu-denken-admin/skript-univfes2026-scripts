@@ -1,6 +1,6 @@
 ---
 name: uf-deploy
-description: テストに通った変更を main に入れて本番の Minecraft サーバー（denken-mc）に届け、届いたか・エラーなしで読み込まれたかを SSH で確かめて報告する手順。「main に入れて」「本番に反映して」と言われたとき、または uf-localtest に通った変更を入れるときに使う。
+description: テストに通った変更を main に入れて本番の Minecraft サーバー（minecraft-server）に届け、届いたか・エラーなしで読み込まれたかを SSH で確かめて報告する手順。「main に入れて」「本番に反映して」と言われたとき、または uf-localtest に通った変更を入れるときに使う。
 ---
 
 # 本番への反映
@@ -19,15 +19,15 @@ main に入れたものは、本番の systemd タイマー `skript-git-pull.tim
    早送りできないときは、ブランチを main の上に載せ直してテストし直す
 3. 次に反映される時刻:
    ```bash
-   ssh -o BatchMode=yes denken@denken-mc "systemctl --user list-timers skript-git-pull.timer --no-pager | sed -n 2p"
+   ssh -o BatchMode=yes denken@minecraft-server "systemctl --user list-timers skript-git-pull.timer --no-pager | sed -n 2p"
    ```
 4. 届くまで待つ（15 秒おきに見る。Bash は timeout を 720000 に）:
    ```bash
-   for i in $(seq 1 45); do h=$(ssh -o BatchMode=yes denken@denken-mc "git -C /home/denken/workspace/paper1214/plugins/Skript/scripts log -1 --format=%h"); [ "$h" = "<短いハッシュ>" ] && break; sleep 15; done; echo "HEAD=$h"
+   for i in $(seq 1 45); do h=$(ssh -o BatchMode=yes denken@minecraft-server "git -C /home/denken/workspace/paper1214/plugins/Skript/scripts log -1 --format=%h"); [ "$h" = "<短いハッシュ>" ] && break; sleep 15; done; echo "HEAD=$h"
    ```
 5. 読み込みの結果:
    ```bash
-   ssh -o BatchMode=yes denken@denken-mc "journalctl --user -u skript-git-pull.service --no-pager --since '-12 min' | grep -a 'Successfully\|完了\|rror\|Line [0-9]*:' | tail -10"
+   ssh -o BatchMode=yes denken@minecraft-server "journalctl --user -u skript-git-pull.service --no-pager --since '-12 min' | grep -a 'Successfully\|完了\|rror\|Line [0-9]*:' | tail -10"
    ```
    - `Successfully reloaded all scripts.` が出ていれば成功。前からある警告（`uf_14_admintool.sk` 937 行、`uf_12_admin.sk` 35 行）は問題ない
    - エラーが出たら、すぐに直すか、main を元に戻す（`git revert` してから push）。どちらにしたかユーザーに伝える

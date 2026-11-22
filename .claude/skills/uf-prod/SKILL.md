@@ -1,6 +1,6 @@
 ---
 name: uf-prod
-description: 本番の Minecraft サーバー（denken-mc）を SSH で調べたり、コンソールにコマンドを送ったり、ボット ClaudeBot でゲームに入って管理者ツールを操作・確認したりする手順。本番のログ・設定・状態を見るとき、本番のゲームの中を確かめるときに使う。
+description: 本番の Minecraft サーバー（minecraft-server）を SSH で調べたり、コンソールにコマンドを送ったり、ボット ClaudeBot でゲームに入って管理者ツールを操作・確認したりする手順。本番のログ・設定・状態を見るとき、本番のゲームの中を確かめるときに使う。
 ---
 
 # 本番のサーバーとゲーム
@@ -9,7 +9,7 @@ description: 本番の Minecraft サーバー（denken-mc）を SSH で調べた
 
 ## SSH
 
-- `ssh -o BatchMode=yes denken@denken-mc "<コマンド>"`（Tailscale 経由。この PC の鍵 `0qb36-pc` を登録済み）
+- `ssh -o BatchMode=yes denken@minecraft-server "<コマンド>"`（Tailscale 経由。この PC の鍵 `0qb36-pc` を登録済み）
 - フォルダ: `/home/denken/workspace/paper1214`。ログは `logs/latest.log`、スクリプトは `plugins/Skript/scripts`
 - Skript の版: `unzip -p /home/denken/workspace/paper1214/plugins/Skript-*.jar plugin.yml | grep ^version`（2026-10-26 は 2.13.1）
 - 変数の中身は `plugins/Skript/variables.csv` だが、保存がまばらで古いことがある。今の状態はゲームの中（管理者ツール）で見る
@@ -22,13 +22,13 @@ description: 本番の Minecraft サーバー（denken-mc）を SSH で調べた
 - コンソールの `stop` だけだと 15 秒後にまた起動する（`Restart=always`）。本当に止めるときは `systemctl --user stop mc-server`
 - `run.sh` を書き換えるときは、動いているサーバーを先に止める（動いているシェルが新しい中身の途中から読み進めて、勝手に起動し直したことがある）
 - 起動の確認: `logs/latest.log` に `Done (`、`UDP ポート 19132 で開始しました`、`All scripts loaded without errors.`。起動し直した直後は古いログの `Done (` を読まないように時刻も見る
-- 統合版の確認: このリポジトリの外で RakNet の Unconnected Ping を `denken-mc:19132` に送り、`MCPE;…` が返るか
+- 統合版の確認: このリポジトリの外で RakNet の Unconnected Ping を `minecraft-server:19132` に送り、`MCPE;…` が返るか
 - WARP: `warp-cli --accept-tos status` が `Connected`、モードは `WarpProxy on port 40000`。**`mode warp` にはしない**（経路が変わって playit・Tailscale に影響する）
 
 ## コンソールに送る
 
 ```bash
-ssh -o BatchMode=yes denken@denken-mc 'screen -S mcserver -p 0 -X stuff "<コマンド>\r"; sleep 1.5; tail -5 /home/denken/workspace/paper1214/logs/latest.log'
+ssh -o BatchMode=yes denken@minecraft-server 'screen -S mcserver -p 0 -X stuff "<コマンド>\r"; sleep 1.5; tail -5 /home/denken/workspace/paper1214/logs/latest.log'
 ```
 
 - **`-p 0` を必ず付ける。** ないと何も届かず、エラーも出ない（2026-10-25 に `save-on` が届かず、翌日まで自動保存が止まっていた）
@@ -39,7 +39,7 @@ ssh -o BatchMode=yes denken@denken-mc 'screen -S mcserver -p 0 -X stuff "<コマ
 
 ```bash
 S=/c/Users/0qb36/AppData/Local/Temp/claude/<セッションの scratchpad>; : > $S/live-cmd.txt; : > $S/live-log.txt
-cd /f/Claude/skript-univfes2026-scripts/tests/bot && node live.js denken-mc 25565 ClaudeBot "$S/live-cmd.txt" "$S/live-log.txt"
+cd /f/Claude/skript-univfes2026-scripts/tests/bot && node live.js minecraft-server 25565 ClaudeBot "$S/live-cmd.txt" "$S/live-log.txt"
 ```
 
 - `run_in_background` で起動する。入ると自動で `/gamemode creative` になる（サバイバルのままだと夜に倒され続け、全員のチャットに死亡が流れる）
