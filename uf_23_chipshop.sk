@@ -106,7 +106,7 @@ function uf_cshopgui(p: player):
                     set slot {_s} of {_g} to {_it} named uf_cshopname({_id}) with lore "&7価格: &6チップ %{_price}% 枚", "&8ここでしか買えない" and "&eクリックで交換"
                     set {-uf::guictx::%uuid of {_p}%::%{_s}%} to {_id}
                     add 1 to {_s}
-    set slot 49 of {_g} to arrow named "&fカジノに戻る"
+    set slot 49 of {_g} to uf_cxbackbtn({_p})
     uf_gui({_p}, "cshop", {_g})
 
 function uf_cshopbuy(p: player, id: text):
@@ -140,7 +140,7 @@ on inventory click:
     if {_s} is 49:
         wait 1 tick
         if player is online:
-            uf_casinogui(player)
+            uf_cxgoback(player)
         stop
     set {_id} to {-uf::guictx::%uuid of player%::%{_s}%}
     {_id} is set

@@ -30,7 +30,7 @@ function uf_dicegui(p: player):
     set slot 0 of {_g} to white stained glass pane named " "
     set slot 7 of {_g} to white stained glass pane named " "
     uf_dicepicks({_p}, {_g}, 0)
-    set slot 8 of {_g} to arrow named "&f戻る" with lore "&7カジノの画面へ"
+    set slot 8 of {_g} to uf_cxbackbtn({_p})
     loop 36, 37, 39, 41, 42, 43 and 44:
         set slot loop-value of {_g} to white stained glass pane named " "
     uf_diedraw({_g}, random integer between 1 and 6)
@@ -152,7 +152,7 @@ on inventory click:
     if {_s} is 8:
         wait 1 tick
         if player is online:
-            uf_casinogui(player)
+            uf_cxgoback(player)
         stop
     if {_s} is 38:
         uf_betnext(player)
@@ -201,7 +201,7 @@ function uf_hlstart(p: player):
         set slot 15 of {_g} to barrier named "&8ロー（1 より小さいカードはない）"
     set slot 22 of {_g} to book named "&7次のカード: ？" with lore "&7ハイかローを選ぶとめくれる"
     set slot 18 of {_g} to cyan stained glass pane named " "
-    set slot 26 of {_g} to arrow named "&f戻る" with lore "&7選ぶ前なら賭け金は返る"
+    set slot 26 of {_g} to uf_cxbackbtn({_p}) with lore "&7選ぶ前なら賭け金は返る"
     set {-uf::hl::%{_u}%::inv} to {_g}
     uf_gui({_p}, "highlow", {_g})
 
@@ -278,7 +278,7 @@ function uf_hlpick(p: player, side: text):
         if {_here} is false:
             uf_cxtitle({_p}, "&7はずれ… %{_c}% → %{_next}%", "&7-%uf_comma({_bet})% チップ（所持 %uf_comma(uf_chip({_p}))% 枚）")
     set slot 18 of {_g} to lever named "&6&lもう一回" with lore "&7賭け金 %uf_bet({_p})% チップで新しいカード"
-    set slot 26 of {_g} to arrow named "&f戻る" with lore "&7カジノの画面へ"
+    set slot 26 of {_g} to uf_cxbackbtn({_p})
 
 on inventory click:
     {-uf::gui::%uuid of player%} is "highlow"
@@ -298,7 +298,7 @@ on inventory click:
     else if {_s} is 26:
         wait 1 tick
         if player is online:
-            uf_casinogui(player)
+            uf_cxgoback(player)
 
 # 選ぶ前に閉じたら、賭け金を返す
 #   カジノの画面からハイ＆ローの画面に切り替えるときにも、前の画面が閉じた知らせが来るので、閉じたのがハイ＆ローの画面のときだけ
@@ -349,7 +349,7 @@ function uf_gachagui(p: player, spin: boolean = false):
     uf_cxpaint({_g}, {_fr::*}, purple stained glass pane named " ")
     set slot 4 of {_g} to uf_cxinfo({_p})
     set slot 13 of {_g} to ender chest named "&dガチャ" with lore "&7下の「回す」を押してね"
-    set slot 18 of {_g} to arrow named "&f戻る" with lore "&7カジノの画面へ"
+    set slot 18 of {_g} to uf_cxbackbtn({_p})
     set slot 22 of {_g} to lever named "&d&l回す！" with lore "&7チップ %{uf::cfg::casino::gacha::cost}% 枚で 1 回" and "&7景品はアイテム（チップは出ない）"
     set slot 26 of {_g} to book named "&f景品の一覧" with lore "&fふつう 60％&7: おにぎり・スピードドリンク・回復キット", "&bちょっといい 27％&7: 電研ボム・ドリンク・回復キット", "&dレア 10％&7: ジャンプのお守り・強化素材・俊足のお守り" and "&6大当たり 3％&7: 暗視ゴーグル・制服・白衣・最終強化パーツ"
     set {-uf::gc::%{_u}%::inv} to {_g}
@@ -475,7 +475,7 @@ on inventory click:
     else if {_s} is 18:
         wait 1 tick
         if player is online:
-            uf_casinogui(player)
+            uf_cxgoback(player)
 
 # ------------------------------------------------------------
 # 的当て（設計書 14.2 の技能ゲーム。画面の中で遊ぶ形。5 段）

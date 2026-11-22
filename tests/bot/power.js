@@ -148,6 +148,14 @@ async function join() {
   await sleep(1500);
   check('roulette ball is rolling', Object.values(b.entities).some((e) => e.name === 'block_display' && e.position.distanceTo(new Vec3(-259.5, 57.25, 109.5)) < 2));
   check('roulette red button plays', !!(await waitMsg(from, /ルーレットの結果/, 6000)));
+  // サイコロの台 → サイコロの画面。「閉じる（地下カジノに戻る）」で閉じる（カジノのメニューは出さない）
+  con(`tp ${NAME} -249.5 56 105.5 0 40`); await sleep(1200);
+  await b.activateBlock(b.blockAt(new Vec3(-249, 57, 107))); await sleep(1500);
+  const dt = b.currentWindow ? JSON.stringify(b.currentWindow.title) : '';
+  check('dice table opens the dice screen', /サイコロ/.test(dt), dt.slice(0, 80));
+  if (b.currentWindow) { await b.clickWindow(8, 0, 0).catch(() => {}); }
+  await sleep(1500);
+  check('back from a hall game closes the screen', !b.currentWindow, b.currentWindow ? JSON.stringify(b.currentWindow.title).slice(0, 80) : '');
   // 交換のカウンター → カジノの画面
   con(`tp ${NAME} -261.5 56 98.5 180 30`); await sleep(1200);
   await b.activateBlock(b.blockAt(new Vec3(-262, 57, 97))); await sleep(1500);

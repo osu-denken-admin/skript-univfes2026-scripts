@@ -250,6 +250,19 @@ function uf_cxback(p: player, g: inventory, ticks: number):
     else:
         uf_casinogui({_p})
 
+# 「戻る」: 地下カジノの台から開いた人は画面を閉じて地下カジノへ、カジノの画面から開いた人はカジノの画面へ（2026-11-22）
+#   前は台から開いても「戻る」でカジノの画面（交換などのメニュー）が出て、分かりにくかった
+function uf_cxgoback(p: player):
+    if {-uf::corg::%uuid of {_p}%} is "hall":
+        close inventory of {_p}
+    else:
+        uf_casinogui({_p})
+
+function uf_cxbackbtn(p: player) :: item:
+    if {-uf::corg::%uuid of {_p}%} is "hall":
+        return arrow named "&f閉じる（地下カジノに戻る）" with lore "&7まわりの台で遊べる"
+    return arrow named "&f戻る（カジノのメニューへ）" with lore "&7交換・ほかのゲーム・賭け金"
+
 # ------------------------------------------------------------
 # 画面下（アクションバー）: 地下カジノの中では、所持チップ・今日の成績・賭け金を出す（main.sk から）
 #   カジノの区域が決まっていないとき（どこでも /casino が使えるとき）は出さない
